@@ -47,6 +47,16 @@ class TrackingTest {
         t.update(listOf(a,b),1033);assertTrue(t.update(listOf(a,b),1066).all {it!!.confidence>=.55})
         t.update(emptyList(),1100);assertTrue(t.update(listOf(a,b),1133).all{it!!.confidence<.55})
     }
+    @Test fun briefBlurDoesNotForceClearAssociatedFramesToReconfirm(){
+        val t=StaffTracker();repeat(3){t.update(listOf(a),1000L+it*17,1)}
+        assertTrue(t.update(listOf(a.copy(blurred=true)),1051,1)[0]!!.confidence<.55)
+        assertTrue(t.update(listOf(a),1068,1)[0]!!.confidence>=.55)
+        repeat(20){assertTrue(t.update(listOf(a.copy(blurred=true)),1085L+it*17,1)[0]!!.confidence<.55)}
+        assertTrue(t.update(listOf(a),1425,1)[0]!!.confidence<.55)
+        t.update(listOf(a),1442,1);t.update(listOf(a),1459,1);t.update(emptyList(),1476,1)
+        assertTrue(t.update(listOf(a),1493,1)[0]!!.confidence<.55)
+        t.reset();assertTrue(t.update(listOf(a),1510,1)[0]!!.confidence<.55)
+    }
     @Test fun manualSeedIsOnlyAPrior(){val t=StaffTracker();t.seed(listOf(a,b),1000);assertTrue(t.update(emptyList(),1033).all{it==null})}
     @Test fun duplicateCandidateCannotBecomeTwoStaves(){val t=StaffTracker();repeat(4){assertTrue(t.update(listOf(a,a),1000L+it*33).filterNotNull().size<=1)}}
     @Test fun metricRejectsMissingOrUncertainStaff(){

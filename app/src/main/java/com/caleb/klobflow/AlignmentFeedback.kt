@@ -6,7 +6,7 @@ import kotlin.math.*
  *  [cues] marks text that refers to correction marks currently drawn on the camera view. */
 data class BoxText(val tone:String,val title:String,val detail:String,val number:Double=0.0,val cues:Boolean=false)
 data class Coaching(val state:String,val title:String,val detail:String,val tips:List<TipCue> = emptyList(),
-    val tracking:BoxText=BoxText("idle","NO CAMERA YET","Open the camera or try the demo."),val trackingConfirmed:Boolean=false,val cues:Boolean=false)
+    val tracking:BoxText=BoxText("idle","NO CAMERA YET","Open the camera or try the demo."),val trackingConfirmed:Boolean=false,val cues:Boolean=false,val summary:BoxText?=null)
 
 private val issueRank=mapOf("uncertain" to 1,"blur" to 2,"hidden" to 3,"missing" to 4)
 
@@ -27,7 +27,7 @@ private fun describeIssue(issue:Pair<String,Int>,count:Int):BoxText {
     return when(kind){
         "missing"->BoxText("warn",if(staff<0)(if(count==1)"NO STAFF FOUND" else "NO STAVES FOUND") else if(count==1)"STAFF NOT FOUND" else "STAFF ${"AB"[staff]} NOT FOUND","Keep the whole staff lit and in frame. Scores pause until it is found.")
         "hidden"->BoxText("warn","END HIDDEN","An end is covered or outside the frame. Keep both ends in view.")
-        "blur"->BoxText("warn","MOTION BLUR","Fast motion smears the light, so the ends are uncertain. Scores pause until they are sharp.")
+        "blur"->BoxText("warn","ENDS UNCLEAR","The glow is visible, but both ends cannot be located reliably. This frame is excluded.")
         "uncertain"->BoxText("warn","UNSURE","Crossing staves or a faint shape. Scores pause until tracking is sure.")
         "outside"->BoxText("warn","OUTSIDE PLANE","A tip left the calibrated rectangle. Scores pause until every tip is inside it.")
         else->BoxText("warn","LOCKING ON","Keep your staves in view while tracking confirms them.")
@@ -37,11 +37,13 @@ private fun describeIssue(issue:Pair<String,Int>,count:Int):BoxText {
 /** Presentation hysteresis never changes scores or makes uncertain observations valid. */
 class AlignmentFeedback {
     private var time=-1L;private var key="";private var lastIssue:Pair<String,Int>?=null
+    private data class Sample(val time:Long,val valid:Boolean,val on:Boolean)
+    private val samples=ArrayList<Sample>()
     private var onSince=arrayOfNulls<Long>(4);private var on=BooleanArray(4);private var alignedSince:Long?=null
     private fun clear(){onSince=arrayOfNulls(4);on=BooleanArray(4);alignedSince=null}
     fun update(t:Long,staffs:List<Segment?>,guide:Guide,background:BackgroundStatus=BackgroundStatus()):Coaching {
-        val c=guide.config;val nextKey="${c.mode}/${c.staffCount}/${c.tolerance}/${c.planeCorners}"
-        if(t<time||nextKey!=key){clear();lastIssue=null}
+        val c=guide.config;val nextKey="${c.mode}/${c.staffCount}/${c.tolerance}/${c.planeCorners}/${c.cx}/${c.cy}/${c.scale}/${c.rotation}/${c.circleSeparation}/${guide.width}/${guide.height}/${c.staffColors}/${c.threshold}/${c.minLength}/${c.led}/${c.facing}/${c.mirror}/${c.zoom}"
+        if(t<time||nextKey!=key){clear();lastIssue=null;samples.clear()}
         time=t;key=nextKey
         val count=c.staffCount;val free=c.mode=="free";val cues=guide.cues(staffs)
         val issue=trackingIssue(staffs,count) ?: if(!free&&cues.size!=count*2)"outside" to -1 else null
@@ -50,16 +52,24 @@ class AlignmentFeedback {
         val snapshot=background.state=="countdown"||background.state=="capturing"
         // The tracker already confirms consecutive observations. Do not add a text-delay gate to scores.
         val confirmed=issue==null&&!snapshot
+        samples.removeAll {t-it.time>5000||it.time==t}
+        if(snapshot)samples.clear() else samples.add(Sample(t,confirmed,confirmed&&cues.size==count*2&&cues.all {it.error<=c.tolerance}))
+        val measured=samples.filter {it.valid};val recent=measured.size>=3&&t-measured.last().time<=(if(issue?.first=="hidden")1500 else 1000)
+        val coverage=(measured.size*100.0/max(1,samples.size)).roundToInt()
+        val onPercent=if(measured.isEmpty())0 else (measured.count {it.on}*100.0/measured.size).roundToInt()
+        val tolerance=if(c.tolerance%1.0==0.0)c.tolerance.toInt().toString()else c.tolerance.toString()
+        val summary=if(recent&&!free&&!snapshot)BoxText(if(onPercent>=80)"ok" else "warn","$onPercent% ON TARGET","Of measured frames in the last 5 seconds. Tolerance: $tolerance% of guide width. Unclear frames are excluded.")else null
         val tracking=when{
             snapshot->BoxText("wait","BACKGROUND SNAPSHOT","Move your staves out of view and keep the phone still.")
+            recent->BoxText(if(coverage>=80)"ok" else "warn","$coverage% MEASURED","Frames with both ends located, over the last 5 seconds. Unclear frames pause live scores and rings.")
             confirmed->BoxText("ok","CLEAR",if(count==1)"Your staff and both of its ends are sharp." else "Both staves and all four ends are sharp.")
             // StableText holds and fades text independently of current measurements.
             else->describeIssue(issue ?: lastIssue ?: ("starting" to -1),count)
         }
-        fun result(state:String,title:String,detail:String,tips:List<TipCue> = emptyList(),cues:Boolean=false)=Coaching(state,title,detail,tips,tracking,confirmed,cues)
+        fun result(state:String,title:String,detail:String,tips:List<TipCue> = emptyList(),cues:Boolean=false)=Coaching(state,title,detail,tips,tracking,confirmed,cues,summary)
         if(free)return result("free","FREE FLOW",if(c.trails)"No alignment score here. Faint curves show where each tip traveled." else "No alignment score here. Choose Grid, Circles or Cube for targets.")
         if(snapshot)return result("paused","PRECISION PAUSED","Scores resume after the background snapshot.")
-        if(!confirmed)return result("paused","PRECISION PAUSED","Clear frames update the rings. Hidden or smeared ends do not count.")
+        if(!confirmed)return result("paused","PRECISION PAUSED","No current measurement. Keep both ends lit and in view; unclear frames are excluded.")
         val tips=cues.mapIndexed {i,cue->
             if(cue.error>c.tolerance){on[i]=false;onSince[i]=null}
             else if(!on[i]){if(cue.error<=c.tolerance*.85){if(onSince[i]==null)onSince[i]=t;if(t-onSince[i]!!>=300)on[i]=true}else onSince[i]=null}

@@ -51,7 +51,12 @@ class AudioDeviceTest {
                 assertEquals("pc",engine.ui.value.frame!!.guide.config.tempoSource)
                 assertTrue("Fresh PC tempo must enable timing",engine.ui.value.frame!!.beat.enabled)
                 assertEquals(98.0,engine.ui.value.frame!!.beat.bpm,1e-8)
-                Thread.sleep(2200);assertFalse("Stale PC audio must pause the beat",engine.ui.value.frame!!.beat.enabled)
+                // Assert against a newly processed frame, not an old UI snapshot on a busy emulator.
+                val staleAfter=SystemClock.elapsedRealtime()+2200
+                val staleDeadline=staleAfter+10000
+                while(engine.ui.value.frame!!.time<staleAfter && SystemClock.elapsedRealtime()<staleDeadline)Thread.sleep(50)
+                assertTrue("No fresh frame arrived for the stale-audio check",engine.ui.value.frame!!.time>=staleAfter)
+                assertFalse("Stale PC audio must pause the beat",engine.ui.value.frame!!.beat.enabled)
                 scenario.onActivity {engine.command(JSONObject().put("action","audioStop"))}
             }finally {observing.set(false);observer.join(1000);java.io.File(context.getExternalFilesDir(null),"audio-cadence.json").writeText(org.json.JSONArray(observations.map {it.json()}).toString());track.release();context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))}
         }

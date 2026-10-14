@@ -84,6 +84,7 @@ test('each mode tutorial dismisses independently and single-staff beat practice 
  await page.locator('[data-mode="circles"]').click();await expect(page.locator('#mode-tutorial')).toBeHidden();await page.locator('#show-tutorial').click();await expect(page.locator('#mode-tutorial')).toBeVisible();
  await page.locator('#staff-count').selectOption('1');await expect(page.locator('#tracking-label')).toContainText('One staff tracked');await expect(page.locator('#symmetry')).toContainText('—');
  await page.locator('[data-config="tempoEnabled"]').check();await page.locator('#bpm').fill('90');await page.locator('#bpm').dispatchEvent('change');
+ await page.getByText('How beat practice works',{exact:true}).click();await expect(page.locator('.beat-help')).toContainText('75 milliseconds');await page.getByText('How beat practice works',{exact:true}).click();
  await expect(page.locator('#beat-feedback')).toBeVisible();await expect(page.locator('#beat-pulse')).toContainText('90 BPM');
  await expect(page.locator('#beat-hits')).toContainText(/point [1-4]:/,{timeout:12000});
  await page.screenshot({path:'../review/practice-timing.png',fullPage:true});

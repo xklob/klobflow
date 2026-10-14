@@ -73,7 +73,15 @@ import kotlin.math.*
         TextButton(enabled=ui.config.tempoSource=="manual",onClick={engine.command(JSONObject().put("action","syncBeat"))}){Text("Start beat now")}
         TextButton(onClick={val now=SystemClock.elapsedRealtime();taps=if(taps.isEmpty() || now-taps.last()>2000)listOf(now)else (taps+now).takeLast(6);if(taps.size>1){val tempo=(60000.0*(taps.size-1)/(now-taps.first())).roundToInt().coerceIn(30,240);engine.updateConfig(JSONObject().put("bpm",tempo).put("tempoEnabled",true).put("tempoSource","manual"));engine.command(JSONObject().put("action","syncBeat"))}}){Text("Tap tempo")}
     }
-    Text("Pass the numbered points on the pulse. The Timing box shows milliseconds early or late and the distance from the point separately. Start beat now aligns the pulse to your first beat.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
+    var help by remember {mutableStateOf(false)}
+    TextButton(onClick={help=true}){Text("How beat practice works")}
+    if(help)AlertDialog(onDismissRequest={help=false},title={Text("Hit a point on each beat")},text={Column(Modifier.verticalScroll(rememberScrollState())){
+        listOf("Follow the end labeled BEAT TIP. Only that end is timed. Pass it across a numbered target on each blue pulse, in either direction. The pulse is visual; there is no metronome sound.",
+            "With 4 points at 120 BPM: top → right → bottom → left on successive beats. One full circle takes 2 seconds. Try 2 points first. All target rings pulse together; numbers label positions, not a required starting point.",
+            "On beat means within 75 ms early or late. On target means within your Target tolerance. These are separate checks. Hidden or unclear tips do not produce a beat result.",
+            "Start beat now resets the manual pulse. Tap tempo sets its speed from your taps. System audio follows its detected beat. Adjust Audio offset if the pulse consistently leads or lags the music.")
+            .forEach {Text(it,fontSize=16.sp,lineHeight=22.sp,modifier=Modifier.padding(bottom=12.dp))}
+    }},confirmButton={TextButton(onClick={help=false}){Text("Got it")}})
 }
 /** Timing box: the text holds and fades slowly; only the small dot pulses on the beat. */
 @Composable fun BeatFeedback(ui:FlowUi,compact:Boolean=false) {
@@ -84,9 +92,9 @@ import kotlin.math.*
     val next=if(paused)BoxText("wait","Beat timing paused",if(f.audio.status.contains("Following"))"Waiting for fresh audio timing." else f.audio.status)
     else BoxText("timing","${beat.bpm.roundToInt()} BPM",beat.hits.mapIndexed {i,hit->
         val name=if(i==0)"A" else "B"
-        if(hit==null)"$name · waiting for a tip to pass a point" else {
+        if(hit==null)"$name · pass the BEAT TIP across a numbered target on a pulse" else {
             val timing=if(abs(hit.offsetMs)<=75)"on beat" else "${abs(hit.offsetMs).roundToInt()} ms ${if(hit.offsetMs<0)"early" else "late"}"
-            "$name · point ${hit.point}: $timing · ${"%.1f".format(hit.error)}% from point${if(hit.error<=ui.config.tolerance)" ✓" else ""}"
+            "$name · point ${hit.point}: $timing · ${if(hit.error<=ui.config.tolerance)"on target" else "off target"} (${"%.1f".format(hit.error)}%)"
         }
     }.joinToString("\n"),beat.bpm)
     val pulse=beat.enabled && beat.phase<.18

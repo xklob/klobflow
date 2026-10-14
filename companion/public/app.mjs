@@ -336,7 +336,7 @@ function syncConfig(c) {
   config = { ...config, ...c };
   document.querySelectorAll("[data-config]").forEach((el) => {
     const key = el.dataset.config;
-    if (document.activeElement === el && ["range","number","text"].includes(el.type)) return;
+    if (document.activeElement === el && ["range","number","text","checkbox"].includes(el.type)) return;
     if (el.type === "checkbox") el.checked = !!config[key];
     else el.value = String(config[key]);
     if (el.type === "range") rangeLabel(el);
@@ -683,7 +683,7 @@ function render(frame, image) {
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     trail.forEach((f,index)=>f.staffs.forEach((s,n)=>{
       if(!visible(s))return;
-      const color=n?'#b5a3ff':'#b6f36b',previous=trail[index-1],old=previous?.staffs[n],dt=f.time-(previous?.time??f.time);
+      const color=`hsl(${180+(1-fade(f.time))*150} 100% 70%)`,previous=trail[index-1],old=previous?.staffs[n],dt=f.time-(previous?.time??f.time);
       if(visible(old)&&dt>0&&dt<=150&&Math.max(Math.hypot(old.a[0]-s.a[0],old.a[1]-s.a[1]),Math.hypot(old.b[0]-s.b[0],old.b[1]-s.b[1]))<=Math.min(length(old),length(s))*.6){
         ctx.globalAlpha=.72*fade(previous.time)*((old.blurred||s.blurred)?.55:1);
         line(old.a,s.a,color,width);line(old.b,s.b,color,width);
@@ -747,7 +747,7 @@ function render(frame, image) {
   // A letter at each staff's middle names the line; lime and purple identify staves, not scores.
   frame.staffs.forEach((s,n)=>{
     if(!s||n>=(c.staffCount||2))return;
-    const x=(s.a[0]+s.b[0])/2*u,y=(s.a[1]+s.b[1])/2*u,note=s.occluded?' · HIDDEN':s.blurred?' · BLUR':s.confidence<.55?' · UNSURE':'';
+    const x=(s.a[0]+s.b[0])/2*u,y=(s.a[1]+s.b[1])/2*u,note=s.occluded?' · LAST SEEN':s.blurred?' · ENDS UNCLEAR':s.confidence<.55?' · UNSURE':'';
     tag(`${'AB'[n]}${note}`,{fill:n?'#b5a3ff':'#b6f36b',ink:'#10130f',stroke:'#10130f',size:15,alpha:s.occluded?.65:1,force:true,candidates:[()=>[x,y],(pw,ph)=>[x,y-ph*1.2],(pw,ph)=>[x,y+ph*1.2]]});
   });
   if(frame.beat?.enabled){
@@ -758,7 +758,7 @@ function render(frame, image) {
       const nx=x+r+7*k,ny=y-r-4*k;ctx.lineWidth=3.5*k;ctx.strokeStyle='#000';ctx.strokeText(String(j+1),nx,ny);ctx.fillStyle='#fff';ctx.fillText(String(j+1),nx,ny);
     }));
     ctx.textAlign='start';ctx.textBaseline='alphabetic';
-    frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){const [x,y]=at(s.a);ctx.fillStyle='#000';ctx.beginPath();ctx.arc(x,y,4.6*k,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,3*k,0,Math.PI*2);ctx.fill();}});
+    frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){const [x,y]=at(s.a);ring(x,y,8*k,'#6dd8ff',2.5*k);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,4*k,0,Math.PI*2);ctx.fill();tag('BEAT TIP',{ink:'#9ae9ff',size:13,candidates:[beside(x,y,0,-1,10*k),beside(x,y,1,0,10*k),beside(x,y,-1,0,10*k)]});}});
   }
   // Correction cues: amber ring = the tip to move, arrow = which way, white bullseye = where it belongs.
   const cues=c.showFeedback!==false?displayedFeedback.tips||[]:[],labels=[];
@@ -807,9 +807,9 @@ function showBeat(f){
   return;
  }
  const bpm=Math.round(beat.bpm),rows=beat.hits.map((hit,i)=>{
-  if(!hit)return {text:`${'AB'[i]} · waiting for a tip to pass a point`,good:false};
+  if(!hit)return {text:`${'AB'[i]} · pass the BEAT TIP across a numbered target on a pulse`,good:false};
   const onBeat=Math.abs(hit.offsetMs)<=75,precise=hit.error<=f.config.tolerance,timing=onBeat?'on beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${hit.offsetMs<0?'early':'late'}`;
-  return {text:`${'AB'[i]} · point ${hit.point}: ${timing} · ${hit.error.toFixed(1)}% from point${precise?' ✓':''}`,good:onBeat&&precise};
+  return {text:`${'AB'[i]} · point ${hit.point}: ${timing} · ${precise?'on target':'off target'} (${hit.error.toFixed(1)}%)`,good:onBeat&&precise};
  });
  timingBox.show({key:`${bpm}|${rows.map(r=>r.text).join('|')}`,paused:false,bpm,tone:'timing',render(){$('beat-pulse').textContent=`${bpm} BPM`;$('beat-hits').replaceChildren(...rows.map(r=>Object.assign(document.createElement('div'),{textContent:r.text,className:r.good?'good':''})));}},{immediate});
 }
@@ -822,10 +822,11 @@ function setCoaching(f,reason='idle') {
     coachingBox.show({key:'idle',state:'idle',mode:config.mode,cues:false,tone:'idle',render(){$('coaching-title').textContent='WAITING';$('coaching-detail').textContent='Alignment feedback appears when your staves are tracked.';}},{immediate:!stalled});
     return;
   }
-  const feedback=displayedFeedback,t=feedback.tracking;
+  const feedback=displayedFeedback,t=feedback.tracking,summary=feedback.summary;
   trackingBox.show({key:`${t.key}|${t.detail}`,tone:t.tone,snapshot:capturingBackground(f),render(){$('tracking-title').textContent=t.title;$('tracking-detail').textContent=t.detail;}},{immediate});
   const tone=feedback.state==='aligned'||feedback.state==='settling'?'ok':feedback.state==='adjust'?'warn':feedback.state==='free'?'idle':'wait';
-  coachingBox.show({key:`${feedback.state}|${feedback.title}|${feedback.detail}`,state:feedback.state,mode:f.config.mode,cues:!!feedback.cues,tone,render(){$('coaching-title').textContent=feedback.title;$('coaching-detail').textContent=feedback.detail;}},{immediate});
+  const alignment=summary||{...feedback,tone},state=summary?'recent':feedback.state;
+  coachingBox.show({key:`${state}|${alignment.title}|${alignment.detail}`,state,mode:f.config.mode,cues:!summary&&!!feedback.cues,tone:alignment.tone,render(){$('coaching-title').textContent=alignment.title;$('coaching-detail').textContent=alignment.detail;}},{immediate});
 }
 // Alignment errors show 5-second averages of clear samples. Any current uncertainty pauses them at once,
 // and live scores return on confirmed observations without waiting for the text fade.

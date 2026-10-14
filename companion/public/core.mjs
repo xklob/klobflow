@@ -44,7 +44,7 @@ export function patchConfig(previous,patch,{restore=false}={}) {
   const c={...previous,...patch,autoFit:false}; // Legacy startup fitting is now manual only.
   if(!Array.isArray(c.staffColors)||c.staffColors.length>staffColorNames.length||c.staffColors.some(color=>!staffColorNames.includes(color)))throw Error('Choose valid staff colors');
   c.staffColors=[...new Set(c.staffColors)];
-  const ranges={audioOffsetMs:[-500,500],bpm:[30,240],threshold:[60,250],minLength:[.1,.8],cx:[.1,.9],cy:[.1,.9],scale:[.1,.48],rotation:[-90,90],cubeDepth:[.1,.9],circleSeparation:[0,1.8],tolerance:[1,15],zoom:[0,100],planeAspect:[.25,4],calibrationRotation:[0,3],calibrationImageAspect:[0,4]};
+  const ranges={audioOffsetMs:[-500,500],bpm:[30,240],threshold:[60,250],minLength:[.1,.8],cx:[.1,.9],cy:[.1,.9],scale:[.1,.48],rotation:[-90,90],cubeDepth:[.1,.9],circleSeparation:[0,1.8],tolerance:[1,50],zoom:[0,100],planeAspect:[.25,4],calibrationRotation:[0,3],calibrationImageAspect:[0,4]};
   for(const [key,[lo,hi]] of Object.entries(ranges)) if(!Number.isFinite(c[key])||c[key]<lo||c[key]>hi) throw Error(`${key} must be between ${lo} and ${hi}`);
   for(const [key,choices] of Object.entries({tempoSource:["manual","phone","pc"],audioRate:[.5,1,2],staffCount:[1,2],beatPoints:[2,4,8],mode:["grid","circles","cube","free"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
   for(const key of ["streakEffects","autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
@@ -145,7 +145,7 @@ export class Scorer {
 function glowBodyEndpoints(argb,w,h,s){
  const unit=Math.min(w,h),len=length(s)*unit;if(len<24)return null;
  const ax=s.a[0]*unit,ay=s.a[1]*unit,bx=s.b[0]*unit,by=s.b[1]*unit,dx=(bx-ax)/len,dy=(by-ay)/len;
- if(Math.min(ax,bx,ay,by)<2||Math.max(ax,bx)>w-3||Math.max(ay,by)>h-3)return null;
+ // The uncertain halo/previous-length outline may cross the edge. Test the observed core instead.
  const margin=Math.min(unit*.12,len*.18),points=[];let peak=0;
  for(let y=Math.max(1,Math.floor(Math.min(ay,by)-margin));y<=Math.min(h-2,Math.ceil(Math.max(ay,by)+margin));y++)for(let x=Math.max(1,Math.floor(Math.min(ax,bx)-margin));x<=Math.min(w-2,Math.ceil(Math.max(ax,bx)+margin));x++){
   const along=(x-ax)*dx+(y-ay)*dy,across=-(x-ax)*dy+(y-ay)*dx;
@@ -163,7 +163,7 @@ function glowBodyEndpoints(argb,w,h,s){
   }
   if(part.length>=6)parts.push(part);
  }
- parts.sort((a,b)=>b.length-a.length);const core=parts.slice(0,2).flat();if(core.length<18)return null;
+ parts.sort((a,b)=>b.length-a.length);const core=parts.slice(0,2).flat();if(core.length<18||core.some(p=>p[0]<2||p[1]<2||p[0]>=w-2||p[1]>=h-2))return null;
  let mass=0,mx=0,my=0;for(const [x,y,v] of core){mass+=v;mx+=x*v;my+=y*v;}mx/=mass;my/=mass;
  let xx=0,xy=0,yy=0;for(const [x,y,v] of core){xx+=(x-mx)**2*v;xy+=(x-mx)*(y-my)*v;yy+=(y-my)**2*v;}xx/=mass;xy/=mass;yy/=mass;
  const theta=.5*Math.atan2(2*xy,xx-yy),ux=Math.cos(theta),uy=Math.sin(theta);
@@ -172,9 +172,19 @@ function glowBodyEndpoints(argb,w,h,s){
  const extent=high-low;if(extent<len*.82||extent>len*1.12)return null;
  const bins=Array.from({length:16},()=>({mass:0,side:0,square:0,count:0}));
  for(const p of core){const b=bins[Math.min(15,Math.floor((p[3]-low)/extent*16))];b.mass+=p[2];b.side+=p[4]*p[2];b.square+=p[4]**2*p[2];b.count++;}
- const supported=b=>b.count>=2,first=bins.slice(0,6).filter(supported),last=bins.slice(10).filter(supported);
- if(first.length<4||last.length<4||bins.filter(supported).length<10)return null;
  const errorLimit=Math.max(1.5,Math.min(unit*.04,extent*.065));
+ // Saturated blue/rainbow shafts are darker in white-core luminance than their
+ // overexposed caps. Confirm the connecting body at a lower threshold, while
+ // measuring cap position and spread only from the bright connected pieces.
+ const support=new Int32Array(16);
+ for(const p of points){
+  if(p[2]<Math.max(45,peak*.28))continue;
+  const along=(p[0]-mx)*ux+(p[1]-my)*uy,side=-(p[0]-mx)*uy+(p[1]-my)*ux;
+  if(along<low||along>high||Math.abs(side)>errorLimit*.5)continue;
+  support[Math.min(15,Math.floor((along-low)/extent*16))]++;
+ }
+ const supported=b=>b.count>=2;
+ if(support.slice(0,6).filter(n=>n>=2).length<4||support.slice(10).filter(n=>n>=2).length<4||support.filter(n=>n>=2).length<10)return null;
  for(const end of [bins.slice(0,3),bins.slice(13)]){
   const mass=end.reduce((n,b)=>n+b.mass,0),side=end.reduce((n,b)=>n+b.side,0)/mass;
   const variance=end.reduce((n,b)=>n+b.square,0)/mass-side**2;
@@ -331,7 +341,7 @@ function motionCandidates(argb,w,h,c,hints,sharp){
 }
 export class StaffTracker {
   constructor(){this.reset();}
-  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.motion=[[0,0,0],[0,0,0]];}
+  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.confirmedAt=[-Infinity,-Infinity];this.motion=[[0,0,0],[0,0,0]];}
   seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.reset();this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];}
   predicted(i,time){const s=this.last[i];if(!s)return null;const dt=clamp((time-this.lastAt[i])/1000,0,.15),v=this.motion[i],c=add(center(s),[v[0]*dt,v[1]*dt]),a=angle(s)+v[2]*dt,d=mul([Math.cos(a),Math.sin(a)],length(s)/2);return {...s,a:sub(c,d),b:add(c,d)};}
   hints(time,count=2){return this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<250?this.predicted(i,time):null).filter(Boolean);}
@@ -347,10 +357,16 @@ export class StaffTracker {
     if(prior.every(p=>!p)&&best[0]>=0&&best[1]>=0&&center(candidates[best[0]])[0]>center(candidates[best[1]])[0])best=[best[1],best[0],best[2]];
     const ambiguous=prior.every(Boolean)&&best[0]>=0&&best[1]>=0&&assignments.some(a=>a[0]===best[1]&&a[1]===best[0]&&a[2]-best[2]<.035);
     const selected=best.slice(0,2).map((index,i)=>{
-      if(index<0){const p=prior[i],established=this.streak[i]>=3;this.streak[i]=0;return p&&(established||p.occluded||p.blurred)?{...p,confidence:.3,occluded:true}:null;}
+      if(index<0){this.confirmedAt[i]=-Infinity;const p=prior[i],established=this.streak[i]>=3;this.streak[i]=0;return p&&(established||p.occluded||p.blurred)?{...p,confidence:.3,occluded:true}:null;}
       let s=candidates[index];const p=prior[i],predicted=p?this.predicted(i,time):null;if(predicted&&distance(predicted.a,s.b)+distance(predicted.b,s.a)<distance(predicted.a,s.a)+distance(predicted.b,s.b))s={...s,a:s.b,b:s.a};
-      if(p&&length(s)<length(p)*.72){this.streak[i]=0;return {...s,confidence:.35,occluded:true};}
-      if(s.blurred)this.streak[i]=0;else this.streak[i]++;return {...s,occluded:false,confidence:ambiguous?Math.min(.4,s.confidence):this.streak[i]<3?Math.min(.5,s.confidence):s.confidence};
+      if(p&&length(s)<length(p)*.72){this.confirmedAt[i]=-Infinity;this.streak[i]=0;return {...s,confidence:.35,occluded:true};}
+      // A rejected exposure must not erase the identity of a recently confirmed staff.
+      // Only a current, clear, associated observation can resume scoring; predicted/blurred poses never can.
+      if(ambiguous)this.confirmedAt[i]=-Infinity;
+      if(s.blurred)this.streak[i]=0;else this.streak[i]++;
+      const confirmed=!ambiguous&&!s.blurred&&(this.streak[i]>=3||(p&&!p.occluded&&time>=this.confirmedAt[i]&&time-this.confirmedAt[i]<=250));
+      if(confirmed)this.confirmedAt[i]=time;
+      return {...s,occluded:false,confidence:ambiguous?Math.min(.4,s.confidence):confirmed?s.confidence:Math.min(.5,s.confidence)};
     });
     this.last=selected.map((s,i)=>{if(s&&!ambiguous&&!s.occluded){const p=prior[i],dt=(time-this.lastAt[i])/1000;if(p&&dt>=.008&&dt<=.2){const delta=sub(center(s),center(p)),da=.5*Math.atan2(Math.sin(2*(angle(s)-angle(p))),Math.cos(2*(angle(s)-angle(p))));this.motion[i]=[clamp(delta[0]/dt,-3,3),clamp(delta[1]/dt,-3,3),clamp(da/dt,-30,30)].map((v,j)=>this.motion[i][j]*.35+v*.65);}else this.motion[i]=[0,0,0];this.lastAt[i]=time;return s;}return s?.occluded&&prior[i]?{...prior[i],occluded:true}:prior[i];});return selected;
   }

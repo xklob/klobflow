@@ -218,12 +218,13 @@ class MainActivity:ComponentActivity() {
                     ControlSlider("Rotation",ui.config.rotation.toFloat(),-90f..90f,"°"){patch("rotation",it.toDouble())}
                     if(ui.config.mode=="cube")ControlSlider("Cube projection depth",(ui.config.cubeDepth*100).toFloat(),10f..90f,"%"){patch("cubeDepth",it/100.0)}
                     if(ui.config.mode=="circles")ControlSlider("Circle separation",(ui.config.circleSeparation*100).toFloat(),0f..180f,"%"){patch("circleSeparation",it/100.0)}
-                    ControlSlider("Target tolerance",ui.config.tolerance.toFloat(),1f..15f,"%"){patch("tolerance",it.toDouble())}
+                    ControlSlider("Target tolerance",ui.config.tolerance.toFloat(),1f..50f,"%"){patch("tolerance",it.toDouble())}
+                    Text("Allowed distance from the guide as a percent of its width (diameter in Circles). Higher is more forgiving; detection is unchanged.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     Toggle("Alignment cues (arrows and targets)",ui.config.showFeedback){patch("showFeedback",it)}
                     Toggle("Show guide",ui.config.showGuide){patch("showGuide",it)}
                     Toggle("Diagonal grid lines",ui.config.diagonals){patch("diagonals",it)}
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
-                    Text("Continuous paths with subtle highlights at clear detections.",color=Muted,fontSize=14.sp)
+                    Text("Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.",color=Muted,fontSize=14.sp)
                     Toggle("Streak glow and particles",ui.config.streakEffects){patch("streakEffects",it)}
                     Text("Keep every tip on the guide. Glow builds at 2, 5 and 10 seconds. Blur pauses the streak; leaving the guide ends it.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     if(ui.config.staffCount==2)Toggle("Mirror-symmetry measurement",ui.config.symmetry){patch("symmetry",it)}
@@ -270,7 +271,7 @@ class MainActivity:ComponentActivity() {
 @Composable private fun StatusBoxes(feedback:Coaching?,compact:Boolean=false,horizontal:Boolean=false) {
     val tracking=feedback?.tracking ?: BoxText("idle","NO CAMERA YET","Open the camera or try the demo.")
     val alignment=if(feedback==null)BoxText("idle","WAITING","Alignment feedback appears when your staves are tracked.")
-        else BoxText(when(feedback.state){"aligned","settling"->"ok";"adjust"->"warn";"free"->"idle";else->"wait"},feedback.title,feedback.detail,cues=feedback.cues)
+        else feedback.summary ?: BoxText(when(feedback.state){"aligned","settling"->"ok";"adjust"->"warn";"free"->"idle";else->"wait"},feedback.title,feedback.detail,cues=feedback.cues)
     val inactive={b:BoxText->b.tone=="wait" || b.tone=="idle"}
     val (trackingText,trackingUrgent)=rememberHeldText(tracking){a,b->a.tone=="ok" && b.tone!="ok" || (a.title=="BACKGROUND SNAPSHOT")!=(b.title=="BACKGROUND SNAPSHOT")}
     // Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
@@ -363,7 +364,7 @@ class MainActivity:ComponentActivity() {
                 fun visible(s:Segment?)=s!=null&&!s.occluded&&(s.confidence>=.55||s.blurred)
                 fun fade(time:Long)=(1-(f.time-time)/4200f).coerceIn(0f,1f)
                 trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(visible(s)){
-                    val staff=s!!;val color=if(i==0)Lime else Lavender
+                    val staff=s!!;val color=Color.hsl(180f+(1-fade(entry.first))*150f,1f,.7f)
                     val previous=trails.getOrNull(index-1);val old=previous?.second?.getOrNull(i)
                     if(previous!=null&&visible(old)&&entry.first-previous.first in 1..150&&
                         max(old!!.a.distance(staff.a),old.b.distance(staff.b))<=min(old.length,staff.length)*.6){
@@ -409,7 +410,7 @@ class MainActivity:ComponentActivity() {
             fun beside(center:Offset,ux:Float,uy:Float,r:Float):(Float,Float)->Offset={w,h->val reach=r+5f*k+abs(ux)*w/2+abs(uy)*h/2;Offset(center.x+ux*reach,center.y+uy*reach)}
             // A letter at each staff's middle names the line; lime and purple identify staves, not scores.
             f.staffs.forEachIndexed {i,s->if(s!=null && i<ui.config.staffCount){
-                val mid=p(s.center);val note=if(s.occluded)" · HIDDEN" else if(s.blurred)" · BLUR" else if(s.confidence<.55)" · UNSURE" else ""
+                val mid=p(s.center);val note=if(s.occluded)" · LAST SEEN" else if(s.blurred)" · ENDS UNCLEAR" else if(s.confidence<.55)" · UNSURE" else ""
                 tag("${if(i==0)"A" else "B"}$note",14.sp.toPx(),if(i==0)Lime else Lavender,Background,Background,listOf<(Float,Float)->Offset>({_,_->mid},{_,h->Offset(mid.x,mid.y-h*1.2f)},{_,h->Offset(mid.x,mid.y+h*1.2f)}),force=true,alpha=if(s.occluded).65f else 1f)
             }}
             if(f.beat.enabled){
@@ -423,7 +424,10 @@ class MainActivity:ComponentActivity() {
                     labelPaint.style=android.graphics.Paint.Style.FILL;labelPaint.color=android.graphics.Color.WHITE
                     drawContext.canvas.nativeCanvas.drawText("${j+1}",pos.x+r+7f*k,pos.y-r,labelPaint)
                 }}
-                f.staffs.forEach {s->if(s!=null && s.confidence>=.55){drawCircle(Color.Black,4.6f*k,p(s.a));drawCircle(Color.White,3f*k,p(s.a))}}
+                f.staffs.forEach {s->if(s!=null && s.confidence>=.55){
+                    val pos=p(s.a);ring(pos,8f*k,Cyan,2.5f*k);drawCircle(Color.White,4f*k,pos)
+                    tag("BEAT TIP",13.sp.toPx(),Background,Cyan,null,listOf(beside(pos,0f,-1f,10f*k),beside(pos,1f,0f,10f*k),beside(pos,-1f,0f,10f*k)))
+                }}
             }
             // Correction cues: amber ring = the tip to move, arrow = which way, white bullseye = where it belongs.
             // Nothing is drawn (and no text refers to cues) when they are off or tracking is not confirmed.

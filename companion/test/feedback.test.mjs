@@ -30,3 +30,33 @@ test('all-green tips never receive instructions for absent correction arrows dur
  const hidden=new AlignmentFeedback();for(const time of [0,650,1000])hidden.update({...frame(time,12),config:{...defaults,staffCount:1,showFeedback:false}});
  const v=hidden.update({...frame(1200,12),config:{...defaults,staffCount:1,showFeedback:false}});assert.doesNotMatch(v.detail,/along.*arrow|into.*TARGET ring/i);
 });
+
+test('recent one-staff circle feedback separates on-target rate from measurable coverage',()=>{
+ const coach=new AlignmentFeedback();let v;
+ for(let i=0;i<200;i++)v=coach.update({...frame(i*25,1,i%5===4),config:{...defaults,mode:'circles',staffCount:1,tolerance:15}});
+ assert.equal(v.tracking.confirmed,false);assert.equal(v.state,'paused');assert.equal(v.tips.length,0);
+ assert.equal(v.summary.title,'100% ON TARGET');assert.equal(v.tracking.title,'80% MEASURED');
+ assert.match(v.summary.detail,/measured frames.*5 seconds/);assert.match(v.summary.detail,/excluded/);
+ v=coach.update({...frame(6100,1,true),config:{...defaults,mode:'circles',staffCount:1,tolerance:15}});
+ assert.equal(v.summary,null);assert.equal(v.tracking.title,'ENDS UNCLEAR');
+ // A guide/tolerance change must not reuse the old alignment result.
+ assert.equal(coach.update({...frame(6200),config:{...defaults,mode:'circles',staffCount:1,tolerance:30}}).summary,null);
+});
+
+test('higher tolerance changes circle feedback without making uncertain endpoints valid',async()=>{
+ const {Guide,patchConfig}=await import('../public/core.mjs');
+ const c=patchConfig({...defaults,mode:'circles',staffCount:1},{tolerance:50}),g=new Guide(c,320,240);
+ const r=g.radius,center=g.center,s={a:[center[0]-1.6*r,center[1]],b:[center[0]+1.6*r,center[1]],confidence:1};
+ assert.ok(g.cues([s]).every(t=>t.onTarget));assert.ok(new Guide({...c,tolerance:15},320,240).cues([s]).every(t=>!t.onTarget));
+ assert.throws(()=>patchConfig(c,{tolerance:50.5}));
+ const v=new AlignmentFeedback().update({time:0,config:c,staffs:[{...s,blurred:true}],feedback:[]});
+ assert.equal(v.tracking.confirmed,false);assert.equal(v.summary,null);
+});
+
+test('normal behind-the-back occlusion keeps recent feedback without awarding hidden tips',()=>{
+ const coach=new AlignmentFeedback();for(let i=0;i<60;i++)coach.update(frame(i*17));
+ const hidden={...frame(2200),staffs:[{...staff,occluded:true,confidence:.3},null],feedback:[]};
+ const v=coach.update(hidden);assert.equal(v.tracking.confirmed,false);assert.deepEqual(v.tips,[]);
+ assert.equal(v.summary.title,'100% ON TARGET');assert.match(v.tracking.title,/% MEASURED/);
+ assert.equal(coach.update({...hidden,time:2600}).summary,null);
+});

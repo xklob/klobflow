@@ -74,7 +74,7 @@ data class Config(
             staffColors=colors,threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),
-            circleSeparation=num("circleSeparation",circleSeparation,0.0,1.8),tolerance=num("tolerance",tolerance,1.0,15.0),
+            circleSeparation=num("circleSeparation",circleSeparation,0.0,1.8),tolerance=num("tolerance",tolerance,1.0,50.0),
             diagonals=flag("diagonals",diagonals),trails=flag("trails",trails),showGuide=flag("showGuide",showGuide),symmetry=flag("symmetry",symmetry),showFeedback=flag("showFeedback",showFeedback),
             facing=nextFacing,mirror=nextMirror,zoom=if(!restore && nextFacing!=facing)0.0 else nextZoom,planeCorners=corners,
             planeAspect=num("planeAspect",planeAspect,0.25,4.0),calibrationRotation=num("calibrationRotation",calibrationRotation.toDouble(),0.0,3.0).toInt(),

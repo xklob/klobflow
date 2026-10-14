@@ -137,7 +137,12 @@
           <label>Manual BPM <input id="bpm" data-config="bpm" type="number" min="30" max="240" step="1" value="120"></label>
           <label class="select-label">Points per turn <select data-config="beatPoints"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select></label>
           <div class="button-row wrap"><button id="sync-beat" class="subtle">Start beat now</button><button id="tap-tempo" class="subtle">Tap tempo</button></div>
-          <p class="small-note">Pass the numbered points on each pulse. The Timing box shows milliseconds early or late and how far the tip was from the point, separately.</p></div>
+          <details class="beat-help"><summary>How beat practice works</summary>
+          <p>Follow the end labeled <strong>BEAT TIP</strong>. Only that end is timed. Pass it across a numbered target on each blue pulse; either direction works. The pulse is visual, with no metronome sound.</p>
+          <p>With 4 points and 120 BPM, pass top → right → bottom → left on successive beats: one full circle every 2 seconds. Start with 2 points for a simpler exercise. All target rings pulse together; the numbers label positions, not a required starting point.</p>
+          <p><strong>On beat</strong> means within 75 milliseconds early or late. <strong>On target</strong> means within your Target tolerance. These are separate checks. Hidden or unclear tips do not produce a beat result.</p>
+          <p>With manual BPM, <strong>Start beat now</strong> resets the pulse; <strong>Tap tempo</strong> sets its speed from your taps. System audio follows its detected beat. Adjust Audio timing offset if the pulse consistently leads or lags the music.</p>
+          </details></div>
           <label class="toggle"><input type="checkbox" data-config="showFeedback" checked><span>Alignment cues (arrows and targets)</span></label>
           <label class="range-label"
             >Target tolerance <output for="tolerance">4%</output
@@ -146,10 +151,11 @@
               data-config="tolerance"
               type="range"
               min="1"
-              max="15"
+              max="50"
               step="0.5"
               value="4"
           /></label>
+          <p class="small-note">Allowed distance from the guide, as a percentage of its width (the diameter in Circles). Higher is more forgiving; it does not change detection.</p>
           <label class="toggle"
             ><input type="checkbox" data-config="showGuide" checked /><span
               >Guide overlay</span
@@ -165,6 +171,7 @@
               >Tip trails</span
             ></label
           >
+          <p class="small-note">Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.</p>
           <label class="toggle"><input type="checkbox" data-config="streakEffects" checked><span>Streak glow &amp; particles</span></label>
           <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds. Blur pauses the streak; leaving the guide ends it.</p>
           <label class="toggle"

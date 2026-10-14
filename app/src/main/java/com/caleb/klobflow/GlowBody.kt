@@ -9,7 +9,7 @@ internal fun glowBodyEndpoints(argb:IntArray,w:Int,h:Int,s:Segment):Segment? {
     val unit=min(w,h).toDouble();val len=s.length*unit;if(len<24)return null
     val ax=s.a.x*unit;val ay=s.a.y*unit;val bx=s.b.x*unit;val by=s.b.y*unit
     val dx=(bx-ax)/len;val dy=(by-ay)/len
-    if(minOf(ax,bx,ay,by)<2||max(ax,bx)>w-3||max(ay,by)>h-3)return null
+    // An uncertain halo/previous-length outline may cross the edge. Check the observed core instead.
     val margin=min(unit*.12,len*.18);val points=ArrayList<DoubleArray>();var peak=0.0
     for(y in max(1,floor(min(ay,by)-margin).toInt())..min(h-2,ceil(max(ay,by)+margin).toInt()))
         for(x in max(1,floor(min(ax,bx)-margin).toInt())..min(w-2,ceil(max(ax,bx)+margin).toInt())) {
@@ -30,7 +30,8 @@ internal fun glowBodyEndpoints(argb:IntArray,w:Int,h:Int,s:Segment):Segment? {
         }}
         if(part.size>=6)parts.add(part)
     }
-    parts.sortByDescending {it.size};val core=parts.take(2).flatten();if(core.size<18)return null
+    parts.sortByDescending {it.size};val core=parts.take(2).flatten()
+    if(core.size<18||core.any {it[0]<2||it[1]<2||it[0]>=w-2||it[1]>=h-2})return null
     var mass=0.0;var mx=0.0;var my=0.0
     for(p in core){mass+=p[2];mx+=p[0]*p[2];my+=p[1]*p[2]};mx/=mass;my/=mass
     var xx=0.0;var xy=0.0;var yy=0.0
@@ -43,9 +44,18 @@ internal fun glowBodyEndpoints(argb:IntArray,w:Int,h:Int,s:Segment):Segment? {
     data class Bin(var mass:Double=0.0,var side:Double=0.0,var square:Double=0.0,var count:Int=0)
     val bins=List(16){Bin()}
     for(p in core){val b=bins[min(15,floor((p[3]-low)/extent*16).toInt())];b.mass+=p[2];b.side+=p[4]*p[2];b.square+=p[4].pow(2)*p[2];b.count++}
-    fun supported(b:Bin)=b.count>=2
-    if(bins.take(6).count(::supported)<4||bins.drop(10).count(::supported)<4||bins.count(::supported)<10)return null
     val errorLimit=max(1.5,min(unit*.04,extent*.065))
+    // Saturated blue/rainbow shafts have darker white-core luminance than their caps.
+    // Confirm the connecting body separately; cap positions and spread still use bright pieces.
+    val support=IntArray(16)
+    for(p in points){
+        if(p[2]<max(45.0,peak*.28))continue
+        val along=(p[0]-mx)*ux+(p[1]-my)*uy;val side=-(p[0]-mx)*uy+(p[1]-my)*ux
+        if(along<low||along>high||abs(side)>errorLimit*.5)continue
+        support[min(15,floor((along-low)/extent*16).toInt())]++
+    }
+    fun supported(b:Bin)=b.count>=2
+    if(support.take(6).count {it>=2}<4||support.drop(10).count {it>=2}<4||support.count {it>=2}<10)return null
     for(end in listOf(bins.take(3),bins.drop(13))) {
         val endMass=end.sumOf {it.mass};if(endMass==0.0)return null
         val side=end.sumOf {it.side}/endMass;val variance=end.sumOf {it.square}/endMass-side*side

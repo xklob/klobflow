@@ -48,4 +48,20 @@ class GlowBodyTest {
         if(System.getenv("KLOBFLOW_UPDATE_FIXTURES")=="1")file.writeText(fixture.toString(2)+"\n")
         assertEquals(BrowserParityTest().canonical(JSONArray(file.readText())),BrowserParityTest().canonical(fixture))
     }
+    @Test fun dimmerBlueShaftConnectsWhiteCaps(){
+        for(theta in listOf(0.0,.4,1.0,1.7,2.4)){
+            val pixels=image(theta)
+            for(y in 0 until 240)for(x in 0 until 320){
+                val dx=x/240.0-2.0/3;val dy=y/240.0-.5
+                val a=dx*cos(theta)+dy*sin(theta);val b=-dx*sin(theta)+dy*cos(theta)
+                if(abs(a) in .04.. .25&&abs(b)<=.01)pixels[y*320+x]=0xff2490ff.toInt()
+            }
+            val s=StaffDetector().detect(pixels,320,240,Config(staffCount=1)).first()
+            assertFalse(s.blurred);assertEquals(.62,s.length,.012);assertTrue(angleDifference(s.angle,theta)<.025)
+        }
+    }
+    @Test fun clippedOuterHaloDoesNotHideVisibleCaps(){
+        val s=StaffDetector().detect(image(0.0,cx=.34),320,240,Config(staffCount=1)).first()
+        assertFalse(s.blurred);assertEquals(.62,s.length,.012)
+    }
 }

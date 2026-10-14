@@ -50,3 +50,16 @@ test('browser motion recovery agrees with the native spinning rainbow oracle',()
   actual.forEach((s,n)=>{const expected=step.staffs[n];if(!expected)return assert.equal(s,null);assert.ok(s);for(const key of ['a','b'])for(let k=0;k<2;k++)assert.ok(Math.abs(s[key][k]-expected[key][k])<1e-7);assert.ok(Math.abs(s.confidence-expected.confidence)<1e-7);assert.equal(!!s.blurred,expected.blurred);assert.equal(!!s.occluded,expected.occluded);});
  }
 });
+
+test('a brief rejected exposure does not force clear associated frames to reconfirm',()=>{
+ const t=new StaffTracker(),s={a:[.3,.5],b:[1,.5],confidence:.8};
+ for(let i=0;i<3;i++)t.update([s],1000+i*17,1);
+ assert.ok(t.update([{...s,blurred:true}],1051,1)[0].confidence<.55);
+ assert.ok(t.update([s],1068,1)[0].confidence>=.55);
+ // A long blur, missing observation, manual seed, or reset still needs fresh confirmation.
+ for(let i=0;i<20;i++)assert.ok(t.update([{...s,blurred:true}],1085+i*17,1)[0].confidence<.55);
+ assert.ok(t.update([s],1425,1)[0].confidence<.55);
+ t.update([s],1442,1);t.update([s],1459,1);t.update([],1476,1);
+ assert.ok(t.update([s],1493,1)[0].confidence<.55);
+ t.reset();assert.ok(t.update([s],1510,1)[0].confidence<.55);
+});

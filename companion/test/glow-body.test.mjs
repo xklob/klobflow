@@ -48,3 +48,20 @@ test('browser glow endpoint recovery matches Android on the same synthetic image
   actual.forEach((s,i)=>{const expected=row.staffs[i];for(const key of ['a','b'])for(let k=0;k<2;k++)assert.ok(Math.abs(s[key][k]-expected[key][k])<1e-7);assert.equal(s.confidence,expected.confidence);assert.equal(s.blurred,expected.blurred);});
  }
 });
+
+test('a saturated blue shaft connects white caps even when it is dimmer than the tips',()=>{
+ for(const theta of [0,.4,1,1.7,2.4]){
+  const pixels=bodyFrame(theta);
+  for(let y=0;y<240;y++)for(let x=0;x<320;x++){
+   const dx=x/240-2/3,dy=y/240-.5,a=dx*Math.cos(theta)+dy*Math.sin(theta),b=-dx*Math.sin(theta)+dy*Math.cos(theta);
+   if(Math.abs(a)>=.04&&Math.abs(a)<=.25&&Math.abs(b)<=.01)pixels[y*320+x]=0xff2490ff;
+  }
+  const staff=new StaffDetector().detect(pixels,320,240,{...defaults,staffCount:1})[0];
+  assert.ok(staff&&!staff.blurred,`blue body rejected at ${theta}`);
+  assert.ok(Math.abs(length(staff)-.62)<.012);assert.ok(angleDifference(angle(staff),theta)<.025);
+ }
+});
+test('a clipped outer glow does not hide fully visible bright caps',()=>{
+ const staff=new StaffDetector().detect(bodyFrame(0,false,.34),320,240,{...defaults,staffCount:1})[0];
+ assert.ok(staff&&!staff.blurred);assert.ok(Math.abs(length(staff)-.62)<.012);
+});

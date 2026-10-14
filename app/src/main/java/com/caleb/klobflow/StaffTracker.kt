@@ -201,8 +201,9 @@ class StaffTracker {
     private var last=listOf<Segment?>(null,null)
     private var lastAt=longArrayOf(0,0)
     private var streak=intArrayOf(0,0)
+    private var confirmedAt=longArrayOf(-1000000,-1000000)
     private var motion=Array(2){DoubleArray(3)}
-    fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0);motion=Array(2){DoubleArray(3)}}
+    fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0);confirmedAt=longArrayOf(-1000000,-1000000);motion=Array(2){DoubleArray(3)}}
     fun seed(staffs: List<Segment>,t:Long){require(staffs.size in 1..2);reset();last=staffs+List(2-staffs.size){null};lastAt=longArrayOf(t,t)}
     private fun predicted(i:Int,t:Long):Segment? {
         val s=last[i] ?: return null;val dt=((t-lastAt[i])/1000.0).coerceIn(0.0,.15);val v=motion[i]
@@ -233,18 +234,23 @@ class StaffTracker {
         val ambiguous=prior.all {it!=null} && best.first>=0 && best.second>=0 &&
             sorted.any {it.first==best.second && it.second==best.first && it.third-best.third<0.035}
         val selected=listOf(best.first,best.second).mapIndexed {i,index->
-            if(index<0){val p=prior[i];val established=streak[i]>=3;streak[i]=0
+            if(index<0){confirmedAt[i]=-1000000;val p=prior[i];val established=streak[i]>=3;streak[i]=0
                 if(p!=null && (established || p.occluded || p.blurred))p.copy(confidence=0.3,occluded=true) else null
             }else {
                 var s=candidates[index];val p=prior[i]
                 val predicted=if(p!=null)predicted(i,t)else null
                 if(predicted!=null && predicted.a.distance(s.b)+predicted.b.distance(s.a)<predicted.a.distance(s.a)+predicted.b.distance(s.b))s=s.reversed()
                 if(p!=null && s.length<p.length*0.72) {
-                    streak[i]=0
+                    streak[i]=0;confirmedAt[i]=-1000000
                     s.copy(confidence=0.35,occluded=true)
                 } else {
+                if(ambiguous)confirmedAt[i]=-1000000
                 if(s.blurred)streak[i]=0 else streak[i]++
-                s.copy(confidence=if(ambiguous)min(0.4,s.confidence) else if(streak[i]<3)min(0.5,s.confidence) else s.confidence)
+                // A rejected exposure does not erase a recently confirmed identity. Only a
+                // current clear associated observation can resume; predicted/blurred poses cannot.
+                val confirmed=!ambiguous&&!s.blurred&&(streak[i]>=3||(p!=null&&!p.occluded&&t-confirmedAt[i] in 0..250))
+                if(confirmed)confirmedAt[i]=t
+                s.copy(confidence=if(ambiguous)min(0.4,s.confidence) else if(confirmed)s.confidence else min(0.5,s.confidence))
                 }
             }
         }
