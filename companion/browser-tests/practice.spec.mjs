@@ -74,3 +74,17 @@ test("analysis replay keeps missing scores and scrubs samples", async ({
   await page.locator("#return-live").click();
   await expect(page.locator("#empty-state")).toBeVisible();
 });
+
+test('each mode tutorial dismisses independently and single-staff beat practice works',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
+ for(const mode of ['grid','circles','cube','free']){
+  await page.locator(`[data-mode="${mode}"]`).click();await expect(page.locator('#mode-tutorial')).toBeVisible();
+  await expect(page.locator('#tutorial-steps li')).toHaveCount(4);await page.locator('#dismiss-tutorial').click();await expect(page.locator('#mode-tutorial')).toBeHidden();
+ }
+ await page.locator('[data-mode="circles"]').click();await expect(page.locator('#mode-tutorial')).toBeHidden();await page.locator('#show-tutorial').click();await expect(page.locator('#mode-tutorial')).toBeVisible();
+ await page.locator('#staff-count').selectOption('1');await expect(page.locator('#tracking-label')).toContainText('One staff tracked');await expect(page.locator('#symmetry')).toContainText('—');
+ await page.locator('[data-config="tempoEnabled"]').check();await page.locator('#bpm').fill('90');await page.locator('#bpm').dispatchEvent('change');
+ await expect(page.locator('#beat-feedback')).toBeVisible();await expect(page.locator('#beat-pulse')).toContainText('90 BPM');
+ await expect(page.locator('#beat-hits')).toContainText(/point [1-4]:/,{timeout:12000});
+ await page.screenshot({path:'../review/practice-timing.png',fullPage:true});
+});

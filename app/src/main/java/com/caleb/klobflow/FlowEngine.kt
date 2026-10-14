@@ -39,10 +39,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
-data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String) {
+data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="") {
     fun json()=JSONObject().put("time",time).put("width",width).put("height",height)
         .put("staffs",JSONArray(staffs.map {it?.json() ?: JSONObject.NULL})).put("metrics",metrics.json())
-        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source)
+        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus)
 }
 data class FlowUi(val config:Config=Config(),val bitmap:Bitmap?=null,val frame:Frame?=null,
     val status:String="Ready when you are",val cameraReady:Boolean=false,val demo:Boolean=false,
@@ -71,6 +71,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private var sessionFrames=0;private var sessionValid=0;private var errorSum=0.0
     private val sessionsDir=File(context.filesDir,"sessions").apply {mkdirs()}
     private val detector=StaffDetector();private val tracker=StaffTracker();private val scorer=Scorer()
+    private val timingCoach=TimingCoach();private val fit=FitHelper()
     private val processing=Any();private val sessionLock=Any()
     private var lastTime=0L;private var fps=0.0
     @Volatile private var packet="{}"
@@ -90,8 +91,10 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         check(Looper.myLooper()==Looper.getMainLooper())
         if(closed)return
         camera?.cameraInfo?.zoomState?.removeObservers(owner)
+        if(config.autoFit && config.planeCorners.isEmpty())config=config.copy(zoom=0.0)
+        synchronized(processing){if(config.autoFit)fit.begin(zoom=config.planeCorners.isEmpty())else fit.cancel()}
         demo=false;active=true;generation++;val currentGeneration=generation
-        mutable.update {it.copy(demo=false,cameraReady=false,frame=null,bitmap=null,error=null,status="Opening ${config.facing} camera…")}
+        mutable.update {it.copy(config=config,demo=false,cameraReady=false,frame=null,bitmap=null,error=null,status="Opening ${config.facing} camera…")}
         val future=ProcessCameraProvider.getInstance(context)
         future.addListener({
             if(closed || demo || currentGeneration!=generation)return@addListener
@@ -147,11 +150,13 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             val pixels=IntArray(small.width*small.height);small.getPixels(pixels,0,small.width,0,0,small.width,small.height)
             val detected=detector.detect(pixels,small.width,small.height,c)
             if(small!==bitmap)small.recycle()
-            val staffs=tracker.update(detected,now)
+            val staffs=tracker.update(detected,now,c.staffCount)
             val guide=Guide(c,bitmap.width,bitmap.height)
             if(lastTime>0 && now>lastTime)fps=if(fps==0.0)1000.0/(now-lastTime) else fps*0.85+1000.0/(now-lastTime)*0.15
             lastTime=now
-            val frame=Frame(now,bitmap.width,bitmap.height,staffs,scorer.score(now,staffs,guide),guide,fps,source)
+            val fitPatch=fit.update(now,staffs,guide,ui.value.zoomMin.toDouble(),ui.value.zoomMax.toDouble(),ui.value.zoomRatio.toDouble())
+            if(fitPatch!=null)main.post {if(active && streamGeneration==generation)updateConfig(fitPatch,fromFit=true)}
+            val frame=Frame(now,bitmap.width,bitmap.height,staffs,scorer.score(now,staffs,guide),guide,fps,source,timingCoach.update(now,staffs,guide),fit.status)
             if(!active || streamGeneration!=generation)return
             val elapsed=if(recordingStarted>0)now-recordingStarted else 0L
             mutable.update {it.copy(bitmap=bitmap,frame=frame,elapsed=elapsed)}
@@ -192,24 +197,28 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         },0,33,TimeUnit.MILLISECONDS)
     }
     private var demoScheduled=false
-    fun updateConfig(patch:JSONObject) {
+    fun updateConfig(patch:JSONObject,fromFit:Boolean=false) {
         val next=config.patch(patch)
         val cameraChange=next.facing!=config.facing || next.fps!=config.fps || next.mirror!=config.mirror
         val zoomChange=next.zoom!=config.zoom
         require(!(cameraChange && (ui.value.recording || ui.value.finalizing))){"Stop recording before changing camera or frame rate."}
-        synchronized(processing){config=next;scorer.reset()}
+        synchronized(processing){
+            if(!fromFit)fit.cancel()
+            if(next.staffCount!=config.staffCount || zoomChange)tracker.reset()
+            config=next;scorer.reset();timingCoach.reset()
+        }
         preferences.edit().putString("config",next.json().toString()).apply()
         mutable.update {it.copy(config=next)}
         if(cameraChange && !demo && active)bindCamera()
         else if(zoomChange && !demo && active)applyZoom()
     }
-    fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();lastTime=0;fps=0.0}}
+    fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();timingCoach.reset();lastTime=0;fps=0.0}}
     fun seed(points:List<P>) {
-        require(points.size==4 && points.all {it.x.isFinite() && it.y.isFinite() && it.x in 0.0..1.0 && it.y in 0.0..1.0}){"Tap four valid staff endpoints."}
+        require(points.size==config.staffCount*2 && points.all {it.x.isFinite() && it.y.isFinite() && it.x in 0.0..1.0 && it.y in 0.0..1.0}){"Tap both endpoints of each selected staff."}
         val f=ui.value.frame ?: error("Wait for camera frames")
         val g=f.guide
         val p=points.map {P(it.x*g.aspectX,it.y*g.aspectY)}
-        val segments=listOf(Segment(p[0],p[1]),Segment(p[2],p[3]))
+        val segments=(0 until config.staffCount).map {Segment(p[it*2],p[it*2+1])}
         require(segments.all {it.length>=0.08}){"Staff endpoints are too close together."}
         synchronized(processing){tracker.seed(segments,SystemClock.elapsedRealtime());scorer.reset()}
     }
@@ -287,6 +296,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                     .put("calibrationImageAspect",f.width.toDouble()/f.height)
                     .put("calibrationRotation",context.getSystemService(android.view.WindowManager::class.java).defaultDisplay.rotation))
             }
+            "fit"->synchronized(processing){fit.begin(zoom=j.optBoolean("zoom",false),size=j.optBoolean("sizeOnly",false))}
+            "syncBeat"->synchronized(processing){timingCoach.reset(SystemClock.elapsedRealtime().toDouble())}
             "reset"->resetTracking()
             "record"->startRecording()
             "stop"->stopRecording()

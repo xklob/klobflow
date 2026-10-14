@@ -85,9 +85,9 @@ class StaffTracker {
     private var lastAt=longArrayOf(0,0)
     private var streak=intArrayOf(0,0)
     fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0)}
-    fun seed(staffs: List<Segment>,t:Long){require(staffs.size==2);last=staffs;lastAt=longArrayOf(t,t);streak=intArrayOf(0,0)}
-    fun update(candidates: List<Segment>,t:Long): List<Segment?> {
-        val prior=last.mapIndexed {i,s->s?.takeIf {t-lastAt[i]<1500}}
+    fun seed(staffs: List<Segment>,t:Long){require(staffs.size in 1..2);last=staffs+List(2-staffs.size){null};lastAt=longArrayOf(t,t);streak=intArrayOf(0,0)}
+    fun update(candidates: List<Segment>,t:Long,count:Int=2): List<Segment?> {
+        val prior=last.mapIndexed {i,s->s?.takeIf {i<count}?.takeIf {t-lastAt[i]<1500}}
         fun cost(i:Int,s:Segment):Double {
             val p=prior[i] ?: return 0.22-s.confidence*0.1
             val delta=(t-lastAt[i]).coerceAtLeast(1)/1000.0
@@ -98,7 +98,7 @@ class StaffTracker {
         }
         val options=(-1 until candidates.size).toList()
         val assignments=ArrayList<Triple<Int,Int,Double>>()
-        for(a in options)for(b in options)if(a<0 || b<0 || a!=b) {
+        for(a in options)for(b in if(count==1)listOf(-1)else options)if(a<0 || b<0 || a!=b) {
             if(a>=0 && b>=0 && distanceToSegment(candidates[a].center,candidates[b])<0.025 && angleDifference(candidates[a].angle,candidates[b].angle)<0.15)continue
             val score=(if(a<0)0.55 else cost(0,candidates[a]))+(if(b<0)0.55 else cost(1,candidates[b]))
             assignments.add(Triple(a,b,score))

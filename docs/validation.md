@@ -1,3 +1,10 @@
+# v0.4.0 validation
+
+- 31 JVM tests and 13 Node tests cover manual tempo, independent early/late and spatial errors, missing-tip suppression, single-staff scoring, uncertain-fit rejection, size fitting, and shared native/browser timing and fit fixtures.
+- Browser tests exercise mode-specific tutorial dismissal/reopening, one-staff scoring, tempo changes, live fitting, camera recording/replay, and the existing stream/calibration flows.
+- Android emulator integration adds one-staff detection/scoring, timing targets/hits, size fitting, and bundled tutorial checks to existing lifecycle and recording checks.
+- Fitting is based on visible staff geometry, not pose recognition or recovered depth. Real practice and capture/display latency need physical validation.
+
 # v0.3.0 validation
 
 Validated locally on 2026-10-14.

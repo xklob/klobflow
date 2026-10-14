@@ -40,6 +40,10 @@ test('PC camera tracks locally, stays live during selection, records and reopens
  const saved=await page.evaluate(async()=>{const {listSessions}=await import('/sessions.mjs');const s=(await listSessions())[0];return {frames:s.frames,bytes:s.video.size,analysis:await s.analysis.text()};});
  expect(saved.frames).toBeGreaterThan(4);expect(saved.bytes).toBeGreaterThan(1000);
  const rows=saved.analysis.trim().split('\n').map(JSON.parse);expect(rows[0].type).toBe('header');expect(rows.slice(1).some(f=>f.metrics.deviation!==null)).toBe(true);
+ await page.locator('#staff-count').selectOption('1');await expect(page.locator('#tracking-label')).toContainText('One staff tracked');
+ await page.locator('#fit-size').click();await expect(page.locator('#fit-status')).toContainText('matches the visible staff length',{timeout:10000});
+ await expect(page.locator('#size-helper')).toContainText(/1.0[0-5]×/);
+ await page.locator('[data-config="tempoEnabled"]').check();await page.locator('#bpm').fill('105');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#beat-pulse')).toContainText('105 BPM');
  await page.screenshot({path:'../review/browser-camera.png',fullPage:true});
  await page.locator('#local-open').click();await expect(page.locator('#empty-state')).toBeVisible();
  await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA');

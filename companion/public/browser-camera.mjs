@@ -41,11 +41,13 @@ export class BrowserCamera {
       if(generation!==this.generation)return;
       this.settings=this.track.getSettings();
       if(this.config.planeCorners.length&&Math.abs(this.settings.width/this.settings.height-this.config.calibrationImageAspect)>.03)this.config={...this.config,planeCorners:[]};
+      if(this.config.autoFit&&!this.config.planeCorners.length)this.config={...this.config,zoom:0};
       await this.applyZoom();this.video.style.transform=this.config.mirror?"scaleX(-1)":"none";
       this.worker=new Worker(new URL("./tracker-worker.mjs",import.meta.url),{type:"module"});
       this.worker.onmessage=({data})=>{
         if(generation!==this.generation)return;
         if(data.id){const p=this.pending.get(data.id);this.pending.delete(data.id);if(p){clearTimeout(p.timer);data.type==="error"?p.reject(Error(data.error)):p.resolve(data);}}
+        if(data.type==="fit")this.command({action:"config",config:data.config,fromFit:true}).catch(e=>this.onStatus(e.message));
         if(data.type==="error"){if(data.frame)this.busy=false;this.onStatus(data.error);}
         if(data.type==="frame"){
           this.busy=false;const f={...data.frame,cameraReady:this.active,recording:this.recording,finalizing:this.finalizing,elapsedMs:this.recording?Math.max(0,data.frame.time-this.recordingStarted):0,status:this.status,zoom:this.zoom,cameraFps:this.cameraFps||this.profile.measuredFps};
@@ -55,7 +57,7 @@ export class BrowserCamera {
         }
       };
       this.worker.onerror=()=>{this.busy=false;this.onStatus("Camera analysis stopped. Restart the PC camera to try again.");};
-      await this.request("config",{config:this.config,restore:true});
+      await this.request("config",{config:this.config,restore:true,start:true,zoom:this.zoom});
       this.active=true;this.busy=false;this.lastSubmitted=0;this.cameraSamples=[];
       this.track.onended=()=>{if(this.active){this.stop().catch(()=>{});this.onStatus("Camera disconnected. Reconnect it and choose Start PC camera.");}};
       this.status=`${this.settings.width} × ${this.settings.height} · ${Math.round(this.profile.measuredFps)} fps measured · PC camera`;
@@ -104,7 +106,7 @@ export class BrowserCamera {
       if((this.recording||this.finalizing)&&["mirror","facing","fps"].some(k=>k in command.config&&command.config[k]!==this.config[k]))throw Error("Stop recording before changing camera or mirroring");
       const next=patchConfig(this.config,command.config),previous=this.config;
       this.config=next;
-      try{if(next.zoom!==previous.zoom)await this.applyZoom();await this.request("config",{config:next});}
+      try{if(next.zoom!==previous.zoom)await this.applyZoom();await this.request("config",{config:next,fromFit:!!command.fromFit,zoom:this.zoom});}
       catch(e){this.config=previous;throw e;}
       this.video.style.transform=next.mirror?"scaleX(-1)":"none";this.remember();return {ok:true,config:this.config};
     }
@@ -112,7 +114,9 @@ export class BrowserCamera {
       if(!this.lastFrame)throw Error("Wait for camera frames");
       return this.command({action:"config",config:{planeCorners:command.points,planeAspect:command.aspect,calibrationImageAspect:this.lastFrame.width/this.lastFrame.height}});
     }
-    if(command.action==="seed")await this.request("seed",{points:command.points,time:performance.now()});
+    if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly});
+    else if(command.action==="syncBeat")await this.request("syncBeat",{time:performance.now()});
+    else if(command.action==="seed")await this.request("seed",{points:command.points,time:performance.now()});
     else if(command.action==="reset")this.worker.postMessage({type:"reset"});
     else if(command.action==="record")await this.startRecording();
     else if(command.action==="stop")await this.stopRecording();

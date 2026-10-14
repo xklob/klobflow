@@ -25,8 +25,7 @@
           <h1>Find your lines.<span> Feel your flow.</span></h1>
         </div>
         <p class="intro-note">
-          A clearer view of your practice.<br />Captured and measured on your
-          phone.
+          A clearer view of your practice.<br />Capture locally on your phone or PC.
         </p>
       </section>
       <div class="workspace">
@@ -44,10 +43,17 @@
             Trace clean lines through the grid. Error measures tip distance to
             the nearest guide line.
           </p>
+          <button id="show-tutorial" class="subtle">Show mode tutorial</button>
+          <section id="mode-tutorial" class="tutorial" hidden><strong id="tutorial-title"></strong><ol id="tutorial-steps"></ol><button id="dismiss-tutorial" class="subtle">Got it · dismiss for this mode</button></section>
           <div class="divider"></div>
           <div class="section-title">
             <span>Shape your space</span><span class="section-num">02</span>
           </div>
+          <label>Props <select id="staff-count" data-config="staffCount"><option value="2">Two double-ended staves</option><option value="1">One double-ended staff / one hand</option></select></label>
+          <label class="toggle"><input type="checkbox" data-config="autoFit" checked><span>Fit automatically at startup</span></label>
+          <div class="button-row"><button id="fit-guide" class="subtle">Fit center &amp; size</button><button id="fit-size" class="subtle">Match staff length</button></div>
+          <p id="fit-status" class="small-note">Show the full staff span for two seconds to fit the guide.</p>
+          <p id="size-helper" class="small-note"></p>
           <label class="range-label"
             >Center X <output for="cx">50%</output
             ><input
@@ -118,6 +124,11 @@
           <button id="calibrate" class="subtle" disabled>Calibrate viewing angle</button>
           <button id="clear-calibration" class="subtle" disabled>Clear calibration</button>
           <p id="calibration-info" class="small-note">For an off-angle camera, mark the four corners of a rectangle in your movement plane. Use 1 for a square. Recalibrate after moving the camera.</p>
+          <div class="timing-controls"><label class="toggle"><input type="checkbox" data-config="tempoEnabled"><span>Beat practice</span></label>
+          <label>BPM <input id="bpm" data-config="bpm" type="number" min="30" max="240" step="1" value="120"></label>
+          <label>Points per turn <select data-config="beatPoints"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select></label>
+          <div class="button-row"><button id="sync-beat" class="subtle">Start beat now</button><button id="tap-tempo" class="subtle">Tap tempo</button></div>
+          <p class="small-note">Pass numbered points on each pulse. A filled tip marks the measured end. Timing and position error are shown separately.</p></div>
           <label class="toggle"><input type="checkbox" data-config="showFeedback" checked><span>Alignment arrows</span></label>
           <label class="range-label"
             >Target tolerance <output for="tolerance">4%</output
@@ -170,6 +181,7 @@
             </div>
           </div>
           <div id="coaching" class="coaching" role="status"><strong id="coaching-title">Keep both staves visible</strong><span id="coaching-detail">Alignment cues appear when both staves are tracked.</span></div>
+          <section id="beat-feedback" class="beat-feedback" hidden><strong id="beat-pulse"></strong><div id="beat-hits"></div></section>
           <div id="stage">
             <video id="local-video" autoplay muted playsinline hidden></video>
             <canvas
@@ -260,7 +272,7 @@
         </section>
         <aside class="panel details">
           <div class="section-title">
-            <span>Phone & tracking</span><span class="section-num">03</span>
+            <span>Camera & tracking</span><span class="section-num">03</span>
           </div>
           <div id="local-camera-settings" hidden>
             <label class="select-label">PC camera<select id="local-camera-select"></select></label>

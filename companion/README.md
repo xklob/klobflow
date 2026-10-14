@@ -11,3 +11,7 @@ USB requires Android platform-tools (`adb`), a data-capable cable, USB debugging
 Use **Calibrate viewing angle** to select top left, top right, bottom right, and bottom left corners of a real rectangle in your movement plane. Enter its physical width divided by height (1 for a square). Orange arrows point staff tips toward guide targets; green rings mark tips within tolerance. Calibration only corrects that plane, not depth or lens distortion. Keep the camera fixed and recalibrate after moving it.
 
 Source, screenshots, release notes, and verification limits: https://github.com/xklob/klobflow
+
+Choose one or two double-ended staves. Each practice mode has a dismissible setup tutorial. Fit center & size collects reliable endpoints; Match staff length matches the circle diameter / guide width to the prop. Startup fitting can adjust hardware zoom conservatively.
+
+Beat practice supports manual BPM, tap tempo, 2/4/8 target points, and separate timing (milliseconds early/late) and position (percent of guide width) feedback. Use Start beat now to set the pulse phase.

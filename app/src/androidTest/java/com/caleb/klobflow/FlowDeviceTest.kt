@@ -46,9 +46,28 @@ class FlowDeviceTest {
             scenario.onActivity {engine.share(false)}
         }
     }
+    @Test fun singleStaffTimingFitAndTutorialAssets() {
+        val context=InstrumentationRegistry.getInstrumentation().targetContext
+        context.getSharedPreferences("practice",0).edit().putString("config",Config(staffCount=1,mode="circles",tempoEnabled=true,autoFit=false).json().toString()).putBoolean("sharingEnabled",false).commit()
+        val guides=JSONObject(context.assets.open("practice-guides.json").bufferedReader().use {it.readText()})
+        for(mode in listOf("grid","circles","cube","free"))assertEquals(4,guides.getJSONObject(mode).getJSONArray("steps").length())
+        ActivityScenario.launch(MainActivity::class.java).use {scenario->
+            lateinit var engine:FlowEngine;scenario.onActivity {engine=it.engine;engine.startDemo()}
+            await {engine.ui.value.frame?.metrics?.deviation!=null}
+            assertNull(engine.ui.value.frame!!.staffs[1]);assertNull(engine.ui.value.frame!!.metrics.symmetry)
+            assertTrue(engine.ui.value.frame!!.beat.enabled);assertEquals(1,engine.ui.value.frame!!.beat.targets.size)
+            scenario.onActivity {engine.command(JSONObject().put("action","fit").put("sizeOnly",true))}
+            await(25000){engine.ui.value.frame?.fitStatus?.contains("matches the visible staff length")==true}
+            assertEquals(.22,engine.config.scale,.06)
+            scenario.onActivity {engine.command(JSONObject().put("action","syncBeat"))}
+            await {engine.ui.value.frame!!.beat.hits.any {it!=null}}
+        }
+    }
     @Test fun liveDetectorSharingControlAndRealCameraRecording() {
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
         instrumentation.uiAutomation.executeShellCommand("pm grant ${context.packageName} android.permission.CAMERA").close()
+        context.getSharedPreferences("practice",0).edit().putString("config",Config().json().toString()).commit()
+        context.getSharedPreferences("tutorials",0).edit().apply {for(mode in listOf("grid","circles","cube","free"))putBoolean(mode,true)}.commit()
         ActivityScenario.launch(MainActivity::class.java).use {scenario->
             lateinit var engine:FlowEngine
             scenario.onActivity {engine=it.engine;engine.startDemo();engine.share(true)}

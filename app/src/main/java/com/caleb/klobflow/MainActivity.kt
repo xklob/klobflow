@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
@@ -86,8 +87,12 @@ class MainActivity:ComponentActivity() {
                     Text("Find your lines.",fontSize=28.sp,fontWeight=FontWeight.Medium)
                     Text(ui.status,color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=5.dp,bottom=12.dp))
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
+                    Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
+                    ModeTutorial(ui.config.mode)
                     AlignmentCue(ui)
+                    BeatFeedback(ui)
                     CameraPanel(ui,engine){message=it}
+                    FitControls(ui,engine)
                     if(ui.cameraReady && ui.zoomMax>ui.zoomMin){
                         var zoomDraft by remember(ui.zoomRatio){mutableFloatStateOf(ui.zoomRatio)}
                         Row(verticalAlignment=Alignment.CenterVertically){Text("Zoom · %.2f×".format(ui.zoomRatio),Modifier.weight(1f),color=Lime,fontSize=13.sp);TextButton(onClick={patch("zoom",0.0)}){Text("Widest")}}
@@ -100,11 +105,11 @@ class MainActivity:ComponentActivity() {
                     Row(Modifier.fillMaxWidth().padding(vertical=12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         Metric("${if(ui.config.mode=="cube")"Vertex" else if(ui.config.mode=="circles")"Circle" else "Grid"} error",ui.frame?.metrics?.deviation,"%",Modifier.weight(1f),ui.config.tolerance)
                         Metric("Angle error",ui.frame?.metrics?.angle,"°",Modifier.weight(1f))
-                        Metric("Symmetry",ui.frame?.metrics?.symmetry,"%",Modifier.weight(1f),ui.config.tolerance)
+                        if(ui.config.staffCount==2)Metric("Symmetry",ui.frame?.metrics?.symmetry,"%",Modifier.weight(1f),ui.config.tolerance)
                     }
                     val good=ui.frame?.staffs?.count {it!=null && it.confidence>=0.55} ?: 0
                     val error=ui.frame?.metrics?.deviation
-                    Text(if(good==2)"● Both staves tracked"+(if(error==null)"" else if(error<=ui.config.tolerance)" · within target" else " · outside target") else "$good / 2 staves visible · scores pause when uncertain",color=if(good==2)Lime else Lavender,fontSize=13.sp)
+                    Text(if(good==ui.config.staffCount)(if(ui.config.staffCount==1)"● One staff tracked"else"● Both staves tracked")+(if(error==null)"" else if(error<=ui.config.tolerance)" · within target" else " · outside target") else "$good / ${ui.config.staffCount} staves visible · scores pause when uncertain",color=if(good==ui.config.staffCount)Lime else Lavender,fontSize=13.sp)
                     Text("${ui.frame?.analysisFps?.toInt() ?: 0} analysis fps · projected 2D measurements",color=Muted,fontSize=11.sp,modifier=Modifier.padding(top=5.dp,bottom=12.dp))
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                         Button(onClick={run{if(ui.recording)engine.stopRecording()else engine.startRecording()}},enabled=(ui.cameraReady && !ui.demo && !ui.finalizing),modifier=Modifier.weight(1f),colors=ButtonDefaults.buttonColors(containerColor=if(ui.recording)Color(0xffec9b85)else Lime)) {
@@ -126,7 +131,11 @@ class MainActivity:ComponentActivity() {
                     ControlSlider("Minimum staff length",(ui.config.minLength*100).toFloat(),10f..80f,"%"){patch("minLength",it/100.0)}
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf(30,60).forEach {rate->FilterChip(selected=ui.config.fps==rate,onClick={patch("fps",rate)},label={Text("$rate fps target")})}}
                     Text("60 fps is requested for recording. Camera hardware may choose a lower rate; analysis runs independently at up to 30 fps.",color=Muted,fontSize=12.sp)
+                    Label("BEAT TIMING")
+                    BeatSettings(ui,engine)
                     Label("GUIDE CALIBRATION")
+                    Toggle("Fit center, size and zoom at startup",ui.config.autoFit){patch("autoFit",it)}
+                    FitControls(ui,engine)
                     ControlSlider("Center X",(ui.config.cx*100).toFloat(),10f..90f,"%"){patch("cx",it/100.0)}
                     ControlSlider("Center Y",(ui.config.cy*100).toFloat(),10f..90f,"%"){patch("cy",it/100.0)}
                     ControlSlider("Size",(ui.config.scale*100).toFloat(),10f..48f,"%"){patch("scale",it/100.0)}
@@ -138,7 +147,7 @@ class MainActivity:ComponentActivity() {
                     Toggle("Show guide",ui.config.showGuide){patch("showGuide",it)}
                     Toggle("Diagonal grid lines",ui.config.diagonals){patch("diagonals",it)}
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
-                    Toggle("Mirror-symmetry measurement",ui.config.symmetry){patch("symmetry",it)}
+                    if(ui.config.staffCount==2)Toggle("Mirror-symmetry measurement",ui.config.symmetry){patch("symmetry",it)}
                     OutlinedButton(onClick={run{engine.updateConfig(Config().json().put("facing",ui.config.facing).put("fps",ui.config.fps))}}){Text("Reset practice settings")}
                 }
                 2->{
@@ -187,9 +196,9 @@ class MainActivity:ComponentActivity() {
     LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>4200 || trails.size>135))trails.removeAt(0)}}
     val aspect=ui.bitmap?.let {it.width.toFloat()/it.height} ?: (4f/3f)
     Box(Modifier.fillMaxWidth().aspectRatio(aspect).background(Color(0xff080b08),RoundedCornerShape(16.dp))
-        .pointerInput(identifying,calibrating,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
+        .pointerInput(identifying,calibrating,ui.config.staffCount,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
             picks=picks+P((pos.x/size.width).toDouble(),(pos.y/size.height).toDouble())
-            if(picks.size==4){try{if(calibrating)engine.command(JSONObject().put("action","calibrate").put("points",JSONArray(picks.map {it.json()})).put("aspect",planeAspect.toDouble()))else engine.seed(picks)}catch(e:Exception){onError(e.message ?: "Could not apply selection")};picks=emptyList();identifying=false;calibrating=false}
+            if(picks.size==(if(calibrating)4 else ui.config.staffCount*2)){try{if(calibrating)engine.command(JSONObject().put("action","calibrate").put("points",JSONArray(picks.map {it.json()})).put("aspect",planeAspect.toDouble()))else engine.seed(picks)}catch(e:Exception){onError(e.message ?: "Could not apply selection")};picks=emptyList();identifying=false;calibrating=false}
         }}) {
         ui.bitmap?.let {Image(it.asImageBitmap(),"Live practice camera",Modifier.fillMaxSize())}
         if(ui.bitmap==null)Text("A little space. Two staves.\nYour next practice starts here.",Modifier.align(Alignment.Center).padding(20.dp),color=Muted)
@@ -215,6 +224,11 @@ class MainActivity:ComponentActivity() {
                     listOf(-0.5f,0.5f).forEach {d->drawLine(col,to,Offset(to.x-12*cos(a+d),to.y-12*sin(a+d)),3f)}
                     drawCircle(Color.White,5f,to,style=Stroke(2f))
                 }
+            }
+            if(f.beat.enabled){
+                val textPaint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {color=android.graphics.Color.WHITE;textSize=12f}
+                f.beat.targets.forEachIndexed {i,points->points.forEachIndexed {j,target->val pos=p(target);drawCircle(if(i==0)Color(0xff6dd8ff)else Lavender,if(f.beat.phase<.18)10f else 7f,pos,style=Stroke(if(f.beat.phase<.18)4f else 2f));drawContext.canvas.nativeCanvas.drawText("${j+1}",pos.x+10,pos.y-9,textPaint)}}
+                f.staffs.forEach {s->if(s!=null && s.confidence>=.55)drawCircle(Color.White,3f,p(s.a))}
             }
             picks.forEach {drawCircle(Color.White,7f,Offset((it.x*size.width).toFloat(),(it.y*size.height).toFloat()),style=Stroke(2f))}
         }
@@ -242,10 +256,11 @@ class MainActivity:ComponentActivity() {
     val f=ui.frame
     val cues=f?.guide?.cues(f.staffs).orEmpty()
     val good=f?.staffs?.count {it!=null && it.confidence>=0.55} ?: 0
-    val aligned=cues.size==4 && cues.all {it.onTarget}
+    val count=ui.config.staffCount
+    val aligned=cues.size==count*2 && cues.all {it.onTarget}
     val hidden=f?.staffs?.any {it?.occluded==true}==true
-    val title=when {hidden->"Tip hidden · keeping staff identity";good<2->"Keep both staves visible";ui.config.mode=="free"->"Free flow · no alignment target";cues.isEmpty()->"Move inside the calibrated plane";aligned->"✓ Tips on guide";else->"Adjust highlighted tips"}
-    val detail=when {hidden->"Continue your movement. Precision scores wait for visible tips; tracking reconnects when the tip returns.";good<2->"$good / 2 staves tracked. Alignment cues pause until both are clear.";ui.config.mode=="free"->"Choose Grid, Circles, or Cube for alignment cues.";cues.isEmpty()->"Keep all four tips inside your calibration rectangle.";aligned->"All four tips are within the ${ui.config.tolerance.toInt()}% target. Keep tracing the guide.";else->"${cues.count {!it.onTarget}} / 4 tips outside target. Follow orange arrows toward white rings."}
+    val title=when {hidden->"Tip hidden · keeping staff identity";good<count->if(count==1)"Keep the staff visible"else"Keep both staves visible";ui.config.mode=="free"->"Free flow · no alignment target";cues.isEmpty()->"Move inside the calibrated plane";aligned->"✓ Tips on guide";else->"Adjust highlighted tips"}
+    val detail=when {hidden->"Continue your movement. Precision scores wait for visible tips; tracking reconnects when the tip returns.";good<count->"$good / $count staves tracked. Alignment cues pause until tips are clear.";ui.config.mode=="free"->"Choose Grid, Circles, or Cube for alignment cues.";cues.isEmpty()->"Keep all tips inside your calibration rectangle.";aligned->"All ${count*2} tips are within the ${ui.config.tolerance.toInt()}% target. Keep tracing the guide.";else->"${cues.count {!it.onTarget}} / ${count*2} tips outside target. Follow orange arrows toward white rings."}
     Surface(color=if(aligned)Color(0xff263e1d)else if(cues.isNotEmpty())Color(0xff42301b)else Color(0xff242830),shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth().padding(bottom=10.dp)){
         Column(Modifier.padding(14.dp)){Text(title,fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=if(aligned)Lime else if(cues.isNotEmpty())Color(0xffffbd77)else Lavender);Text(detail,fontSize=12.sp,modifier=Modifier.padding(top=4.dp))}
     }

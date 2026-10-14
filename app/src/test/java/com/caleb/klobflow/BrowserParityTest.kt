@@ -8,7 +8,7 @@ import java.io.File
 
 /** A committed native oracle guards the browser port against geometry/tracking drift. */
 class BrowserParityTest {
-    private fun canonical(value:Any?):String=when(value){
+    fun canonical(value:Any?):String=when(value){
         is JSONObject->value.keys().asSequence().toList().sorted().joinToString(prefix="{",postfix="}"){it+":"+canonical(value.get(it))}
         is JSONArray->(0 until value.length()).joinToString(prefix="[",postfix="]"){canonical(value.get(it))}
         is Number->value.toDouble().toString()

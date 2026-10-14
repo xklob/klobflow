@@ -14,8 +14,8 @@ android {
         applicationId = "com.caleb.klobflow"
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -58,3 +58,11 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }
+
+// Both interfaces ship the exact same mode tutorials.
+val copyPracticeGuides by tasks.registering(Copy::class) {
+    from(rootProject.file("companion/public/practice-guides.json"))
+    into(layout.buildDirectory.dir("generated/practiceAssets"))
+}
+android.sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/practiceAssets"))
+tasks.named("preBuild").configure { dependsOn(copyPracticeGuides) }

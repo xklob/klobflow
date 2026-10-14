@@ -752,3 +752,13 @@ dialog .button-row {
 #video-dialog { max-width: min(94vw, 1100px); }
 #local-camera-settings { margin-bottom: 18px; }
 #empty-state .button-row, .header-right { flex-wrap: wrap; }
+
+.tutorial { margin: 12px 0; padding: 12px; border: 1px solid #416039; border-radius: 12px; font-size: 12px; line-height: 1.6; }
+.tutorial ol { padding-left: 18px; } .tutorial li { margin: 8px 0; }
+.beat-feedback { padding: 14px 18px; border: 1px solid #326176; border-radius: 12px; background: #1b3039; margin-bottom: 12px; font-size: 13px; }
+.beat-feedback strong { display:block; color:#6dd8ff; margin-bottom:6px; }
+.beat-feedback.pulse { background:#24566b; border-color:#6dd8ff; }
+.beat-feedback .good { color:#b6f36b; }
+.timing-controls { margin: 18px 0; padding: 14px 0; border-block:1px solid #33402d; }
+.timing-controls label { display:block; margin:8px 0; }
+input[type=number] { background:#10160e; color:#eef3e7; border:1px solid #3a4833; border-radius:6px; padding:6px; max-width:100%; }

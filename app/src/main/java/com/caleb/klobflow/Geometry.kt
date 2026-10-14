@@ -39,9 +39,11 @@ data class Config(
     val showFeedback: Boolean=true, val symmetry: Boolean=true, val facing: String="front", val fps: Int=60,
     val timing: String="tog-same", val ratio: String="1:1", val zoom: Double=0.0, val mirror: Boolean=true,
     val planeCorners: List<P> = emptyList(), val planeAspect: Double=1.0,
-    val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0
+    val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0,
+    val staffCount:Int=2, val autoFit:Boolean=true, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4
 ) {
     fun json() = JSONObject().apply {
+        put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
         put("mode",mode);put("led",led);put("threshold",threshold);put("minLength",minLength)
         put("cx",cx);put("cy",cy);put("scale",scale);put("rotation",rotation);put("cubeDepth",cubeDepth)
         put("circleSeparation",circleSeparation);put("tolerance",tolerance);put("diagonals",diagonals)
@@ -66,7 +68,7 @@ data class Config(
             (0 until a.length()).map {val p=a.getJSONArray(it);require(p.length()==2);P(p.getDouble(0),p.getDouble(1))}
         } else planeCorners
         validateCorners(corners)
-        return copy(mode=choice("mode",mode,listOf("grid","circles","cube","free")),led=flag("led",led),
+        return copy(staffCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt(),autoFit=flag("autoFit",autoFit),tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=choice("mode",mode,listOf("grid","circles","cube","free")),led=flag("led",led),
             threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),
@@ -114,7 +116,7 @@ class Guide(val config: Config,val width: Int,val height: Int) {
         "cube" -> vertices.let { v -> (0..1).flatMap { z -> (0..3).map { i -> Segment(v[z*4+i],v[z*4+(i+1)%4]) } }+(0..3).map { i -> Segment(v[i],v[i+4]) } }
         else -> emptyList()
     }
-    val circles get()=listOf(point(-config.circleSeparation/2,0.0),point(config.circleSeparation/2,0.0))
+    val circles get()=if(config.staffCount==1)listOf(center)else listOf(point(-config.circleSeparation/2,0.0),point(config.circleSeparation/2,0.0))
     fun deviation(p: P): Double = when(config.mode) {
         "circles" -> circles.minOf { abs(p.distance(it)-radius) }
         "cube" -> vertices.minOf { p.distance(it) }
@@ -122,8 +124,8 @@ class Guide(val config: Config,val width: Int,val height: Int) {
         else -> 0.0
     }
     fun cues(staffs:List<Segment?>):List<TipCue> {
-        if(config.mode=="free" || staffs.size!=2 || staffs.any {it==null || it.confidence<0.55})return emptyList()
-        val measured=staffs.map {rectify(it!!) ?: return emptyList()}
+        if(config.mode=="free" || staffs.take(config.staffCount).size!=config.staffCount || staffs.take(config.staffCount).any {it==null || it.confidence<0.55})return emptyList()
+        val measured=staffs.take(config.staffCount).map {rectify(it!!) ?: return emptyList()}
         fun target(p:P):P=when(config.mode){
             "grid"->lines.map {nearestOnSegment(p,it)}.minBy {it.distance(p)}
             "cube"->vertices.minBy {it.distance(p)}
@@ -152,14 +154,14 @@ class Scorer {
     private val history=ArrayDeque<Pair<Long,List<Segment?>>>()
     fun reset(){history.clear()}
     fun score(t: Long,staffs: List<Segment?>,g: Guide): Metrics {
-        val measured=staffs.map {it?.let(g::rectify)}
+        val measured=staffs.take(g.config.staffCount).map {it?.let(g::rectify)}
         history.addLast(t to measured)
         while(history.isNotEmpty() && t-history.first().first>1200)history.removeFirst()
         val good=measured.filterNotNull().filter {it.confidence>=0.55}
-        val coverage=history.count {it.second.count {s->s!=null && s.confidence>=0.55}==2}.toDouble()/history.size*100
-        if(good.size!=2)return Metrics(coverage=coverage)
+        val coverage=history.count {it.second.count {s->s!=null && s.confidence>=0.55}==g.config.staffCount}.toDouble()/history.size*100
+        if(good.size!=g.config.staffCount)return Metrics(coverage=coverage)
         val pts=good.flatMap {listOf(it.a,it.b)}
-        val deviation=if(g.config.mode=="free")null else sqrt(pts.sumOf {g.deviation(it).pow(2)}/4)/(2*g.radius)*100
+        val deviation=if(g.config.mode=="free")null else sqrt(pts.sumOf {g.deviation(it).pow(2)}/(2*g.config.staffCount))/(2*g.radius)*100
         val angles=g.lines.map {it.angle}
         val angle=if(angles.isEmpty())null else good.map {s->angles.minOf {Math.toDegrees(angleDifference(s.angle,it))}}.average()
         val localAngle=Math.toRadians(g.config.rotation)
@@ -167,12 +169,12 @@ class Scorer {
             val d=p-g.center;val x=d.x*cos(localAngle)+d.y*sin(localAngle);val y=-d.x*sin(localAngle)+d.y*cos(localAngle)
             return g.center+P(-x*cos(localAngle)-y*sin(localAngle),-x*sin(localAngle)+y*cos(localAngle))
         }
-        val a=good[0];val b=good[1]
-        val sym=if(g.config.symmetry) sqrt(min(reflect(a.a).distance(b.a).pow(2)+reflect(a.b).distance(b.b).pow(2),reflect(a.a).distance(b.b).pow(2)+reflect(a.b).distance(b.a).pow(2))/2)/(2*g.radius)*100 else null
+        val a=good[0];val b=good.last()
+        val sym=if(g.config.symmetry && g.config.staffCount==2) sqrt(min(reflect(a.a).distance(b.a).pow(2)+reflect(a.b).distance(b.b).pow(2),reflect(a.a).distance(b.b).pow(2)+reflect(a.b).distance(b.a).pow(2))/2)/(2*g.radius)*100 else null
         val speeds=history.zipWithNext().mapNotNull {(prev,next)->
             val dt=(next.first-prev.first)/1000.0
             if(dt<=0 || dt>0.15 || prev.second.any {it==null || it.confidence<0.55} || next.second.any {it==null || it.confidence<0.55})null
-            else (0..1).map {angleDifference(next.second[it]!!.angle,prev.second[it]!!.angle)/dt}.average()
+            else (0 until g.config.staffCount).map {angleDifference(next.second[it]!!.angle,prev.second[it]!!.angle)/dt}.average()
         }
         val mean=if(speeds.isEmpty())0.0 else speeds.average()
         val steadiness=if(speeds.size>=12 && mean>0.15 && coverage>=90) sqrt(speeds.sumOf {(it-mean).pow(2)}/speeds.size)/mean*100 else null

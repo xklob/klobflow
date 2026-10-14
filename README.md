@@ -24,7 +24,7 @@ Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/re
 
 1. Put your phone on a stable support. Keep both staves and their full movement in frame. Use the selfie camera alone, or the rear camera with the PC companion.
 2. Turn on the LED staves. The default detector looks for bright, narrow shapes without markers. Adjust brightness threshold and minimum staff length in **Adjust**. A contrasting background helps.
-3. Choose **Grid**, **Circles**, **Cube**, or **Free**. Calibrate position, size, rotation, circle separation, and cube projection depth to your practice area. The guide stays fixed in the image; it does not automatically follow your body.
+3. Choose **Grid**, **Circles**, **Cube**, or **Free**. Calibrate position, size, rotation, circle separation, and cube projection depth to your practice area. Startup fitting waits for reliable full staves, then sets center/size and conservatively adjusts hardware zoom. The guide then stays fixed; it does not continuously follow your body. Turn off automatic fitting to keep manual framing.
 4. Automatic detection starts with the strongest elongated shapes. If it chooses incorrectly, hold still and use **Identify staves** to tap both ends of staff A, then both ends of staff B. **Reacquire** clears tracking history.
 5. Start slowly. Stave outlines show tracking; low confidence pauses the scores. Brighter trails show the last 4.2 seconds of tip motion. A brief hidden tip keeps its staff association for up to 1.5 seconds and is explicitly labelled; precision scores pause until visible endpoints are confirmed again.
 6. **Record practice** saves a silent MP4 to `Movies/Klobflow` and per-frame analysis privately in the app. **Sessions** plays the video or exports the JSONL measurements. The overlay is live and is **not burned into the MP4**.
@@ -64,7 +64,7 @@ On WSL, Windows owns the USB device. The companion finds Windows adb and uses Wi
 
 The large cue above the preview says **Tips on guide**, **Adjust highlighted tips**, or why scoring is paused. Lime and purple lines identify the two tracked staves. White guides show the target. Green rings mark tips within tolerance; orange arrows point off-target tips toward the nearest white target rings. These are local geometric corrections, not automatic trick instruction. **Alignment arrows** toggles the cues.
 
-Both cameras are mirrored by default, including the streamed preview and recorded video. **Mirror camera** switches this off. **Zoom** controls the camera's actual zoom range, and **Widest** uses its hardware-reported minimum, which may be below 1×. Switching cameras resets to widest; your chosen zoom otherwise survives reopening.
+Both cameras are mirrored by default, including the streamed preview and recorded video. **Mirror camera** switches this off. **Zoom** controls the camera's actual zoom range, and **Widest** uses its hardware-reported minimum, which may be below 1×. Switching cameras resets to widest; automatic startup fitting begins at widest when enabled. Disable automatic fitting to preserve your chosen zoom on reopening.
 
 ### Compensating for an off-angle camera
 
@@ -73,6 +73,18 @@ Use **Calibrate angle** on the phone or **Calibrate viewing angle** on the PC. M
 Calibration is manual. It does not infer the plane from your body, recover depth, or remove wide-angle lens distortion. Use a rectangle in the actual movement plane, keep the camera still, and recalibrate after moving it. Changing camera, zoom, mirroring, or device orientation clears calibration. **Clear angle** restores ordinary image-space scoring.
 
 Use **Explore a demo** to inspect the interface without a phone. That preview is visibly labeled as generated motion. The native Android demo runs generated LED frames through the real detector. Neither is evidence of real-world tracking accuracy.
+
+## Fit, learn, and practice to a beat
+
+Choose **Two staves** or **One staff / one hand**. One-staff mode tracks one double-ended staff, uses one circle, measures its two tips, and hides two-prop symmetry. This is a prop-count setting, not hand or grip recognition.
+
+Each of Grid, Circles, Cube, and Free has its own tutorial, dismissal state, and **Show mode tutorial** button. Tutorials explain targets, corrections, size, centering, and perspective calibration.
+
+**Fit center & size** collects two seconds of reliable visible staves. It centers the guide and estimates a full-rotation envelope for Grid/Cube, or the radius and separation for Circles. **Match staff length** makes the circle diameter / guide width equal to the measured staff length. The width-to-staff ratio helps you see the current size. Keep manual Size available for the pattern you intend to practice. Startup fitting begins at widest and can conservatively tighten hardware zoom, then measures the guide again. It preserves existing perspective calibration and never invents a camera zoom for unsupported webcams. If the view is too tight at minimum zoom, step back and fit again.
+
+Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start beat now** aligns the visual pulse; **Tap tempo** sets it from your taps. Pass the numbered points on each pulse. The filled tip is the endpoint used for timing. Feedback reports milliseconds early/late and spatial error at the crossing separately. Within ±75 ms is labelled on-beat; the existing target tolerance controls the position indicator. A still or uncertain tip does not earn a timing hit. The most recent hit expires after two beats.
+
+Timing uses interpolated crossings in the measured practice plane. It does not infer musical phrasing or VTG patterns, and display/capture latency still matters. Identical staff ends can swap after occlusion, so use a fresh sync after ambiguous tracking. Browser and Android recordings include beat observations in JSONL alongside ordinary alignment scores.
 
 ## What the numbers mean
 

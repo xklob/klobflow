@@ -1,6 +1,7 @@
 import { defaults, demoFrame } from "./demo.mjs";
 import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
+import {length} from "./core.mjs";
 const $ = (id) => document.getElementById(id);
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
@@ -70,6 +71,18 @@ $("local-stage").onclick = () => startLocal();
 $("local-camera-select").onchange = () => { localCamera.profile = null; startLocal(true); };
 $("capture-target").onchange = () => startLocal(true);
 $("optimize-camera").onclick = () => startLocal(true);
+let tutorials={},tutorialMode='';
+fetch('/practice-guides.json').then(r=>r.json()).then(data=>{tutorials=data;showTutorial(false);}).catch(()=>{});
+function showTutorial(force=false){
+  const guide=tutorials[config.mode];if(!guide)return;let dismissed=false;try{dismissed=localStorage.getItem('klobflow.tutorial.'+config.mode)==='1';}catch{}
+  $('mode-tutorial').hidden=!force&&dismissed;$('tutorial-title').textContent=guide.title;$('tutorial-steps').replaceChildren(...guide.steps.map(text=>Object.assign(document.createElement('li'),{textContent:text})));tutorialMode=config.mode;
+}
+$('show-tutorial').onclick=()=>showTutorial(true);
+$('dismiss-tutorial').onclick=()=>{try{localStorage.setItem('klobflow.tutorial.'+config.mode,'1');}catch{}$('mode-tutorial').hidden=true;};
+for(const [id,sizeOnly] of [['fit-guide',false],['fit-size',true]])$(id).onclick=async()=>{try{await api('/api/control',{action:'fit',sizeOnly});}catch(e){message(e.message);}};
+$('sync-beat').onclick=async()=>{try{await api('/api/control',{action:'syncBeat'});}catch(e){message(e.message);}};
+let taps=[];
+$('tap-tempo').onclick=async()=>{const now=performance.now();if(taps.length&&now-taps.at(-1)>2000)taps=[];taps.push(now);taps=taps.slice(-6);if(taps.length>1){const bpm=Math.max(30,Math.min(240,Math.round(60000*(taps.length-1)/(now-taps[0]))));await patch({bpm,tempoEnabled:true});if(!demo)$('sync-beat').click();}else message('Keep tapping the beat to set tempo.');};
 let sessionVideoUrl = null;
 $("close-video").onclick = () => $("video-dialog").close();
 $("video-dialog").onclose = () => { $("session-video").pause(); $("session-video").removeAttribute("src"); if (sessionVideoUrl) URL.revokeObjectURL(sessionVideoUrl); sessionVideoUrl = null; };
@@ -122,6 +135,8 @@ function enableControls() {
   document
     .querySelectorAll("[data-config], [data-mode]")
     .forEach((e) => (e.disabled = !(available || demo) || !!replay));
+  for(const id of ["fit-guide","fit-size","sync-beat"])$(id).disabled=!available||!!replay;
+  $("tap-tempo").disabled=!(available||demo)||!!replay;
   $("calibrate").disabled = !available || !!replay || !current;
   $("clear-calibration").disabled = !available || !!replay || !config.planeCorners?.length;
   $("zoom-wide").disabled = !available || !!replay || !current?.cameraReady;
@@ -142,7 +157,7 @@ function syncConfig(c) {
   config = { ...config, ...c };
   document.querySelectorAll("[data-config]").forEach((el) => {
     const key = el.dataset.config;
-    if (document.activeElement === el && el.type === "range") return;
+    if (document.activeElement === el && ["range","number","text"].includes(el.type)) return;
     if (el.type === "checkbox") el.checked = !!config[key];
     else el.value = String(config[key]);
     if (el.type === "range") rangeLabel(el);
@@ -152,7 +167,11 @@ function syncConfig(c) {
     .forEach((b) =>
       b.classList.toggle("active", b.dataset.mode === config.mode),
     );
-  $("calibration-info").textContent = config.planeCorners?.length ? "Perspective correction active. Measurements use the calibrated plane. Keep all four tips inside it. Recalibrate after moving the camera." : "Mark a rectangle in your movement plane, clockwise from top left. Use width ÷ height = 1 for a square. Zoom, mirror, camera, or rotation changes clear calibration.";
+  $("calibration-info").textContent = config.planeCorners?.length ? "Perspective correction active. Measurements use the calibrated plane. Keep all tips inside it. Recalibrate after moving the camera." : "Mark a rectangle in your movement plane, clockwise from top left. Use width ÷ height = 1 for a square. Zoom, mirror, camera, or rotation changes clear calibration.";
+  if(tutorialMode!==config.mode)showTutorial(false);
+  document.querySelector('.key.b').hidden=config.staffCount===1;
+  $("symmetry").closest("article").hidden=config.staffCount===1;
+  const symmetry=document.querySelector('[data-config="symmetry"]');symmetry.closest("label").hidden=config.staffCount===1;
   $("mode-description").textContent = descriptions[config.mode];
   $("depth-control").hidden = config.mode !== "cube";
   $("circles-control").hidden = config.mode !== "circles";
@@ -207,6 +226,7 @@ function patch(update) {
       syncConfig(config);
     }
   });
+  return configChain;
 }
 document
   .querySelectorAll("[data-mode]")
@@ -220,7 +240,7 @@ document.querySelectorAll("[data-config]").forEach((el) => {
       [el.dataset.config]:
         el.type === "checkbox"
           ? el.checked
-          : el.type === "range" || el.dataset.config === "fps"
+          : el.type === "range" || el.type === "number" || ["fps","staffCount","beatPoints"].includes(el.dataset.config)
             ? Number(el.value)
             : el.value,
     }),
@@ -276,6 +296,7 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
+  $("beat-feedback").hidden=true;
   current = null;
   lastTime = null;
   lastImage = null;
@@ -369,7 +390,7 @@ canvas.addEventListener("click", async (e) => {
   if (x < 0 || x > 1 || y < 0 || y > 1) return;
   picks.push([x, y]);
   render(current, lastImage);
-  if (picks.length === 4) {
+  if (picks.length === (calibrating ? 4 : config.staffCount * 2)) {
     try {
       await api("/api/control", calibrating ? { action: "calibrate", points: picks, aspect: Number($("plane-aspect").value) } : { action: "seed", points: picks });
       trail = [];
@@ -516,6 +537,11 @@ function render(frame, image) {
       ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b[0] * u, b[1] * u, 5, 0, Math.PI * 2); ctx.stroke();
     }
   }
+  if(frame.beat?.enabled){
+    ctx.globalAlpha=1;ctx.font='bold 12px system-ui';
+    frame.beat.targets.forEach((targets,i)=>targets.forEach((p,j)=>{ctx.strokeStyle=i?'#b5a3ff':'#6dd8ff';ctx.lineWidth=frame.beat.phase<.18?4:2;ctx.beginPath();ctx.arc(p[0]*u,p[1]*u,frame.beat.phase<.18?10:7,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff';ctx.fillText(String(j+1),p[0]*u+10,p[1]*u-9);}));
+    frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.a[0]*u,s.a[1]*u,3,0,Math.PI*2);ctx.fill();}});
+  }
   for (const p of picks) {
     ctx.strokeStyle = "#fff";
     ctx.beginPath();
@@ -523,13 +549,19 @@ function render(frame, image) {
     ctx.stroke();
   }
 }
+function showBeat(f){
+ const beat=f.beat;$('beat-feedback').hidden=!beat?.enabled;if(!beat?.enabled)return;
+ $('beat-feedback').classList.toggle('pulse',beat.phase<.18);$('beat-pulse').textContent=`${Math.round(beat.bpm)} BPM · ${beat.phase<.18?'BEAT':'next pulse…'}`;
+ $('beat-hits').replaceChildren(...beat.hits.map((hit,i)=>{const row=document.createElement('div');if(!hit){row.textContent=`${i?'B':'A'} · waiting for a visible tip to pass a point`;return row;}const early=hit.offsetMs<0,timing=Math.abs(hit.offsetMs)<=75?'On beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${early?'early':'late'}`,precise=hit.error<=f.config.tolerance;row.textContent=`${i?'B':'A'} · point ${hit.point}: ${timing} · ${hit.error.toFixed(1)}% from point ${precise?'✓':'→ adjust position'}`;row.className=precise&&Math.abs(hit.offsetMs)<=75?'good':'';return row;}));
+}
 function setCoaching(f) {
   const good = f?.staffs?.filter(s => s && s.confidence >= 0.55).length || 0;
-  const cues = f?.feedback || [], aligned = cues.length === 4 && cues.every(c => c.onTarget);
+  const count=f?.config?.staffCount||config.staffCount||2;
+  const cues = f?.feedback || [], aligned = cues.length === count*2 && cues.every(c => c.onTarget);
   const free = f?.config?.mode === "free";
   $("coaching").classList.toggle("aligned", aligned); $("coaching").classList.toggle("adjust", cues.length > 0 && !aligned);
-  $("coaching-title").textContent = f?.staffs?.some(s => s?.occluded) ? "Tip hidden · keeping staff identity" : good < 2 ? "Keep both staves visible" : free ? "Free flow · no alignment target" : !cues.length ? "Alignment cues paused" : aligned ? "✓ Tips on guide" : "Adjust highlighted tips";
-  $("coaching-detail").textContent = f?.staffs?.some(s => s?.occluded) ? "Continue your movement. Tracking reconnects when the tip returns; precision scores wait for visible tips." : good < 2 ? `${good} / 2 staves tracked. Scores pause until both are clear.` : free ? "Choose Grid, Circles, or Cube for alignment cues." : !cues.length ? "Keep all four tips inside the calibrated plane. Saved older sessions may not include cues." : aligned ? `All four tips are within the ${f.config.tolerance}% target. Keep tracing the guide.` : `${cues.filter(c => !c.onTarget).length} / 4 tips outside target. Follow orange arrows toward white rings.`;
+  $("coaching-title").textContent = f?.staffs?.some(s => s?.occluded) ? "Tip hidden · keeping staff identity" : good < count ? count===1?"Keep the staff visible":"Keep both staves visible" : free ? "Free flow · no alignment target" : !cues.length ? "Alignment cues paused" : aligned ? "✓ Tips on guide" : "Adjust highlighted tips";
+  $("coaching-detail").textContent = f?.staffs?.some(s => s?.occluded) ? "Continue your movement. Tracking reconnects when the tip returns; precision scores wait for visible tips." : good < count ? `${good} / ${count} staves tracked. Scores pause until tips are clear.` : free ? "Choose Grid, Circles, or Cube for alignment cues." : !cues.length ? "Keep all tips inside the calibrated plane. Saved older sessions may not include cues." : aligned ? `All ${count*2} tips are within the ${f.config.tolerance}% target. Keep tracing the guide.` : `${cues.filter(c => !c.onTarget).length} / ${count*2} tips outside target. Follow orange arrows toward white rings.`;
 }
 function setMetrics(metrics) {
   for (const [key, suffix] of [
@@ -631,16 +663,17 @@ function acceptFrame(f, image = null) {
       ? "DEMO · GENERATED MOTION"
       : localMode ? "LIVE FROM YOUR PC CAMERA" : "LIVE FROM YOUR PHONE";
   $("live-dot").style.background = f.source === "demo" ? "#b5a3ff" : "#b6f36b";
+  const count=f.config.staffCount||2;
   const good = f.staffs.filter((s) => s && s.confidence >= 0.55).length;
   $("tracking-label").textContent =
-    good === 2
-      ? "Both staves tracked" +
+    good === count
+      ? (count===1?"One staff tracked":"Both staves tracked") +
         (f.metrics.deviation == null
           ? ""
           : f.metrics.deviation <= config.tolerance
             ? " · within target"
             : " · outside target")
-      : `${good} / 2 staves visible · scores paused`;
+      : `${good} / ${count} staves visible · scores paused`;
   $("camera-info").textContent = replay
     ? `Sample at ${(f.elapsedMs / 1000).toFixed(2)}s`
     : `${f.status ?? "Phone camera"} · ${Math.round(f.analysisFps ?? 0)} analysis fps` + (localMode ? ` · ${Math.round(f.cameraFps || 0)} camera fps` : f.source === "demo" ? "" : ` · ${Math.round(previewFps)} preview fps`);
@@ -658,6 +691,10 @@ function acceptFrame(f, image = null) {
     $("zoom").disabled = !f.cameraReady || f.zoom.min === f.zoom.max || !!replay;
     document.querySelector('output[for="zoom"]').textContent = `${f.zoom.ratio.toFixed(2)}×`;
   }
+  $('fit-status').textContent=f.fitStatus||'Use Fit center & size, or match the guide width to your staff length.';
+  const visible=f.staffs.filter(s=>s&&s.confidence>=.7&&!s.occluded);const staffLength=visible.length?visible.reduce((n,s)=>n+length(s),0)/visible.length:0;
+  $('size-helper').textContent=staffLength&&!f.guide.calibrated?`Guide width / staff length: ${(f.guide.span/staffLength).toFixed(2)}×. Match staff length sets this to 1×; adjust Size for your pattern.`:'Size help waits for a fully visible staff; perspective-corrected size is fitted in the selected plane.';
+  showBeat(f);
   setCoaching(f);
   setMetrics(f.metrics);
   if (!replay) {

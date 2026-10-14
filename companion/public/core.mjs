@@ -5,6 +5,7 @@ export const defaults = {
   scale: .32, rotation: 0, cubeDepth: .4, circleSeparation: 1, tolerance: 4,
   diagonals: true, trails: true, showGuide: true, showFeedback: true, symmetry: true,
   facing: "front", fps: 60, timing: "tog-same", ratio: "1:1", zoom: 0, mirror: true,
+  staffCount: 2, autoFit: true, tempoEnabled: false, bpm: 120, beatPoints: 4,
   planeCorners: [], planeAspect: 1, calibrationRotation: 0, calibrationImageAspect: 0,
 };
 export const add = (a,b) => [a[0]+b[0],a[1]+b[1]];
@@ -39,10 +40,10 @@ export function validateCorners(points) {
 }
 export function patchConfig(previous,patch,{restore=false}={}) {
   const c={...previous,...patch};
-  const ranges={threshold:[60,250],minLength:[.1,.8],cx:[.1,.9],cy:[.1,.9],scale:[.1,.48],rotation:[-90,90],cubeDepth:[.1,.9],circleSeparation:[0,1.8],tolerance:[1,15],zoom:[0,100],planeAspect:[.25,4],calibrationRotation:[0,3],calibrationImageAspect:[0,4]};
+  const ranges={bpm:[30,240],threshold:[60,250],minLength:[.1,.8],cx:[.1,.9],cy:[.1,.9],scale:[.1,.48],rotation:[-90,90],cubeDepth:[.1,.9],circleSeparation:[0,1.8],tolerance:[1,15],zoom:[0,100],planeAspect:[.25,4],calibrationRotation:[0,3],calibrationImageAspect:[0,4]};
   for(const [key,[lo,hi]] of Object.entries(ranges)) if(!Number.isFinite(c[key])||c[key]<lo||c[key]>hi) throw Error(`${key} must be between ${lo} and ${hi}`);
-  for(const [key,choices] of Object.entries({mode:["grid","circles","cube","free"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
-  for(const key of ["led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
+  for(const [key,choices] of Object.entries({staffCount:[1,2],beatPoints:[2,4,8],mode:["grid","circles","cube","free"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
+  for(const key of ["autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
   if(!restore&&(c.facing!==previous.facing||c.zoom!==previous.zoom||c.mirror!==previous.mirror))c.planeCorners=[];
   if(!restore&&c.facing!==previous.facing)c.zoom=0;
   validateCorners(c.planeCorners);
@@ -79,7 +80,7 @@ export class Guide {
       for(let z=0;z<2;z++)for(let i=0;i<4;i++)this.lines.push(segment(this.vertices[z*4+i],this.vertices[z*4+(i+1)%4]));
       for(let i=0;i<4;i++)this.lines.push(segment(this.vertices[i],this.vertices[i+4]));
     }
-    this.circles=[this.point(-config.circleSeparation/2,0),this.point(config.circleSeparation/2,0)];
+    this.circles=config.staffCount===1?[this.center]:[this.point(-config.circleSeparation/2,0),this.point(config.circleSeparation/2,0)];
   }
   point(x,y){const r=this.config.rotation*Math.PI/180;return add(this.center,mul([x*Math.cos(r)-y*Math.sin(r),x*Math.sin(r)+y*Math.cos(r)],this.radius));}
   project(p){return this.projection?.(p)||p;}
@@ -97,7 +98,8 @@ export class Guide {
   }
   deviation(p){return this.config.mode==="free"?0:distance(p,this.target(p));}
   cues(staffs){
-    if(this.config.mode==="free"||staffs.length!==2||staffs.some(s=>!s||s.confidence<.55))return [];
+    staffs=staffs.slice(0,this.config.staffCount);
+    if(this.config.mode==="free"||staffs.length!==this.config.staffCount||staffs.some(s=>!s||s.confidence<.55))return [];
     const measured=staffs.map(s=>this.rectify(s));if(measured.some(s=>!s))return [];
     return measured.flatMap((s,i)=>[s.a,s.b].map((p,j)=>{const target=this.target(p),error=distance(p,target)/(2*this.radius)*100;return {tip:j?staffs[i].b:staffs[i].a,target:this.project(target),error,onTarget:error<=this.config.tolerance};}));
   }
@@ -112,20 +114,20 @@ export class Scorer {
   constructor(){this.reset();}
   reset(){this.history=[];}
   score(time,staffs,g){
-    const measured=staffs.map(s=>s?g.rectify(s):null);this.history.push([time,measured]);this.history=this.history.filter(x=>time-x[0]<=1200);
-    const good=measured.filter(s=>s&&s.confidence>=.55),coverage=this.history.filter(x=>x[1].filter(s=>s&&s.confidence>=.55).length===2).length/this.history.length*100;
-    const result={deviation:null,angle:null,symmetry:null,steadiness:null,coverage};if(good.length!==2)return result;
+    const measured=staffs.slice(0,g.config.staffCount).map(s=>s?g.rectify(s):null);this.history.push([time,measured]);this.history=this.history.filter(x=>time-x[0]<=1200);
+    const good=measured.filter(s=>s&&s.confidence>=.55),coverage=this.history.filter(x=>x[1].filter(s=>s&&s.confidence>=.55).length===g.config.staffCount).length/this.history.length*100;
+    const result={deviation:null,angle:null,symmetry:null,steadiness:null,coverage};if(good.length!==g.config.staffCount)return result;
     if(g.config.mode!=="free")result.deviation=Math.sqrt(mean(good.flatMap(s=>[s.a,s.b]).map(p=>g.deviation(p)**2)))/(2*g.radius)*100;
     if(g.lines.length)result.angle=mean(good.map(s=>Math.min(...g.lines.map(l=>angleDifference(angle(s),angle(l))*180/Math.PI))));
     const r=g.config.rotation*Math.PI/180;
     const reflect=p=>{const d=sub(p,g.center),x=d[0]*Math.cos(r)+d[1]*Math.sin(r),y=-d[0]*Math.sin(r)+d[1]*Math.cos(r);return add(g.center,[-x*Math.cos(r)-y*Math.sin(r),-x*Math.sin(r)+y*Math.cos(r)]);};
     const [a,b]=good;
-    if(g.config.symmetry)result.symmetry=Math.sqrt(Math.min(distance(reflect(a.a),b.a)**2+distance(reflect(a.b),b.b)**2,distance(reflect(a.a),b.b)**2+distance(reflect(a.b),b.a)**2)/2)/(2*g.radius)*100;
+    if(g.config.symmetry&&g.config.staffCount===2)result.symmetry=Math.sqrt(Math.min(distance(reflect(a.a),b.a)**2+distance(reflect(a.b),b.b)**2,distance(reflect(a.a),b.b)**2+distance(reflect(a.b),b.a)**2)/2)/(2*g.radius)*100;
     const speeds=[];
     for(let i=1;i<this.history.length;i++){
       const prev=this.history[i-1],next=this.history[i],dt=(next[0]-prev[0])/1000;
       if(dt<=0||dt>.15||[...prev[1],...next[1]].some(s=>!s||s.confidence<.55))continue;
-      speeds.push(mean([0,1].map(n=>angleDifference(angle(next[1][n]),angle(prev[1][n]))/dt)));
+      speeds.push(mean(Array.from({length:g.config.staffCount},(_,n)=>angleDifference(angle(next[1][n]),angle(prev[1][n]))/dt)));
     }
     const avg=speeds.length?mean(speeds):0;
     if(speeds.length>=12&&avg>.15&&coverage>=90)result.steadiness=Math.sqrt(mean(speeds.map(s=>(s-avg)**2)))/avg*100;
@@ -176,12 +178,12 @@ export class StaffDetector {
 export class StaffTracker {
   constructor(){this.reset();}
   reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];}
-  seed(staffs,time){if(staffs.length!==2)throw Error("Select both staves");this.last=staffs;this.lastAt=[time,time];this.streak=[0,0];}
-  update(candidates,time){
-    const prior=this.last.map((s,i)=>s&&time-this.lastAt[i]<1500?s:null);
+  seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];this.streak=[0,0];}
+  update(candidates,time,count=2){
+    const prior=this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<1500?s:null);
     const cost=(i,s)=>{const p=prior[i];if(!p)return .22-s.confidence*.1;const delta=Math.max(1,time-this.lastAt[i])/1000,dist=distance(center(p),center(s)),ang=angleDifference(angle(p),angle(s)),ratio=length(s)/length(p);if(dist>.16+delta*1.8||ang>.3+delta*8||ratio<.25||ratio>1.9)return 10;return dist+ang*.13+Math.abs(Math.log(ratio))*.10+(1-s.confidence)*.15;};
     const assignments=[];
-    for(let a=-1;a<candidates.length;a++)for(let b=-1;b<candidates.length;b++)if(a<0||b<0||a!==b){
+    for(let a=-1;a<candidates.length;a++)for(let b=-1;b<(count===1?0:candidates.length);b++)if(a<0||b<0||a!==b){
       if(a>=0&&b>=0&&distanceToSegment(center(candidates[a]),candidates[b])<.025&&angleDifference(angle(candidates[a]),angle(candidates[b]))<.15)continue;
       assignments.push([a,b,(a<0?.55:cost(0,candidates[a]))+(b<0?.55:cost(1,candidates[b]))]);
     }
