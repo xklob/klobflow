@@ -174,7 +174,11 @@
           >
           <p class="small-note">Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.</p>
           <label class="toggle"><input type="checkbox" data-config="streakEffects" checked><span>Streak glow &amp; particles</span></label>
-          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds. Brief blur or hidden tips hold your place for up to 1.5 seconds without adding time. Leaving the guide ends the streak.</p>
+          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds.</p>
+          <p class="small-note"><strong>Streak forgiveness</strong></p>
+          <label class="range-label">Tracking grace <output for="tracking-grace">1500 ms</output><input id="tracking-grace" data-config="trackingGraceMs" type="range" min="0" max="3000" step="100" value="1500" aria-describedby="streak-forgiveness-help"></label>
+          <label class="range-label">Alignment grace <output for="alignment-grace">200 ms</output><input id="alignment-grace" data-config="alignmentGraceMs" type="range" min="0" max="1000" step="50" value="200" aria-describedby="streak-forgiveness-help"></label>
+          <p id="streak-forgiveness-help" class="small-note">Tracking grace holds your streak through missing or blurred tips. Alignment grace covers brief off-target blips. Earned seconds freeze during either hold. Scores and on-target cues stay unchanged.</p>
           <label class="toggle"
             ><input type="checkbox" data-config="symmetry" checked /><span
               >Mirror symmetry</span

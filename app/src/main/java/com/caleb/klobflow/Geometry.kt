@@ -41,10 +41,12 @@ data class Config(
     val timing: String="tog-same", val ratio: String="1:1", val zoom: Double=0.0, val mirror: Boolean=true,
     val planeCorners: List<P> = emptyList(), val planeAspect: Double=1.0,
     val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0,
-    val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true
+    val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true,
+    val trackingGraceMs:Int=1500, val alignmentGraceMs:Int=200
 ) {
     fun json() = JSONObject().apply {
         put("streakEffects",streakEffects);put("tempoSource",tempoSource);put("audioRate",audioRate);put("audioOffsetMs",audioOffsetMs)
+        put("trackingGraceMs",trackingGraceMs);put("alignmentGraceMs",alignmentGraceMs)
         put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
         put("mode",mode);put("led",led);put("threshold",threshold);put("minLength",minLength);put("staffColors",JSONArray(staffColors))
         put("cx",cx);put("cy",cy);put("scale",scale);put("rotation",rotation);put("cubeDepth",cubeDepth)
@@ -60,6 +62,7 @@ data class Config(
             require(n.isFinite() && n in lo..hi) { "$k must be between $lo and $hi" };return n
         }
         fun choice(k: String,v: String,allowed: List<String>) = (if(j.has(k)) j.getString(k) else v).also { require(it in allowed) { "Invalid $k" } }
+        fun grace(k:String,v:Int,maximum:Int)=num(k,v.toDouble(),0.0,maximum.toDouble()).also {require(it%1.0==0.0){"$k must be whole milliseconds"}}.toInt()
         fun flag(k: String,v: Boolean) = if(j.has(k)) j.getBoolean(k) else v
         val nextFacing=choice("facing",facing,listOf("front","back"))
         val nextZoom=num("zoom",zoom,0.0,100.0)
@@ -73,7 +76,7 @@ data class Config(
         val colors=if(j.has("staffColors")){val a=j.getJSONArray("staffColors");require(a.length()<=staffColorNames.size){"Choose valid staff colors"};(0 until a.length()).map {a.getString(it)}.also {require(it.all {color->color in staffColorNames}){"Choose valid staff colors"}}.distinct()}else staffColors
         val nextCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt()
         val nextMode=choice("mode",mode,listOf("grid","circles","cube","free","antispin"))
-        return copy(streakEffects=flag("streakEffects",streakEffects),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
+        return copy(streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
             staffColors=colors,threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),

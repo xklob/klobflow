@@ -243,15 +243,39 @@ test('a browser without camera support exits opening state and stays restartable
  await expect(page.locator('#message')).toContainText('localhost or HTTPS');await expect(page.locator('#connection')).toContainText('STOPPED');await expect(page.locator('#local-open')).toBeEnabled();
 });
 
-test('a held streak label clears immediately when retained progress ends',async({page})=>{
+for(const [state,label] of [['held','STREAK HELD · reacquiring tips'],['recovering','STREAK HELD · return to the guide']])test(`a ${state} streak stays neutral and clears immediately when retained progress ends`,async({page})=>{
  await page.addInitScript(()=>{const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{
   set onmessage(handler){super.onmessage=event=>{if(event.data.type==='frame'&&window.fixtureStreak)handler({data:{...event.data,frame:{...event.data.frame,streak:window.fixtureStreak}}});else handler(event);};}
  };window.fixtureStreak={state:'building',seconds:4,bestSeconds:4,level:2,energy:.4,progress:.4};});
  await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
  await expect(page.locator('#streak-title')).toContainText('FLOW STREAK');
- await page.evaluate(()=>window.fixtureStreak.state='held');await expect(page.locator('#streak-title')).toContainText('STREAK HELD',{timeout:1000});
+ const buildingColor=await page.locator('#streak-title').evaluate(el=>getComputedStyle(el).color);
+ await page.evaluate(state=>window.fixtureStreak.state=state,state);await expect(page.locator('#streak-title')).toHaveText(label,{timeout:1000});
+ const neutralColor=await page.evaluate(()=>{const probe=document.createElement('span');probe.style.color='var(--slate)';document.body.append(probe);const color=getComputedStyle(probe).color;probe.remove();return color;});
+ await expect(page.locator('#streak-title')).toHaveCSS('color',neutralColor);
+ await page.evaluate(()=>window.fixtureStreak.state='building');
+ // Reacquired tracking must hold its readable label before returning to the live counter.
+ await page.waitForTimeout(300);await expect(page.locator('#streak-title')).toHaveText(label);
+ await expect(page.locator('#streak-title')).toContainText('FLOW STREAK',{timeout:5000});await expect(page.locator('#streak-title')).toHaveCSS('color',buildingColor);
+ await page.evaluate(state=>window.fixtureStreak.state=state,state);await expect(page.locator('#streak-title')).toHaveText(label,{timeout:1000});
  await page.evaluate(()=>{window.fixtureStreak={...window.fixtureStreak,state:'paused',seconds:0,progress:0};});
  await expect(page.locator('#streak-title')).toContainText('STREAK PAUSED',{timeout:1000});await expect(page.locator('#streak-hud')).toHaveAttribute('data-state','paused');
+});
+
+test('streak forgiveness sliders persist milliseconds without changing target tolerance',async({page})=>{
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')));
+ for(const [id,key,initial,step,max] of [['tracking-grace','trackingGraceMs',1500,100,3000],['alignment-grace','alignmentGraceMs',200,50,1000]]){
+  const slider=page.locator(`#${id}`),label=page.locator(`output[for="${id}"]`);
+  await expect(slider).toHaveValue(String(initial));await expect(label).toHaveText(`${initial} ms`);
+  await slider.focus();await slider.press('ArrowRight');await expect.poll(async()=>(await saved())[key]).toBe(initial+step);await expect(label).toHaveText(`${initial+step} ms`);
+  await slider.press('Home');await expect.poll(async()=>(await saved())[key]).toBe(0);await expect(label).toHaveText('Off');
+  await slider.press('End');await expect.poll(async()=>(await saved())[key]).toBe(max);await expect(label).toHaveText(`${max} ms`);
+ }
+ expect((await saved()).tolerance).toBe(4);await expect(page.locator('#tolerance')).toHaveValue('4');
+ await page.reload();await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await expect(page.locator('#tracking-grace')).toHaveValue('3000');await expect(page.locator('#alignment-grace')).toHaveValue('1000');
+ await expect(page.locator('#streak-forgiveness-help')).toContainText('Earned seconds freeze');
 });
 
 test('a delayed settings acknowledgement preserves newer edits, including the same field',async({page})=>{

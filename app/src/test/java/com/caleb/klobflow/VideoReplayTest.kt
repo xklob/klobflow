@@ -18,7 +18,7 @@ class VideoReplayTest {
         assumeTrue("Set both local replay paths to run this diagnostic",json!=null&&raw!=null)
         val report=JSONObject(File(json!!).readText());val summary=report.getJSONObject("summary")
         val w=summary.getInt("width");val h=summary.getInt("height");val c=Config().patch(report.getJSONObject("config"))
-        val rows=report.getJSONArray("rows");val detector=StaffDetector();val tracker=StaffTracker();val scorer=Scorer();val guide=Guide(c,w,h)
+        val rows=report.getJSONArray("rows");val detector=StaffDetector();val tracker=StaffTracker();val scorer=Scorer();val streak=FlowStreak();val guide=Guide(c,w,h)
         val bytes=ByteArray(w*h*4);val view=ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();val pixels=IntArray(w*h)
         var observed=0;var precise=0
         DataInputStream(File(raw!!).inputStream().buffered()).use {input->
@@ -42,6 +42,12 @@ class VideoReplayTest {
                 for(key in listOf("deviation","angle","symmetry","steadiness","coverage")){
                     assertEquals("Frame $i $key validity",expectedMetrics.isNull(key),actualMetrics.isNull(key))
                     if(!expectedMetrics.isNull(key))assertEquals("Frame $i $key",expectedMetrics.getDouble(key),actualMetrics.getDouble(key),1e-6)
+                }
+                if(row.has("streak")){
+                    val expectedStreak=row.getJSONObject("streak");val actualStreak=streak.update(time,actual,guide).json()
+                    assertEquals("Frame $i streak state",expectedStreak.getString("state"),actualStreak.getString("state"))
+                    for(key in listOf("seconds","bestSeconds","level","energy","progress"))
+                        assertEquals("Frame $i streak $key",expectedStreak.getDouble(key),actualStreak.getDouble(key),1e-8)
                 }
                 if(actual.take(c.staffCount).all {it!=null&&!it.occluded})observed++
                 if(metrics.deviation!=null)precise++

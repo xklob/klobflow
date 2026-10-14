@@ -57,7 +57,7 @@ const trackingBox=new FadeBox('tracking-box',{urgent:(shown,next)=>shown.tone===
 // Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
 const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.mode!==next.mode||shown.cues&&!next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
 const timingBox=new FadeBox('beat-feedback',{urgent:(shown,next)=>shown.paused!==next.paused||Math.abs(shown.bpm-next.bpm)>3});
-const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||shown.state==='held'&&['paused','ready'].includes(next.state)||['off','free'].includes(next.state)});
+const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||['held','recovering'].includes(shown.state)&&['paused','ready'].includes(next.state)||['off','free'].includes(next.state)});
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
   chart = $("chart"),
@@ -422,6 +422,8 @@ function rangeLabel(el) {
           ? `${value}`
           : key === "tolerance"
             ? `${value}%`
+            : key === "trackingGraceMs" || key === "alignmentGraceMs"
+              ? value === 0 ? "Off" : `${value} ms`
             : `${Math.round(value * 100)}%`;
 }
 let configChain = Promise.resolve();
@@ -954,7 +956,7 @@ function acceptFrame(f, image = null) {
   // The streak state label is held like the status boxes; the counter ticks live within the shown state.
   if(hud.hidden)streakBox.reset();
   else{
-    streakBox.show({key:flow.state,state:flow.state,render(){$('streak-title').textContent=streakText(flow);hud.dataset.state=flow.state;}},{immediate:!!replay});
+    streakBox.show({key:flow.state,state:flow.state,render(){$('streak-title').textContent=streakText(flow);$('streak-title').style.color=flow.state==='recovering'?'var(--slate)':'';hud.dataset.state=flow.state;}},{immediate:!!replay});
     if(streakBox.shown?.state===flow.state)$('streak-title').textContent=streakText(flow);
   }
   $('streak-power').style.width=`${flow.progress*100}%`;$('streak-power').parentElement.setAttribute('aria-valuenow',Math.min(10,flow.seconds).toFixed(1));

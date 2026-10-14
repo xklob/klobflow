@@ -60,7 +60,7 @@ class PracticeTest {
         val coach=TimingCoach();coach.reset(0.0);var before=BeatFrame()
         for(t in 1250L..1700L step 20)before=coach.update(t,listOf(spin(g,t),null),g)
         assertNotNull(before.hits[0])
-        val display=c.copy(trails=false,showGuide=false,showFeedback=false,streakEffects=false,tolerance=8.0,timing="split-opp",ratio="1:3",symmetry=false)
+        val display=c.copy(trails=false,showGuide=false,showFeedback=false,streakEffects=false,trackingGraceMs=3000,alignmentGraceMs=1000,tolerance=8.0,timing="split-opp",ratio="1:3",symmetry=false)
         coach.reconfigure(c,display)
         val after=coach.update(1710,listOf(spin(g,1710),null),Guide(display,640,480))
         assertEquals(.42,after.phase,1e-8);assertEquals(before.hits[0],after.hits[0])

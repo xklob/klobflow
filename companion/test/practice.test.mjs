@@ -45,7 +45,7 @@ test('cosmetic settings retain beat phase and hits; geometry drops crossings wit
  let before;
  for(let t=1250;t<=1700;t+=20)before=coach.update(t,[spin(t),null],g);
  assert.ok(before.hits[0]);
- const display={...c,trails:false,showGuide:false,showFeedback:false,streakEffects:false,tolerance:8,timing:'split-opp',ratio:'1:3',symmetry:false};coach.reconfigure(c,display);
+ const display={...c,trails:false,showGuide:false,showFeedback:false,streakEffects:false,trackingGraceMs:3000,alignmentGraceMs:1000,tolerance:8,timing:'split-opp',ratio:'1:3',symmetry:false};coach.reconfigure(c,display);
  const after=coach.update(1710,[spin(1710),null],new Guide(display,640,480));close(after.phase,.42);assert.deepEqual(after.hits,before.hits);
  const geometry={...display,scale:.4};coach.reconfigure(display,geometry);
  const moved=coach.update(1750,[spin(1750),null],new Guide(geometry,640,480));close(moved.phase,.5);assert.equal(moved.hits[0],null);
