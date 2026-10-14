@@ -349,13 +349,18 @@ function enableControls() {
   setText("quick-background",snapshot?"Cancel background capture":bg==="ready"?"Recapture · 5s":"Background · 5s");
   for(const chip of document.querySelectorAll("#staff-colors .chip"))chip.disabled=!(available||demo)||!!replay||config.led===false;
 }
-function syncConfig(c, {force=false} = {}) {
+let controlEditRevision = 0;
+const controlEdits = new WeakMap();
+function syncConfig(c, {force=false, throughEdit=Infinity} = {}) {
   const text = JSON.stringify(c);
   if (text === lastConfigText && !force) return;
   lastConfigText = text;
   config = { ...config, ...c };
   document.querySelectorAll("[data-config]").forEach((el) => {
     const key = el.dataset.config;
+    // A delayed acknowledgement may restore rejected values, but must never
+    // replace a newer edit made while that request was in flight.
+    if ((controlEdits.get(el) || 0) > throughEdit) return;
     if (!force && document.activeElement === el && ["range","number","text","checkbox"].includes(el.type)) return;
     if (el.type === "checkbox") el.checked = !!config[key];
     else el.value = String(config[key]);
@@ -421,11 +426,12 @@ function rangeLabel(el) {
 }
 let configChain = Promise.resolve();
 function patch(update) {
+  const throughEdit = controlEditRevision;
   if(update.bpm!==undefined){systemAudio.stop();update={...update,tempoSource:"manual"};}
   configChain = configChain.then(async () => {
     if (demo) {
-      try { syncConfig(patchConfig(config,update), {force:true}); trail = []; message(""); }
-      catch (e) { message(e.message); syncConfig(config, {force:true}); }
+      try { syncConfig(patchConfig(config,update), {force:true,throughEdit}); trail = []; message(""); }
+      catch (e) { message(e.message); syncConfig(config, {force:true,throughEdit}); }
       return;
     }
     try {
@@ -433,13 +439,13 @@ function patch(update) {
         action: "config",
         config: update,
       });
-      syncConfig(result.config, {force:true});
+      syncConfig(result.config, {force:true,throughEdit});
       trail = [];
       history = [];
       message("");
     } catch (e) {
       message(e.message);
-      syncConfig(config, {force:true});
+      syncConfig(config, {force:true,throughEdit});
     }
   });
   return configChain;
@@ -449,9 +455,11 @@ document
   .forEach((b) => (b.onclick = () => patch({ mode: b.dataset.mode })));
 document.querySelectorAll("[data-config]").forEach((el) => {
   el.addEventListener("input", () => {
+    controlEdits.set(el, ++controlEditRevision);
     if (el.type === "range") rangeLabel(el);
   });
-  el.addEventListener("change", () =>
+  el.addEventListener("change", () => {
+    controlEdits.set(el, ++controlEditRevision);
     patch({
       [el.dataset.config]:
         el.type === "checkbox"
@@ -459,8 +467,8 @@ document.querySelectorAll("[data-config]").forEach((el) => {
           : el.type === "range" || el.type === "number" || ["fps","staffCount","beatPoints","audioRate"].includes(el.dataset.config)
             ? Number(el.value)
             : el.value,
-    }),
-  );
+    });
+  });
 });
 function openPair() {
   $("pair-error").textContent = "";

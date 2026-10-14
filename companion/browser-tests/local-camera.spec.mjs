@@ -208,9 +208,13 @@ test('overlay uses display resolution and short fullscreen keeps room for the ca
  await expect(page.locator('#tracking-brief')).toBeHidden();
  await expect.poll(()=>page.locator('#view').evaluate(c=>c.width)).toBeGreaterThan(640);
  const backing=await page.locator('#view').evaluate(c=>({width:c.width,shown:c.getBoundingClientRect().width}));expect(backing.width).toBeGreaterThanOrEqual(backing.shown*.95);
- await page.locator('[data-mode="antispin"]').click();await page.locator('[data-config="tempoEnabled"]').check();
+ await page.locator('[data-mode="antispin"]').click();await expect(page.locator('#antispin-footer')).toBeVisible();
+ await page.locator('[data-config="tempoEnabled"]').check();await expect(page.locator('#beat-feedback')).toBeVisible();
  await page.setViewportSize({width:390,height:667});await page.locator('#fullscreen').click();
- const stage=await page.locator('#stage').boundingBox(),status=await page.locator('.status-row').boundingBox();expect(stage.height).toBeGreaterThan(300);expect(status.height).toBeLessThan(180);
+ // Clicking starts requestFullscreen asynchronously; CI can still report the ordinary 267px preview here.
+ await expect(page.locator('#practice-view:fullscreen')).toBeVisible();
+ await expect.poll(async()=> (await page.locator('#stage').boundingBox()).height).toBeGreaterThan(300);
+ await expect.poll(async()=> (await page.locator('.status-row').boundingBox()).height).toBeLessThan(180);
  await expect(page.locator('#tracking-detail')).toBeHidden();await page.locator('#focus-details').click();await expect(page.locator('#tracking-detail')).toBeVisible();
  await page.locator('#focus-details').click();await expect(page.locator('#tracking-detail')).toBeHidden();
  await expect(page.locator('#tracking-brief')).toBeVisible();await expect(page.locator('#tracking-title')).toBeHidden();
@@ -245,4 +249,23 @@ test('a held streak label clears immediately when retained progress ends',async(
  await page.evaluate(()=>window.fixtureStreak.state='held');await expect(page.locator('#streak-title')).toContainText('STREAK HELD',{timeout:1000});
  await page.evaluate(()=>{window.fixtureStreak={...window.fixtureStreak,state:'paused',seconds:0,progress:0};});
  await expect(page.locator('#streak-title')).toContainText('STREAK PAUSED',{timeout:1000});await expect(page.locator('#streak-hud')).toHaveAttribute('data-state','paused');
+});
+
+test('a delayed settings acknowledgement preserves newer edits, including the same field',async({page})=>{
+ await page.addInitScript(()=>{const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{
+  set onmessage(handler){super.onmessage=event=>{
+   if(event.data.type==='config'&&window.holdNextConfig){window.holdNextConfig=false;window.releaseConfig=()=>{window.configHeld=false;handler(event);};window.configHeld=true;}
+   else handler(event);
+  };}
+ };});
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.evaluate(()=>window.holdNextConfig=true);await page.locator('[data-config="tempoEnabled"]').check();
+ await expect.poll(()=>page.evaluate(()=>window.configHeld)).toBe(true);
+ await page.locator('#bpm').fill('105');await page.evaluate(()=>window.releaseConfig());
+ await expect(page.locator('#bpm')).toHaveValue('105');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#beat-pulse')).toContainText('105 BPM');
+ await page.evaluate(()=>window.holdNextConfig=true);await page.locator('#bpm').fill('100');await page.locator('#bpm').dispatchEvent('change');
+ await expect.poll(()=>page.evaluate(()=>window.configHeld)).toBe(true);
+ await page.locator('#bpm').fill('95');await page.evaluate(()=>window.releaseConfig());
+ await expect(page.locator('#bpm')).toHaveValue('95');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#beat-pulse')).toContainText('95 BPM');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')).bpm)).toBe(95);
 });
