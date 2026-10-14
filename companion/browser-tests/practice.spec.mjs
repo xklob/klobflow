@@ -26,8 +26,9 @@ test("practice demo, guide controls, pairing errors and mobile layout", async ({
     fullPage: true,
   });
   await page.locator("#pair-open").click();
+  await page.locator("#transport").selectOption("lan");
   await page.locator("#phone-address").fill("8.8.8.8");
-  await page.locator("#phone-token").fill("0123456789abcdef");
+
   await page.locator("#pair-submit").click();
   await expect(page.locator("#pair-error")).toContainText("private LAN");
   await page.locator("#cancel-pair").click();

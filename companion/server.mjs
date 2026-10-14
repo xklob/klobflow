@@ -1,4 +1,7 @@
 import http from "node:http";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { connectUsb } from "./usb.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -56,9 +59,11 @@ async function readJson(req) {
     req.on("error", reject);
   });
 }
-export function createCompanion() {
+export function createCompanion({ usbConnect = connectUsb } = {}) {
   let pairing = null;
   let pairGeneration = 0;
+  const streams = new Set();
+  const stopStreams = () => { for (const c of streams) c.abort(); streams.clear(); };
   const server = http.createServer(async (req, res) => {
     const port = server.address().port;
     const allowedHosts = [`127.0.0.1:${port}`, `localhost:${port}`];
@@ -86,20 +91,20 @@ export function createCompanion() {
         method = "GET",
         body = undefined,
         pair = pairing,
+        signal = undefined,
       ) => {
         if (!pair) {
           const e = new Error("Connect your phone first.");
           e.status = 409;
           throw e;
         }
-        const response = await fetch(`${pair.address}${route}`, {
+        const response = await (pair.fetch || fetch)(`${pair.address}${route}`, {
           method,
           headers: {
-            "X-Klobflow-Token": pair.token,
             ...(body ? { "Content-Type": "application/json" } : {}),
           },
           body: body ? JSON.stringify(body) : undefined,
-          signal: AbortSignal.timeout(6000),
+          signal: signal || AbortSignal.timeout(6000),
           redirect: "error",
         });
         if (!response.ok) {
@@ -120,41 +125,41 @@ export function createCompanion() {
         return json(200, {
           paired: !!pairing,
           address: pairing?.address,
-          version: "0.1.0",
+          transport: pairing?.transport,
+          version: "0.2.0",
         });
       if (url.pathname === "/api/pair" && req.method === "POST") {
         const input = await readJson(req);
-        const address = phoneAddress(input.address);
-        if (!/^[a-f0-9]{16}$/i.test(input.token ?? ""))
-          throw new Error(
-            "Enter the 16-character pairing code shown on the phone.",
-          );
-        const candidate = { address, token: input.token.toLowerCase() };
+        if (input.transport && !["lan", "usb"].includes(input.transport)) throw new Error("Choose Wi-Fi or USB.");
         const generation = ++pairGeneration;
-        const response = await upstream(
-          "/api/live",
-          "GET",
-          undefined,
-          candidate,
-        );
-        const state = await response.json();
-        if (typeof state.version !== "string")
-          throw new Error("That endpoint is not a Klobflow phone.");
-        if (generation !== pairGeneration)
-          throw new Error("Pairing was canceled.");
-        pairing = candidate;
-        return json(200, { ok: true, address });
+        const candidate = input.transport === "usb"
+          ? await usbConnect()
+          : { address: phoneAddress(input.address), transport: "lan" };
+        try {
+          const response = await upstream("/api/live", "GET", undefined, candidate);
+          const state = await response.json();
+          if (state.protocol !== 2 || typeof state.version !== "string")
+            throw new Error("Update the phone to Klobflow 0.2.0 or newer.");
+          if (generation !== pairGeneration) throw new Error("Connection was canceled.");
+          stopStreams();
+          await pairing?.close?.();
+          pairing = candidate;
+          return json(200, { ok: true, address: candidate.address, transport: candidate.transport });
+        } catch (e) { await candidate.close?.(); throw e; }
       }
       if (url.pathname === "/api/disconnect" && req.method === "POST") {
         await readJson(req);
         pairGeneration++;
+        stopStreams();
+        const previous = pairing;
         pairing = null;
+        await previous?.close?.();
         return json(200, { ok: true });
       }
       if (url.pathname === "/api/control" && req.method === "POST") {
         const body = await readJson(req);
         if (
-          !["config", "reset", "seed", "record", "stop"].includes(body.action)
+          !["config", "reset", "seed", "calibrate", "record", "stop"].includes(body.action)
         )
           throw new Error("Unknown control.");
         return json(
@@ -167,6 +172,22 @@ export function createCompanion() {
         req.method === "GET"
       )
         return json(200, await (await upstream(url.pathname)).json());
+      if (url.pathname === "/api/stream" && req.method === "GET") {
+        const controller = new AbortController();
+        streams.add(controller);
+        res.on("close", () => { controller.abort(); streams.delete(controller); });
+        const pair = pairing;
+        await pair?.refresh?.();
+        const response = await upstream("/api/stream", "GET", undefined, pair, controller.signal);
+        if (!response.headers.get("content-type")?.startsWith("application/x-klobflow-stream")) {
+          controller.abort(); throw new Error("Update Klobflow on the phone to enable streaming.");
+        }
+        req.socket.setNoDelay(true);
+        res.writeHead(200, { "Content-Type": "application/x-klobflow-stream", "X-Accel-Buffering": "no" });
+        res.flushHeaders();
+        await pipeline(Readable.fromWeb(response.body), res, { signal: controller.signal });
+        return;
+      }
       if (url.pathname === "/api/session" && req.method === "GET") {
         const id = url.searchParams.get("id");
         if (!/^klobflow-\d{13}$/.test(id ?? ""))
@@ -186,6 +207,7 @@ export function createCompanion() {
         "/app.mjs": ["app.mjs", "text/javascript"],
         "/style.css": ["style.css", "text/css"],
         "/demo.mjs": ["demo.mjs", "text/javascript"],
+        "/stream.mjs": ["stream.mjs", "text/javascript"],
       };
       if (req.method === "GET" && assets[url.pathname]) {
         const [file, mime] = assets[url.pathname];
@@ -200,11 +222,12 @@ export function createCompanion() {
         e.name === "TimeoutError" || e.message === "fetch failed";
       return json(e.status ?? (connectionError ? 502 : 400), {
         error: connectionError
-          ? "Cannot reach the phone. Check Wi-Fi, sharing, and that Klobflow is in the foreground."
+          ? "Cannot reach the phone. Check the USB cable or Wi-Fi, enable PC sharing, and reopen Klobflow."
           : e.message,
       });
     }
   });
+  server.on("close", () => { stopStreams(); pairing?.close?.(); });
   return server;
 }
 if (

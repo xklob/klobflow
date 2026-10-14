@@ -14,6 +14,10 @@ export const defaults = {
   trails: true,
   showGuide: true,
   symmetry: true,
+  showFeedback: true,
+  mirror: true,
+  planeCorners: [],
+  zoom: 0,
   facing: "front",
   fps: 60,
   timing: "tog-same",
@@ -80,7 +84,7 @@ export function demoFrame(config, time) {
     };
   });
   const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-  const distanceLine = (p, s) => {
+  const closestLine = (p, s) => {
     const dx = s.b[0] - s.a[0],
       dy = s.b[1] - s.a[1],
       t = Math.max(
@@ -90,14 +94,20 @@ export function demoFrame(config, time) {
           ((p[0] - s.a[0]) * dx + (p[1] - s.a[1]) * dy) / (dx * dx + dy * dy),
         ),
       );
-    return distance(p, [s.a[0] + dx * t, s.a[1] + dy * t]);
+    return [s.a[0] + dx * t, s.a[1] + dy * t];
   };
-  const error = (p) =>
-    config.mode === "circles"
-      ? Math.min(...circles.map((s) => Math.abs(distance(p, s.center) - r)))
-      : config.mode === "cube"
-        ? Math.min(...vertices.map((v) => distance(v, p)))
-        : Math.min(...lines.map((s) => distanceLine(p, s)));
+  const target = (p) => {
+    const options = config.mode === "circles" ? circles.map(s => {
+      const d = distance(p, s.center), v = d > 1e-9 ? [(p[0] - s.center[0]) / d, (p[1] - s.center[1]) / d] : [1, 0];
+      return [s.center[0] + v[0] * r, s.center[1] + v[1] * r];
+    }) : config.mode === "cube" ? vertices : lines.map(s => closestLine(p, s));
+    return options.sort((a, b) => distance(p, a) - distance(p, b))[0];
+  };
+  const error = (p) => distance(p, target(p));
+  const feedback = config.mode === "free" ? [] : staffs.flatMap(s => [s.a, s.b].map(tip => {
+    const dest = target(tip), value = distance(tip, dest) / (2 * r) * 100;
+    return { tip, target: dest, error: value, onTarget: value <= config.tolerance };
+  }));
   const deviation =
     config.mode === "free"
       ? null
@@ -113,6 +123,7 @@ export function demoFrame(config, time) {
     width,
     height,
     staffs,
+    feedback,
     config,
     currentConfig: config,
     guide: {

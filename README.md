@@ -2,7 +2,15 @@
 
 A native Android practice tool for double staves, with a local PC companion. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, or a projected cube, and inspect your practice in real time.
 
-**First release: experimental markerless tracking.** Camera recording and the full analysis pipeline are tested on an Android emulator and generated LED images. Accuracy with real LED staves, motion blur, occlusion, and Pixel 60 fps capture still needs physical practice validation. This is a measurement aid, not a universal technique grade.
+**Experimental markerless tracking.** Camera recording and the full analysis pipeline are tested on an Android emulator and generated LED images. Accuracy with real LED staves, motion blur, occlusion, and Pixel 60 fps capture still needs physical practice validation. This is a measurement aid, not a universal technique grade.
+
+## Screenshots
+
+Generated LED demo through the native tracker and companion demo. These illustrate the interface, not real-practice accuracy.
+
+<img src="docs/screenshots/android-practice.png" alt="Android practice view with explicit tip-alignment coaching and correction arrows" width="340">
+
+![Desktop practice view with alignment guidance, zoom, and camera controls](docs/screenshots/web-practice.png)
 
 ## Install
 
@@ -19,7 +27,7 @@ Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/re
 5. Start slowly. Stave outlines show tracking; low confidence pauses the scores. Trails show recent tip motion.
 6. **Record practice** saves a silent MP4 to `Movies/Klobflow` and per-frame analysis privately in the app. **Sessions** plays the video or exports the JSONL measurements. The overlay is live and is **not burned into the MP4**.
 
-Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fails. CameraX treats frame rate as a target, not a guarantee. Analysis/display run independently at up to approximately 30 fps; PC previews are capped at approximately 10 fps. A higher video frame rate does not eliminate motion blur. Camera hardware, exposure, and processing load affect the actual rates.
+Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fails. CameraX treats frame rate as a target, not a guarantee. Analysis/display run independently at up to approximately 30 fps; The PC preview continuously streams matching JPEG frames and analysis at the available analysis rate, with a measured preview-fps readout and no 10 fps polling cap. A higher video frame rate does not eliminate motion blur. Camera hardware, exposure, and processing load affect the actual rates.
 
 ## PC companion
 
@@ -30,17 +38,35 @@ cd companion
 npm start
 ```
 
-Open **http://localhost:8788**. On the phone, enable **PC sharing** and keep Klobflow in the foreground. Enter its displayed IPv4 address and pairing code on the PC. Both devices need LAN connectivity; guest Wi-Fi client isolation can block this. The phone listens on TCP 8787. The PC server listens only on loopback.
+Open **http://localhost:8788**. On the phone, enable **PC sharing** and keep Klobflow in the foreground. Choose **USB cable** for a wired connection, or **Wi-Fi / LAN** and enter its displayed IPv4 address. No pairing code is required. Wi-Fi needs LAN connectivity; guest network client isolation can block this. The phone listens on TCP 8787. The PC server listens only on loopback.
 
 On Caleb's WSL machine, `./scripts/start-companion.sh` starts the local service if necessary. Windows can access the same localhost URL. The initial setup runs it as a user service without enabling startup at boot.
 
-The phone performs all real camera processing, detection, tracking, and scoring. The PC relays the preview and controls, draws the phone's geometry, shows a 30-second error chart, and can review/export saved analysis. No video is sent to an external service. Sharing is explicit and uses a fresh 64-bit token each time; it stops when the app leaves the foreground. Traffic is plain HTTP on your LAN, so use a trusted network. The pairing code stays in the local server's memory and is never placed in URLs or browser storage.
+The phone performs all real camera processing, detection, tracking, and scoring. The PC relays the preview and controls, draws the phone's geometry, shows a 30-second error chart, and can review/export saved analysis. No video is sent to an external service. Sharing is explicit, pauses while the app is in the background, and automatically resumes when you reopen it. The camera also resumes automatically. While sharing is enabled, anyone on the LAN can access the preview and controls; use a trusted network. No pairing code is used.
+
+### USB cable
+
+Install Android platform-tools if needed. Connect a data cable, enable **USB debugging** in Android Developer options, and allow this PC in Android's prompt. Keep Klobflow open with sharing enabled, then choose **USB cable** on the PC. The companion automatically creates a local ADB tunnel for video, analysis, and controls. It reconnects after the app is reopened or the cable is reattached. Only one USB Android phone should be attached. Set `KLOBFLOW_ADB` if adb is outside PATH.
+
+On WSL, Windows owns the USB device. The companion finds Windows adb and uses Windows curl over a local process pipe, keeping the forwarded camera port on Windows loopback. No firewall or network-mode changes are needed. USB removes the Wi-Fi hop; capture, analysis, encoding, and display still contribute latency.
+
+### Seeing and correcting alignment
+
+The large cue above the preview says **Tips on guide**, **Adjust highlighted tips**, or why scoring is paused. Lime and purple lines identify the two tracked staves. White guides show the target. Green rings mark tips within tolerance; orange arrows point off-target tips toward the nearest white target rings. These are local geometric corrections, not automatic trick instruction. **Alignment arrows** toggles the cues.
+
+Both cameras are mirrored by default, including the streamed preview and recorded video. **Mirror camera** switches this off. **Zoom** controls the camera's actual zoom range, and **Widest** uses its hardware-reported minimum, which may be below 1×. Switching cameras resets to widest; your chosen zoom otherwise survives reopening.
+
+### Compensating for an off-angle camera
+
+Use **Calibrate angle** on the phone or **Calibrate viewing angle** on the PC. Mark the corners of a real rectangle in your movement plane: top left → top right → bottom right → bottom left, as seen on screen. Enter physical width ÷ height, using 1 for a square. A four-point homography projects the guides onto this plane and rectifies staff endpoints before calculating distance, angle, symmetry, and speed variation. All four tips must be within the calibrated area for a score.
+
+Calibration is manual. It does not infer the plane from your body, recover depth, or remove wide-angle lens distortion. Use a rectangle in the actual movement plane, keep the camera still, and recalibrate after moving it. Changing camera, zoom, mirroring, or device orientation clears calibration. **Clear angle** restores ordinary image-space scoring.
 
 Use **Explore a demo** to inspect the interface without a phone. That preview is visibly labeled as generated motion. The native Android demo runs generated LED frames through the real detector. Neither is evidence of real-world tracking accuracy.
 
 ## What the numbers mean
 
-All coordinates use square-pixel image geometry, normalized by the shorter image dimension. All distance errors use the guide's front-square width (or circle diameter) as the denominator.
+Tracking coordinates use square-pixel image geometry, normalized by the shorter image dimension. With perspective calibration, scores use rectified plane coordinates. All distance errors use the guide's front-square width (or circle diameter) as the denominator.
 
 | Measurement | Definition |
 | --- | --- |

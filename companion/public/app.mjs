@@ -1,4 +1,5 @@
 import { defaults, demoFrame } from "./demo.mjs";
+import { FrameDecoder } from "./stream.mjs";
 const $ = (id) => document.getElementById(id);
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
@@ -12,8 +13,11 @@ let config = { ...defaults },
   lastTime = null,
   lastArrival = 0,
   seeding = false,
+  calibrating = false,
+  transport = "lan",
   picks = [],
   lastImage = null;
+let streamController = null, nextStreamAt = 0, arrivals = [], previewFps = 0, lastConfigText = "";
 let trail = [],
   history = [];
 const descriptions = {
@@ -48,16 +52,20 @@ function connected(value) {
   $("connection").replaceChildren(
     Object.assign(document.createElement("i"), {}),
     document.createTextNode(
-      value ? "PHONE CONNECTED" : demo ? "DEMO MODE" : "PHONE NOT CONNECTED",
+      value ? (transport === "usb" ? "USB CONNECTED" : "WI-FI CONNECTED") : demo ? "DEMO MODE" : "PHONE NOT CONNECTED",
     ),
   );
   $("pair-open").textContent = value ? "Disconnect" : "Connect phone ↗";
+  if (!value) stopStream();
   enableControls();
 }
 function enableControls() {
   document
     .querySelectorAll("[data-config], [data-mode]")
     .forEach((e) => (e.disabled = !(paired || demo) || !!replay));
+  $("calibrate").disabled = !paired || !!replay || !current;
+  $("clear-calibration").disabled = !paired || !!replay || !config.planeCorners?.length;
+  $("zoom-wide").disabled = !paired || !!replay || !current?.cameraReady;
   $("reset").disabled = !paired || !!replay;
   $("seed").disabled = !paired || !!replay;
   $("record").disabled =
@@ -68,6 +76,9 @@ function enableControls() {
     current?.finalizing;
 }
 function syncConfig(c) {
+  const text = JSON.stringify(c);
+  if (text === lastConfigText) return;
+  lastConfigText = text;
   config = { ...config, ...c };
   document.querySelectorAll("[data-config]").forEach((el) => {
     const key = el.dataset.config;
@@ -81,6 +92,7 @@ function syncConfig(c) {
     .forEach((b) =>
       b.classList.toggle("active", b.dataset.mode === config.mode),
     );
+  $("calibration-info").textContent = config.planeCorners?.length ? "Perspective correction active. Measurements use the calibrated plane. Keep all four tips inside it. Recalibrate after moving the camera." : "Mark a rectangle in your movement plane, clockwise from top left. Use width ÷ height = 1 for a square. Zoom, mirror, camera, or rotation changes clear calibration.";
   $("mode-description").textContent = descriptions[config.mode];
   $("depth-control").hidden = config.mode !== "cube";
   $("circles-control").hidden = config.mode !== "circles";
@@ -157,7 +169,7 @@ document.querySelectorAll("[data-config]").forEach((el) => {
 function openPair() {
   $("pair-error").textContent = "";
   $("pair-dialog").showModal();
-  $("phone-address").focus();
+  $("transport").focus();
 }
 $("pair-open").onclick = async () => {
   if (paired) {
@@ -167,17 +179,25 @@ $("pair-open").onclick = async () => {
   } else openPair();
 };
 $("connect-stage").onclick = openPair;
+$("transport").onchange = () => {
+  const usb = $("transport").value === "usb";
+  $("address-field").hidden = usb; $("phone-address").required = !usb; $("usb-help").hidden = !usb;
+};
+$("zoom").oninput = () => { document.querySelector('output[for="zoom"]').textContent = `${Number($("zoom").value).toFixed(2)}×`; };
+$("zoom").onchange = () => patch({ zoom: Number($("zoom").value) });
+$("zoom-wide").onclick = () => patch({ zoom: 0 });
 $("cancel-pair").onclick = () => $("pair-dialog").close();
 $("pair-form").onsubmit = async (e) => {
   e.preventDefault();
   $("pair-submit").disabled = true;
   $("pair-error").textContent = "";
   try {
-    await api("/api/pair", {
+    const result = await api("/api/pair", {
       address: $("phone-address").value.trim(),
-      token: $("phone-token").value.trim(),
+      transport: $("transport").value,
     });
-    $("phone-token").value = "";
+    transport = result.transport;
+    stopStream();
     $("pair-dialog").close();
     demo = false;
     replay = null;
@@ -200,6 +220,7 @@ function resetView() {
   trail = [];
   history = [];
   seeding = false;
+  calibrating = false;
   picks = [];
   $("empty-state").hidden = false;
   $("stage-badge").hidden = true;
@@ -208,6 +229,7 @@ function resetView() {
   $("live-dot").style.background = "";
   $("seed-message").hidden = true;
   setMetrics(null);
+  setCoaching(null);
   drawEmpty();
   drawChart();
 }
@@ -255,14 +277,24 @@ $("record").onclick = async () => {
   }
 };
 $("seed").onclick = () => {
+  calibrating = false;
+  $("calibrate").textContent = "Calibrate viewing angle";
   seeding = !seeding;
   picks = [];
   $("seed").textContent = seeding ? "Cancel selection" : "Identify staves";
   $("seed-message").hidden = !seeding;
   $("seed-message").textContent = "Hold staves still. Tap staff A, end 1.";
 };
+$("calibrate").onclick = () => {
+  calibrating = !calibrating; seeding = false; picks = [];
+  $("seed").textContent = "Identify staves";
+  $("calibrate").textContent = calibrating ? "Cancel calibration" : "Calibrate viewing angle";
+  $("seed-message").hidden = !calibrating;
+  $("seed-message").textContent = "Rectangle in your movement plane: tap top left.";
+};
+$("clear-calibration").onclick = () => patch({ planeCorners: [] });
 canvas.addEventListener("click", async (e) => {
-  if (!seeding || !current) return;
+  if ((!seeding && !calibrating) || !current) return;
   const rect = canvas.getBoundingClientRect(),
     scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
   const x =
@@ -273,21 +305,24 @@ canvas.addEventListener("click", async (e) => {
       (canvas.height * scale);
   if (x < 0 || x > 1 || y < 0 || y > 1) return;
   picks.push([x, y]);
+  render(current, lastImage);
   if (picks.length === 4) {
     try {
-      await api("/api/control", { action: "seed", points: picks });
+      await api("/api/control", calibrating ? { action: "calibrate", points: picks, aspect: Number($("plane-aspect").value) } : { action: "seed", points: picks });
       trail = [];
-      message("Staff selection applied. Move slowly while tracking settles.");
+      message(calibrating ? "Viewing angle calibrated. Keep the camera fixed and the staves in this plane." : "Staff selection applied. Move slowly while tracking settles.");
     } catch (err) {
       message(err.message);
     }
     seeding = false;
+    calibrating = false;
     picks = [];
+    $("calibrate").textContent = "Calibrate viewing angle";
     $("seed-message").hidden = true;
     $("seed").textContent = "Identify staves";
   } else
     $("seed-message").textContent =
-      `Hold still. Tap staff ${picks.length < 2 ? "A" : "B"}, end ${(picks.length % 2) + 1}.`;
+      calibrating ? `Tap ${["top left", "top right", "bottom right", "bottom left"][picks.length]}.` : `Hold still. Tap staff ${picks.length < 2 ? "A" : "B"}, end ${(picks.length % 2) + 1}.`;
 });
 function drawEmpty() {
   canvas.width = 960;
@@ -310,8 +345,8 @@ function drawEmpty() {
   }
 }
 function render(frame, image) {
-  canvas.width = frame.width;
-  canvas.height = frame.height;
+  if (canvas.width !== frame.width) canvas.width = frame.width;
+  if (canvas.height !== frame.height) canvas.height = frame.height;
   const w = canvas.width,
     h = canvas.height,
     u = Math.min(w, h),
@@ -358,6 +393,7 @@ function render(frame, image) {
       );
       ctx.stroke();
     }
+    for (const path of g.paths || []) for (let i = 1; i < path.length; i++) line(path[i - 1], path[i], "#e9f1e266", 1.5);
     ctx.setLineDash([]);
     for (const p of g.vertices) {
       ctx.fillStyle = "#c6edaa";
@@ -406,12 +442,32 @@ function render(frame, image) {
     );
   });
   ctx.globalAlpha = 1;
+  if (c.showFeedback !== false) for (const cue of frame.feedback || []) {
+    const color = cue.onTarget ? "#b6f36b" : "#ffb45e";
+    const a = cue.tip, b = cue.target;
+    ctx.strokeStyle = color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(a[0] * u, a[1] * u, 10, 0, Math.PI * 2); ctx.stroke();
+    if (!cue.onTarget) {
+      line(a, b, "#000b", 6); line(a, b, color, 3);
+      const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      for (const d of [-0.5, 0.5]) line(b, [b[0] - Math.cos(angle + d) * 12 / u, b[1] - Math.sin(angle + d) * 12 / u], color, 3);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b[0] * u, b[1] * u, 5, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
   for (const p of picks) {
     ctx.strokeStyle = "#fff";
     ctx.beginPath();
     ctx.arc(p[0] * w, p[1] * h, 8, 0, Math.PI * 2);
     ctx.stroke();
   }
+}
+function setCoaching(f) {
+  const good = f?.staffs?.filter(s => s && s.confidence >= 0.55).length || 0;
+  const cues = f?.feedback || [], aligned = cues.length === 4 && cues.every(c => c.onTarget);
+  const free = f?.config?.mode === "free";
+  $("coaching").classList.toggle("aligned", aligned); $("coaching").classList.toggle("adjust", cues.length > 0 && !aligned);
+  $("coaching-title").textContent = good < 2 ? "Keep both staves visible" : free ? "Free flow · no alignment target" : !cues.length ? "Alignment cues paused" : aligned ? "✓ Tips on guide" : "Adjust highlighted tips";
+  $("coaching-detail").textContent = good < 2 ? `${good} / 2 staves tracked. Scores pause until both are clear.` : free ? "Choose Grid, Circles, or Cube for alignment cues." : !cues.length ? "Keep all four tips inside the calibrated plane. Saved older sessions may not include cues." : aligned ? `All four tips are within the ${f.config.tolerance}% target. Keep tracing the guide.` : `${cues.filter(c => !c.onTarget).length} / 4 tips outside target. Follow orange arrows toward white rings.`;
 }
 function setMetrics(metrics) {
   for (const [key, suffix] of [
@@ -499,7 +555,9 @@ function drawChart() {
   chartCtx.stroke();
 }
 function acceptFrame(f, image = null) {
+  if ((seeding || calibrating) && current) { image?.close?.(); return; }
   current = f;
+  if (lastImage && lastImage !== image) lastImage.close?.();
   lastImage = image;
   $("empty-state").hidden = true;
   $("stage-badge").hidden = f.source !== "demo" && !replay;
@@ -524,18 +582,24 @@ function acceptFrame(f, image = null) {
       : `${good} / 2 staves visible · scores paused`;
   $("camera-info").textContent = replay
     ? `Sample at ${(f.elapsedMs / 1000).toFixed(2)}s`
-    : `${f.status ?? "Phone camera"} · ${Math.round(f.analysisFps ?? 0)} analysis fps`;
+    : `${f.status ?? "Phone camera"} · ${Math.round(f.analysisFps ?? 0)} analysis fps · ${Math.round(previewFps)} preview fps`;
   $("record").classList.toggle("recording", !!f.recording);
   $("record").textContent = f.finalizing
     ? "Saving…"
     : f.recording
       ? `■ Stop · ${Math.floor(f.elapsedMs / 1000)}s`
       : "● Record practice";
-  if (!seeding) {
+  if (!seeding && !calibrating) {
     trail.push(f);
     trail = trail.filter((t) => f.time - t.time < 1400).slice(-45);
     render(f, image);
   }
+  if (f.zoom && document.activeElement !== $("zoom")) {
+    $("zoom").min = f.zoom.min; $("zoom").max = f.zoom.max; $("zoom").value = f.zoom.ratio;
+    $("zoom").disabled = !f.cameraReady || f.zoom.min === f.zoom.max || !!replay;
+    document.querySelector('output[for="zoom"]').textContent = `${f.zoom.ratio.toFixed(2)}×`;
+  }
+  setCoaching(f);
   setMetrics(f.metrics);
   if (!replay) {
     history.push(f);
@@ -620,6 +684,7 @@ function loadAnalysis(text) {
     )
       throw new Error("Invalid analysis frame.");
   }
+  stopStream();
   replay = frames;
   history = frames;
   trail = [];
@@ -667,41 +732,63 @@ $("return-live").onclick = () => {
   if (!paired && !demo) resetView();
   enableControls();
 };
-async function loop() {
+function stopStream() {
+  streamController?.abort(); streamController = null; nextStreamAt = 0;
+}
+async function receiveStream() {
+  const controller = new AbortController(); streamController = controller;
+  const decoder = new FrameDecoder();
+  let pending = null, drawing = false;
+  const drawLatest = async () => {
+    if (drawing) return;
+    drawing = true;
+    try {
+      while (pending && !controller.signal.aborted) {
+        const packet = pending; pending = null;
+        const image = await createImageBitmap(new Blob([packet.jpeg], { type: "image/jpeg" }));
+        if (controller.signal.aborted) { image.close(); break; }
+        const now = performance.now(); arrivals.push(now); arrivals = arrivals.filter(t => now - t < 1500);
+        previewFps = arrivals.length > 1 ? (arrivals.length - 1) * 1000 / (now - arrivals[0]) : 0;
+        syncConfig(packet.frame.currentConfig || packet.frame.config);
+        acceptFrame(packet.frame, image);
+        if (packet.frame.error) message(packet.frame.error);
+      }
+    } catch (e) { if (!controller.signal.aborted) message(e.message); }
+    finally { drawing = false; }
+  };
   try {
-    if (!replay && demo) {
-      const f = demoFrame(config, performance.now());
-      acceptFrame(f);
-    } else if (paired && !replay) {
-      const f = await api("/api/live");
-      if (f.time && f.time !== lastTime && f.image) {
-        lastTime = f.time;
-        lastArrival = Date.now();
-        const image = new Image();
-        image.src = `data:image/jpeg;base64,${f.image}`;
-        await image.decode();
-        syncConfig(f.currentConfig ?? f.config);
-        acceptFrame(f, image);
-        if (f.error) message(f.error);
-      } else if (Date.now() - lastArrival > 2000) {
-        setMetrics(null);
-        $("tracking-label").textContent = "Waiting for fresh camera frames…";
-        $("source-label").textContent = "CAMERA PAUSED";
-        $("record").disabled = true;
+    const response = await fetch("/api/stream", { signal: controller.signal });
+    if (!response.ok) throw new Error((await response.json()).error || "Camera stream unavailable");
+    message("");
+    const reader = response.body.getReader();
+    while (!controller.signal.aborted) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error("Camera paused. Reopen Klobflow to resume.");
+      const packets = decoder.push(value);
+      if (packets.length) {
+        pending = packets.at(-1); lastArrival = Date.now(); drawLatest();
       }
     }
   } catch (e) {
-    if (paired) {
-      setMetrics(null);
-      $("tracking-label").textContent =
-        "Connection interrupted · showing last frame";
-      $("source-label").textContent = "DISCONNECTED";
-      $("record").disabled = true;
-      message(e.message);
+    if (!controller.signal.aborted) {
+      setMetrics(null); setCoaching(null);
+      $("tracking-label").textContent = "Reconnecting · reopen Klobflow on your phone";
+      $("source-label").textContent = "CAMERA PAUSED";
+      $("record").disabled = true; message(e.message);
     }
   } finally {
-    setTimeout(loop, 100);
+    controller.abort();
+    if (streamController === controller) { streamController = null; nextStreamAt = Date.now() + 1000; }
   }
+}
+function loop() {
+  if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
+  if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
+  if (paired && !replay && Date.now() - lastArrival > 2000) {
+    setMetrics(null); setCoaching(null); $("record").disabled = true;
+    $("tracking-label").textContent = "Waiting for fresh camera frames…";
+  }
+  setTimeout(loop, 33);
 }
 syncConfig(config);
 enableControls();
@@ -710,6 +797,7 @@ drawChart();
 api("/api/status")
   .then((s) => {
     if (s.paired) {
+      transport = s.transport;
       connected(true);
       loadSessions();
     }

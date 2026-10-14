@@ -114,6 +114,11 @@
               step="0.02"
               value="1"
           /></label>
+          <label class="range-label">Plane width ÷ height <input id="plane-aspect" type="number" min="0.25" max="4" step="0.01" value="1"></label>
+          <button id="calibrate" class="subtle" disabled>Calibrate viewing angle</button>
+          <button id="clear-calibration" class="subtle" disabled>Clear calibration</button>
+          <p id="calibration-info" class="small-note">For an off-angle camera, mark the four corners of a rectangle in your movement plane. Use 1 for a square. Recalibrate after moving the camera.</p>
+          <label class="toggle"><input type="checkbox" data-config="showFeedback" checked><span>Alignment arrows</span></label>
           <label class="range-label"
             >Target tolerance <output for="tolerance">4%</output
             ><input
@@ -164,6 +169,7 @@
               </button>
             </div>
           </div>
+          <div id="coaching" class="coaching" role="status"><strong id="coaching-title">Keep both staves visible</strong><span id="coaching-detail">Alignment cues appear when both staves are tracked.</span></div>
           <div id="stage">
             <canvas
               id="view"
@@ -187,6 +193,7 @@
             <div id="stage-badge" hidden>DEMO · GENERATED MOTION</div>
             <div id="seed-message" hidden></div>
           </div>
+          <p class="overlay-key"><span class="staff-a">Lime</span> / <span class="staff-b">purple</span> = staves · white = guide<br>Green rings = on target · <span class="correction">orange arrows = move tips toward white targets</span></p>
           <div class="capture-bar">
             <div>
               <strong id="tracking-label">Waiting for your phone</strong
@@ -256,10 +263,14 @@
           </div>
           <label class="select-label"
             >Camera<select data-config="facing">
-              <option value="front">Selfie · mirrored</option>
-              <option value="back">Rear · high quality</option>
+              <option value="front">Selfie</option>
+              <option value="back">Rear</option>
             </select></label
           >
+          <label class="toggle"><input type="checkbox" data-config="mirror" checked><span>Mirror camera</span></label>
+          <label class="range-label">Zoom <output for="zoom">Widest</output><input id="zoom" type="range" min="1" max="1" step="0.01" value="1" disabled></label>
+          <button id="zoom-wide" class="subtle" disabled>Widest angle</button>
+          <p class="small-note">Widest supported angle by default. Changing zoom or mirror clears angle calibration.</p>
           <label class="select-label"
             >Recording target<select data-config="fps">
               <option value="60">60 fps</option>
@@ -378,28 +389,10 @@
       <form id="pair-form">
         <p class="eyebrow">A BIGGER PRACTICE SPACE</p>
         <h2>Bring your phone into the room.</h2>
-        <p>
-          Enable PC sharing in Klobflow. Enter the address and pairing code
-          displayed on your phone.
-        </p>
-        <label
-          >Phone address<input
-            id="phone-address"
-            placeholder="192.168.1.20:8787"
-            required
-            autocomplete="off"
-            inputmode="url" /></label
-        ><label
-          >Pairing code<input
-            id="phone-token"
-            placeholder="16 characters from the phone"
-            minlength="16"
-            maxlength="16"
-            required
-            autocomplete="off"
-            spellcheck="false"
-            type="password"
-        /></label>
+        <p>Enable PC sharing in Klobflow. Connect over USB or Wi-Fi. No pairing code needed.</p>
+        <label>Connection<select id="transport"><option value="usb">USB cable · lower network delay</option><option value="lan">Wi-Fi / LAN</option></select></label>
+        <label id="address-field" hidden>Phone address<input id="phone-address" placeholder="192.168.1.20:8787" autocomplete="off" inputmode="url"></label>
+        <p id="usb-help" class="small-note">Connect a data cable, enable USB debugging in Android Developer options, and allow this PC on your phone. Keep Klobflow open with sharing enabled.</p>
         <p id="pair-error" role="alert"></p>
         <div class="button-row">
           <button type="button" id="cancel-pair" class="subtle">Cancel</button
@@ -408,8 +401,7 @@
           </button>
         </div>
         <p class="small-note">
-          Use a trusted LAN. The code stays in this local server's memory.
-          Nothing is uploaded to a cloud service.
+          While PC sharing is on, anyone on your LAN can connect. Use a trusted network. Nothing is uploaded to a cloud service.
         </p>
       </form>
     </dialog>

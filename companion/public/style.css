@@ -732,3 +732,16 @@ dialog .button-row {
     display: block;
   }
 }
+
+.coaching { padding: 15px 18px; border: 1px solid #444c5a; background: #242830; border-radius: 10px; margin-bottom: 12px; display: grid; gap: 5px; }
+.coaching strong { font-size: clamp(18px, 1.7vw, 26px); color: #c9bbff; }
+.coaching span { font-size: 13px; line-height: 1.5; }
+.coaching.aligned { background: #263e1d; border-color: #617c46; }
+.coaching.aligned strong { color: var(--lime); }
+.coaching.adjust { background: #42301b; border-color: #7d5a31; }
+.coaching.adjust strong, .correction { color: #ffbd77; }
+.overlay-key { font-size: 12px; line-height: 1.7; color: var(--muted); margin: 12px 0; }
+.staff-a { color: var(--lime); } .staff-b { color: var(--purple); }
+#calibrate, #clear-calibration { width: 100%; margin-top: 8px; }
+
+#seed-message, #stage-badge { pointer-events: none; }

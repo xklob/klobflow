@@ -1,5 +1,9 @@
 package com.caleb.klobflow
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.camera.core.Camera
+import androidx.camera.core.MirrorMode
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -31,7 +35,6 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import java.security.SecureRandom
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
@@ -39,11 +42,12 @@ import kotlin.math.*
 data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String) {
     fun json()=JSONObject().put("time",time).put("width",width).put("height",height)
         .put("staffs",JSONArray(staffs.map {it?.json() ?: JSONObject.NULL})).put("metrics",metrics.json())
-        .put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source)
+        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source)
 }
 data class FlowUi(val config:Config=Config(),val bitmap:Bitmap?=null,val frame:Frame?=null,
     val status:String="Ready when you are",val cameraReady:Boolean=false,val demo:Boolean=false,
-    val recording:Boolean=false,val finalizing:Boolean=false,val elapsed:Long=0,val sharing:Boolean=false,val pairCode:String="",val addresses:List<String> = emptyList(),
+    val recording:Boolean=false,val finalizing:Boolean=false,val elapsed:Long=0,val sharing:Boolean=false,val addresses:List<String> = emptyList(),
+    val zoomMin:Float=1f,val zoomMax:Float=1f,val zoomRatio:Float=1f,
     val sessions:List<JSONObject> = emptyList(),val error:String?=null)
 
 class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoCloseable {
@@ -56,6 +60,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private val main=Handler(Looper.getMainLooper())
     private var provider:ProcessCameraProvider?=null
     private var capture:VideoCapture<Recorder>?=null
+    private var camera:Camera?=null
+    val stream=FrameStream()
     private var activeAnalysis:ImageAnalysis?=null
     @Volatile private var active=false
     private var recording:Recording?=null
@@ -66,7 +72,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private val sessionsDir=File(context.filesDir,"sessions").apply {mkdirs()}
     private val detector=StaffDetector();private val tracker=StaffTracker();private val scorer=Scorer()
     private val processing=Any();private val sessionLock=Any()
-    private var lastTime=0L;private var fps=0.0;private var lastJpegTime=0L
+    private var lastTime=0L;private var fps=0.0
     @Volatile private var packet="{}"
     @Volatile private var demo=false
     @Volatile private var closed=false
@@ -74,10 +80,18 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     @Volatile private var generation=0
     init {refreshSessions()}
 
+    fun foreground() {
+        rotationChanged(context.getSystemService(android.view.WindowManager::class.java).defaultDisplay.rotation)
+        if(ui.value.demo)startDemo()
+        else if(ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED)bindCamera()
+        if(preferences.getBoolean("sharingEnabled",false))runCatching {startSharing()}.onFailure {e->mutable.update {it.copy(error=e.message)}}
+    }
     fun bindCamera() {
         check(Looper.myLooper()==Looper.getMainLooper())
+        if(closed)return
+        camera?.cameraInfo?.zoomState?.removeObservers(owner)
         demo=false;active=true;generation++;val currentGeneration=generation
-        mutable.update {it.copy(demo=false,cameraReady=false,error=null,status="Opening ${config.facing} camera…")}
+        mutable.update {it.copy(demo=false,cameraReady=false,frame=null,bitmap=null,error=null,status="Opening ${config.facing} camera…")}
         val future=ProcessCameraProvider.getInstance(context)
         future.addListener({
             if(closed || demo || currentGeneration!=generation)return@addListener
@@ -89,7 +103,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                 val analysis=ImageAnalysis.Builder().setTargetRotation(rotation).setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setResolutionSelector(ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(Size(640,480),ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)).build()).build()
                 activeAnalysis=analysis
-                val mirrored=config.facing=="front"
+                val mirrored=config.mirror
                 analysis.setAnalyzer(executor){ image ->
                     try {
                         if(!demo && !closed && active && currentGeneration==generation) analyzeImage(image,mirrored,currentGeneration)
@@ -100,10 +114,12 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                 for((quality,target) in listOf(Quality.FHD to config.fps,Quality.HD to config.fps,Quality.HD to 30,Quality.SD to 30).distinct()) {
                     try {
                         val recorder=Recorder.Builder().setQualitySelector(QualitySelector.from(quality,FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))).build()
-                        val video=VideoCapture.Builder(recorder).setTargetRotation(rotation).setTargetFrameRate(Range(target,target)).build()
-                        p.bindToLifecycle(owner,selector,analysis,video);capture=video;bound=true
+                        val video=VideoCapture.Builder(recorder).setMirrorMode(if(mirrored)MirrorMode.MIRROR_MODE_ON else MirrorMode.MIRROR_MODE_OFF).setTargetRotation(rotation).setTargetFrameRate(Range(target,target)).build()
+                        camera=p.bindToLifecycle(owner,selector,analysis,video);capture=video;bound=true
+                        camera!!.cameraInfo.zoomState.observe(owner){z->mutable.update {it.copy(zoomMin=z.minZoomRatio,zoomMax=z.maxZoomRatio,zoomRatio=z.zoomRatio)}}
+                        applyZoom()
                         val desc=when(quality){Quality.FHD->"1080p";Quality.HD->"720p";else->"480p"}
-                        mutable.update {it.copy(cameraReady=true,status="$desc · $target fps target · ${if(mirrored)"mirrored selfie" else "rear camera"}")}
+                        mutable.update {it.copy(cameraReady=true,status="$desc · $target fps target · ${if(mirrored)"mirrored ${config.facing} camera" else "${config.facing} camera"}")}
                         break
                     } catch(e:Exception){last=e;p.unbindAll()}
                 }
@@ -146,10 +162,11 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                     catch(e:Exception){main.post {mutable.update {it.copy(error="Telemetry could not be saved: ${e.message}")};stopRecording()}}
                 }
             }
-            if(ui.value.sharing && now-lastJpegTime>=100) {
+            if(ui.value.sharing) {
                 val bytes=ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.JPEG,65,bytes)
-                packet=frame.json().put("image",android.util.Base64.encodeToString(bytes.toByteArray(),android.util.Base64.NO_WRAP)).toString()
-                lastJpegTime=now
+                if(!active || streamGeneration!=generation || !ui.value.sharing)return
+                packet=frame.json().toString()
+                stream.publish(liveJson().toString(),bytes.toByteArray())
             }
         }
     }
@@ -177,12 +194,14 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private var demoScheduled=false
     fun updateConfig(patch:JSONObject) {
         val next=config.patch(patch)
-        val cameraChange=next.facing!=config.facing || next.fps!=config.fps
+        val cameraChange=next.facing!=config.facing || next.fps!=config.fps || next.mirror!=config.mirror
+        val zoomChange=next.zoom!=config.zoom
         require(!(cameraChange && (ui.value.recording || ui.value.finalizing))){"Stop recording before changing camera or frame rate."}
         synchronized(processing){config=next;scorer.reset()}
         preferences.edit().putString("config",next.json().toString()).apply()
         mutable.update {it.copy(config=next)}
-        if(cameraChange && !demo)bindCamera()
+        if(cameraChange && !demo && active)bindCamera()
+        else if(zoomChange && !demo && active)applyZoom()
     }
     fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();lastTime=0;fps=0.0}}
     fun seed(points:List<P>) {
@@ -232,17 +251,28 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         }catch(e:Exception){recording=null;sessionId=null;mutable.update {it.copy(recording=false,error=e.message)};throw e}
     }
     fun stopRecording(){recording?.let {mutable.update {s->s.copy(recording=false,finalizing=true)};it.stop()}}
-    fun share(enabled:Boolean) {
-        if(!enabled){server?.stop();server=null;packet="{}";mutable.update {it.copy(sharing=false,pairCode="",addresses=emptyList())};return}
-        if(server!=null)return
-        val random=ByteArray(8).also {SecureRandom().nextBytes(it)}
-        val token=random.joinToString(""){"%02x".format(it)}
-        val instance=PhoneServer(this,token)
-        try {instance.start(5000,false);server=instance;mutable.update {it.copy(sharing=true,pairCode=token,addresses=lanAddresses(),error=null)}}
-        catch(e:Exception){instance.stop();throw IllegalStateException("Could not start local sharing: ${e.message}")}
+    private fun applyZoom() {
+        val c=camera ?: return
+        val z=c.cameraInfo.zoomState.value ?: return
+        val ratio=if(config.zoom==0.0)z.minZoomRatio else config.zoom.toFloat().coerceIn(z.minZoomRatio,z.maxZoomRatio)
+        val request=c.cameraControl.setZoomRatio(ratio)
+        request.addListener({runCatching {request.get()}.onFailure {e->if(active && camera===c)mutable.update {it.copy(error="Could not change zoom: ${e.cause?.message ?: e.message}")}}},ContextCompat.getMainExecutor(context))
     }
+    fun share(enabled:Boolean) {
+        if(enabled)startSharing() else stopSharing()
+        preferences.edit().putBoolean("sharingEnabled",enabled).apply()
+    }
+    private fun startSharing() {
+        if(server!=null)return
+        val instance=PhoneServer(this)
+        stream.start()
+        try {instance.start(5000,false);server=instance;mutable.update {it.copy(sharing=true,addresses=lanAddresses(),error=null)}}
+        catch(e:Exception){stream.stop();instance.stop();throw IllegalStateException("Could not start local sharing: ${e.message}")}
+    }
+    private fun stopSharing(){stream.stop();server?.stop();server=null;packet="{}";mutable.update {it.copy(sharing=false,addresses=emptyList())}}
     private fun lanAddresses():List<String> = runCatching {NetworkInterface.getNetworkInterfaces().toList().flatMap {it.inetAddresses.toList()}.filterIsInstance<Inet4Address>().filter {!it.isLoopbackAddress && !it.isLinkLocalAddress}.map {"${it.hostAddress}:8787"}}.getOrDefault(emptyList())
     fun liveJson():JSONObject = JSONObject(packet).put("status",ui.value.status).put("recording",ui.value.recording).put("finalizing",ui.value.finalizing).put("elapsedMs",ui.value.elapsed)
+        .put("protocol",2).put("zoom",JSONObject().put("min",ui.value.zoomMin).put("max",ui.value.zoomMax).put("ratio",ui.value.zoomRatio))
         .put("currentConfig",config.json()).put("error",ui.value.error ?: JSONObject.NULL).put("version",BuildConfig.VERSION_NAME).put("cameraReady",ui.value.cameraReady)
     fun sessionsJson()=JSONArray(ui.value.sessions)
     fun sessionFile(id:String):File {require(id.matches(Regex("klobflow-[0-9]{13}"))){"Invalid session"};return File(sessionsDir,"$id.jsonl").also {require(it.isFile){"Session unavailable"}}}
@@ -250,6 +280,13 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     fun command(j:JSONObject) {
         when(j.optString("action")) {
             "config"->updateConfig(j.getJSONObject("config"))
+            "calibrate"->{
+                val f=ui.value.frame ?: error("Wait for camera frames")
+                val corners=j.getJSONArray("points")
+                updateConfig(JSONObject().put("planeCorners",corners).put("planeAspect",j.getDouble("aspect"))
+                    .put("calibrationImageAspect",f.width.toDouble()/f.height)
+                    .put("calibrationRotation",context.getSystemService(android.view.WindowManager::class.java).defaultDisplay.rotation))
+            }
             "reset"->resetTracking()
             "record"->startRecording()
             "stop"->stopRecording()
@@ -257,7 +294,11 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             else->throw IllegalArgumentException("Unknown action")
         }
     }
-    fun rotationChanged(rotation:Int){activeAnalysis?.targetRotation=rotation;capture?.targetRotation=rotation;resetTracking()}
-    fun background(){active=false;stopRecording();share(false);demo=false;generation++;provider?.unbindAll();mutable.update {it.copy(cameraReady=false,frame=null,bitmap=null,status="Camera paused")}}
-    override fun close(){closed=true;generation++;stopRecording();share(false);provider?.unbindAll();executor.shutdown();demoTimer.shutdown()}
+    fun rotationChanged(rotation:Int){
+        activeAnalysis?.targetRotation=rotation;capture?.targetRotation=rotation
+        if(config.planeCorners.isNotEmpty() && config.calibrationRotation!=rotation)updateConfig(JSONObject().put("planeCorners",JSONArray()))
+        resetTracking()
+    }
+    fun background(){active=false;stopRecording();stopSharing();demo=false;generation++;provider?.unbindAll();mutable.update {it.copy(cameraReady=false,frame=null,bitmap=null,status="Camera paused")}}
+    override fun close(){closed=true;generation++;stopRecording();stopSharing();provider?.unbindAll();executor.shutdown();demoTimer.shutdown()}
 }

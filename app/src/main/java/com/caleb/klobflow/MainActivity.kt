@@ -35,10 +35,13 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.DateFormat
 import java.util.Date
-import kotlin.math.min
+import kotlin.math.*
 
 val Lime=Color(0xffb6f36b)
 val Lavender=Color(0xffb5a3ff)
@@ -53,6 +56,7 @@ class MainActivity:ComponentActivity() {
         setContent {MaterialTheme(colorScheme=darkColorScheme(primary=Lime,secondary=Lavender,background=Background,surface=Color(0xff1a2018),onPrimary=Background,onBackground=Color(0xfff0f2e9),onSurface=Color(0xfff0f2e9),secondaryContainer=Color(0xff334428),onSecondaryContainer=Lime)) {Surface(Modifier.fillMaxSize(),color=Background,contentColor=MaterialTheme.colorScheme.onBackground){FlowApp(engine)}}}
     }
     override fun onConfigurationChanged(newConfig:android.content.res.Configuration){super.onConfigurationChanged(newConfig);engine.rotationChanged(windowManager.defaultDisplay.rotation)}
+    override fun onStart(){super.onStart();engine.foreground()}
     override fun onStop(){super.onStop();engine.background()}
     override fun onDestroy(){engine.close();super.onDestroy()}
 }
@@ -66,7 +70,7 @@ class MainActivity:ComponentActivity() {
     val request=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->permission=granted;if(granted)engine.bindCamera()else message="Camera permission is needed to track your practice. You can still try the demo."}
     fun run(block:()->Unit){try{block()}catch(e:Exception){message=e.message ?: "Action failed"}}
     fun patch(key:String,value:Any)=run{engine.updateConfig(JSONObject().put(key,value))}
-    LaunchedEffect(Unit){if(permission)engine.bindCamera()}
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME){permission=ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED}
     Column(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically) {
             Text("╱╱",color=Lime,fontSize=28.sp,fontWeight=FontWeight.Bold)
@@ -82,7 +86,13 @@ class MainActivity:ComponentActivity() {
                     Text("Find your lines.",fontSize=28.sp,fontWeight=FontWeight.Medium)
                     Text(ui.status,color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=5.dp,bottom=12.dp))
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
+                    AlignmentCue(ui)
                     CameraPanel(ui,engine){message=it}
+                    if(ui.cameraReady && ui.zoomMax>ui.zoomMin){
+                        var zoomDraft by remember(ui.zoomRatio){mutableFloatStateOf(ui.zoomRatio)}
+                        Row(verticalAlignment=Alignment.CenterVertically){Text("Zoom · %.2f×".format(ui.zoomRatio),Modifier.weight(1f),color=Lime,fontSize=13.sp);TextButton(onClick={patch("zoom",0.0)}){Text("Widest")}}
+                        Slider(value=zoomDraft.coerceIn(ui.zoomMin,ui.zoomMax),onValueChange={zoomDraft=it},onValueChangeFinished={patch("zoom",zoomDraft.toDouble())},valueRange=ui.zoomMin..ui.zoomMax)
+                    }
                     if(!ui.cameraReady && !ui.demo) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         Button(onClick={if(permission)run{engine.bindCamera()}else request.launch(Manifest.permission.CAMERA)},modifier=Modifier.weight(1f)){Text(if(permission)"Open camera" else "Allow camera")}
                         OutlinedButton(onClick={engine.startDemo()}){Text("Try demo")}
@@ -109,6 +119,7 @@ class MainActivity:ComponentActivity() {
                     Text("Make the space yours.",fontSize=25.sp)
                     Text("Set the guide to your practice plane. A fixed phone and clear contrast give the most useful feedback.",color=Muted,modifier=Modifier.padding(vertical=10.dp))
                     Label("TRACKING")
+                    Toggle("Mirror camera",ui.config.mirror){patch("mirror",it)}
                     Toggle("LED staves",ui.config.led){patch("led",it)}
                     Text(if(ui.config.led)"Detect bright, elongated shapes. No markers required." else "Experimental edge mode for unlit staves.",color=Muted,fontSize=12.sp)
                     ControlSlider("Brightness threshold",ui.config.threshold.toFloat(),60f..250f){patch("threshold",it.toInt())}
@@ -123,6 +134,7 @@ class MainActivity:ComponentActivity() {
                     if(ui.config.mode=="cube")ControlSlider("Cube projection depth",(ui.config.cubeDepth*100).toFloat(),10f..90f,"%"){patch("cubeDepth",it/100.0)}
                     if(ui.config.mode=="circles")ControlSlider("Circle separation",(ui.config.circleSeparation*100).toFloat(),0f..180f,"%"){patch("circleSeparation",it/100.0)}
                     ControlSlider("Target tolerance",ui.config.tolerance.toFloat(),1f..15f,"%"){patch("tolerance",it.toDouble())}
+                    Toggle("Alignment arrows",ui.config.showFeedback){patch("showFeedback",it)}
                     Toggle("Show guide",ui.config.showGuide){patch("showGuide",it)}
                     Toggle("Diagonal grid lines",ui.config.diagonals){patch("diagonals",it)}
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
@@ -168,14 +180,16 @@ class MainActivity:ComponentActivity() {
 }
 @Composable private fun CameraPanel(ui:FlowUi,engine:FlowEngine,onError:(String)->Unit) {
     var identifying by remember {mutableStateOf(false)}
+    var calibrating by remember {mutableStateOf(false)}
+    var planeAspect by remember {mutableStateOf("1.0")}
     var picks by remember {mutableStateOf(emptyList<P>())}
     val trails=remember {mutableStateListOf<Pair<Long,List<Segment?>>>()}
     LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>1400 || trails.size>45))trails.removeAt(0)}}
     val aspect=ui.bitmap?.let {it.width.toFloat()/it.height} ?: (4f/3f)
     Box(Modifier.fillMaxWidth().aspectRatio(aspect).background(Color(0xff080b08),RoundedCornerShape(16.dp))
-        .pointerInput(identifying,ui.frame?.width,ui.frame?.height){if(identifying)detectTapGestures {pos->
+        .pointerInput(identifying,calibrating,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
             picks=picks+P((pos.x/size.width).toDouble(),(pos.y/size.height).toDouble())
-            if(picks.size==4){try{engine.seed(picks)}catch(e:Exception){onError(e.message ?: "Could not identify staves")};picks=emptyList();identifying=false}
+            if(picks.size==4){try{if(calibrating)engine.command(JSONObject().put("action","calibrate").put("points",JSONArray(picks.map {it.json()})).put("aspect",planeAspect.toDouble()))else engine.seed(picks)}catch(e:Exception){onError(e.message ?: "Could not apply selection")};picks=emptyList();identifying=false;calibrating=false}
         }}) {
         ui.bitmap?.let {Image(it.asImageBitmap(),"Live practice camera",Modifier.fillMaxSize())}
         if(ui.bitmap==null)Text("A little space. Two staves.\nYour next practice starts here.",Modifier.align(Alignment.Center).padding(20.dp),color=Muted)
@@ -185,20 +199,54 @@ class MainActivity:ComponentActivity() {
             val unit=min(size.width/g.aspectX.toFloat(),size.height/g.aspectY.toFloat())
             fun p(v:P)=Offset((v.x*unit).toFloat(),(v.y*unit).toFloat())
             if(ui.config.showGuide){
-                g.lines.forEach {drawLine(Color.White.copy(alpha=0.38f),p(it.a),p(it.b),1.5f,pathEffect=PathEffect.dashPathEffect(floatArrayOf(7f,7f)))}
-                if(ui.config.mode=="circles")g.circles.forEach {drawCircle(Color.White.copy(alpha=0.4f),(g.radius*unit).toFloat(),p(it),style=Stroke(1.5f))}
-                if(ui.config.mode in listOf("grid","cube"))g.vertices.forEach {drawCircle(Lime.copy(alpha=0.65f),3f,p(it))}
+                g.displayLines.forEach {drawLine(Color.White.copy(alpha=0.38f),p(it.a),p(it.b),1.5f,pathEffect=PathEffect.dashPathEffect(floatArrayOf(7f,7f)))}
+                g.circlePaths.forEach {path->path.zipWithNext().forEach {(a,b)->drawLine(Color.White.copy(alpha=0.4f),p(a),p(b),1.5f)}}
+                if(ui.config.mode in listOf("grid","cube"))g.displayVertices.forEach {drawCircle(Lime.copy(alpha=0.65f),3f,p(it))}
             }
             if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && s.confidence>=0.55)listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=0.5f*(index+1)/trails.size),2f,p(it))}}}
             f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.confidence>=0.55)1f else 0.35f);drawLine(col,p(s.a),p(s.b),4f);drawCircle(col,6f,p(s.a),style=Stroke(2f));drawCircle(col,6f,p(s.b),style=Stroke(2f))}}
+            if(ui.config.showFeedback)g.cues(f.staffs).forEach {cue->
+                val from=p(cue.tip);val to=p(cue.target);val col=if(cue.onTarget)Lime else Color(0xffffb45e)
+                drawCircle(col,10f,from,style=Stroke(3f))
+                if(!cue.onTarget){
+                    drawLine(Color.Black.copy(alpha=0.8f),from,to,6f)
+                    drawLine(col,from,to,3f)
+                    val a=atan2(to.y-from.y,to.x-from.x)
+                    listOf(-0.5f,0.5f).forEach {d->drawLine(col,to,Offset(to.x-12*cos(a+d),to.y-12*sin(a+d)),3f)}
+                    drawCircle(Color.White,5f,to,style=Stroke(2f))
+                }
+            }
             picks.forEach {drawCircle(Color.White,7f,Offset((it.x*size.width).toFloat(),(it.y*size.height).toFloat()),style=Stroke(2f))}
         }
         if(ui.demo)Text("SYNTHETIC DEMO",Modifier.align(Alignment.TopStart).padding(12.dp).background(Background).padding(6.dp),color=Lavender,fontSize=11.sp)
+        if(calibrating)Text("Tap "+listOf("top left","top right","bottom right","bottom left")[picks.size],Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime)
         if(identifying)Text("Tap ${if(picks.size<2)"staff A" else "staff B"}, end ${picks.size%2+1}",Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime)
     }
+    Text("Lime / purple = staves · white = guide\nGreen rings = on target · orange arrows = move tips toward targets",color=Muted,fontSize=11.sp,modifier=Modifier.padding(top=8.dp))
     Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
-        TextButton(onClick={identifying=!identifying;picks=emptyList()},enabled=ui.frame!=null){Text(if(identifying)"Cancel" else "Identify staves")}
+        TextButton(onClick={identifying=!identifying;calibrating=false;picks=emptyList()},enabled=ui.frame!=null){Text(if(identifying)"Cancel" else "Identify staves")}
         TextButton(onClick={engine.resetTracking();trails.clear()}){Text("Reacquire")}
+    }
+    Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
+        TextButton(onClick={calibrating=!calibrating;identifying=false;picks=emptyList()},enabled=ui.frame!=null){Text(if(calibrating)"Cancel calibration" else "Calibrate angle")}
+        if(ui.config.planeCorners.isNotEmpty())TextButton(onClick={engine.updateConfig(JSONObject().put("planeCorners",JSONArray()))}){Text("Clear angle")}
+    }
+    if(calibrating){
+        Text("Mark a rectangle in your movement plane, clockwise from top left. Use a square for 1:1. Keep the phone fixed.",color=Muted,fontSize=12.sp)
+        OutlinedTextField(value=planeAspect,onValueChange={planeAspect=it},label={Text("Rectangle width ÷ height (0.25–4)")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    } else if(ui.config.planeCorners.isNotEmpty()){
+        Text("Angle corrected in the calibrated plane. Recalibrate after moving the phone. Zoom, camera, or orientation changes clear calibration.",color=Lime,fontSize=12.sp)
+    }
+}
+@Composable private fun AlignmentCue(ui:FlowUi) {
+    val f=ui.frame
+    val cues=f?.guide?.cues(f.staffs).orEmpty()
+    val good=f?.staffs?.count {it!=null && it.confidence>=0.55} ?: 0
+    val aligned=cues.size==4 && cues.all {it.onTarget}
+    val title=when {good<2->"Keep both staves visible";ui.config.mode=="free"->"Free flow · no alignment target";cues.isEmpty()->"Move inside the calibrated plane";aligned->"✓ Tips on guide";else->"Adjust highlighted tips"}
+    val detail=when {good<2->"$good / 2 staves tracked. Alignment cues pause until both are clear.";ui.config.mode=="free"->"Choose Grid, Circles, or Cube for alignment cues.";cues.isEmpty()->"Keep all four tips inside your calibration rectangle.";aligned->"All four tips are within the ${ui.config.tolerance.toInt()}% target. Keep tracing the guide.";else->"${cues.count {!it.onTarget}} / 4 tips outside target. Follow orange arrows toward white rings."}
+    Surface(color=if(aligned)Color(0xff263e1d)else if(cues.isNotEmpty())Color(0xff42301b)else Color(0xff242830),shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth().padding(bottom=10.dp)){
+        Column(Modifier.padding(14.dp)){Text(title,fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=if(aligned)Lime else if(cues.isNotEmpty())Color(0xffffbd77)else Lavender);Text(detail,fontSize=12.sp,modifier=Modifier.padding(top=4.dp))}
     }
 }
 @Composable private fun Metric(label:String,value:Double?,suffix:String,modifier:Modifier,target:Double?=null) {
@@ -209,11 +257,10 @@ class MainActivity:ComponentActivity() {
 }
 @Composable private fun SharePanel(ui:FlowUi,toggle:()->Unit) {
     Surface(shape=RoundedCornerShape(16.dp),modifier=Modifier.fillMaxWidth()){Column(Modifier.padding(16.dp)){
-        Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("A bigger practice space",fontWeight=FontWeight.Medium);Text("Connect your PC on the same Wi-Fi / LAN",color=Muted,fontSize=12.sp)};Switch(ui.sharing,onCheckedChange={toggle()})}
+        Row(verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("A bigger practice space",fontWeight=FontWeight.Medium);Text("Connect your PC by USB or Wi-Fi / LAN",color=Muted,fontSize=12.sp)};Switch(ui.sharing,onCheckedChange={toggle()})}
         if(ui.sharing){
             Text(ui.addresses.joinToString("\n").ifBlank {"No LAN address found. Connect to Wi-Fi."},color=Lime,fontSize=16.sp)
-            Text("Pairing code: ${ui.pairCode}",fontSize=15.sp,modifier=Modifier.padding(vertical=7.dp))
-            Text("On the PC, open localhost:8788 and enter this address and code. Use a trusted LAN. Sharing stops when you leave the app.",color=Muted,fontSize=12.sp)
+            Text("Open localhost:8788 on the PC. Choose USB cable, or enter this Wi-Fi address. No pairing code. Anyone on your LAN can connect while sharing is on. Sharing pauses when you leave and resumes when you reopen.",color=Muted,fontSize=12.sp)
         }
     }}
 }

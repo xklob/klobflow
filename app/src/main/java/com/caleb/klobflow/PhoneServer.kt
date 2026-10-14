@@ -4,21 +4,21 @@ import android.os.Handler
 import android.os.Looper
 import fi.iki.elonen.NanoHTTPD
 import org.json.JSONObject
-import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** Explicitly enabled, token-authenticated LAN endpoint. No CORS and no unauthenticated camera data. */
-class PhoneServer(private val engine:FlowEngine,private val token:String):NanoHTTPD("0.0.0.0",8787) {
+/** Explicitly enabled local endpoint for LAN or an ADB USB tunnel. No browser-origin access. */
+class PhoneServer(private val engine:FlowEngine):NanoHTTPD("0.0.0.0",8787) {
     private val main=Handler(Looper.getMainLooper())
     override fun serve(session:IHTTPSession):Response {
         fun json(status:Response.Status,value:JSONObject)=newFixedLengthResponse(status,"application/json",value.toString()).apply {addHeader("Cache-Control","no-store");addHeader("X-Content-Type-Options","nosniff")}
         fun error(status:Response.Status,text:String)=json(status,JSONObject().put("error",text))
-        if(session.headers["origin"]!=null)return error(Response.Status.FORBIDDEN,"Use the paired localhost companion")
-        val supplied=session.headers["x-klobflow-token"] ?: ""
-        if(!MessageDigest.isEqual(supplied.toByteArray(),token.toByteArray()))return error(Response.Status.UNAUTHORIZED,"Pair again using the code on the phone")
+        if(session.headers["origin"]!=null)return error(Response.Status.FORBIDDEN,"Use the localhost companion")
         return try {
             when {
+                session.method==Method.GET && session.uri=="/api/stream"->newChunkedResponse(Response.Status.OK,"application/x-klobflow-stream",engine.stream.open()).apply {
+                    addHeader("Cache-Control","no-store");addHeader("X-Content-Type-Options","nosniff")
+                }
                 session.method==Method.GET && session.uri=="/api/live"->json(Response.Status.OK,engine.liveJson())
                 session.method==Method.GET && session.uri=="/api/sessions"->json(Response.Status.OK,JSONObject().put("sessions",engine.sessionsJson()))
                 session.method==Method.GET && session.uri=="/api/session"->{

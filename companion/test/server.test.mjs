@@ -32,14 +32,15 @@ test("LAN address parser rejects public, credentials, rebinding and ambiguous fo
   ])
     assert.throws(() => phoneAddress(bad));
 });
-test("pairing, authenticated phone controls, session downloads and disconnect", async (t) => {
+test("code-free connection, phone controls, session downloads and disconnect", async (t) => {
   let controls = [];
   const phone = http.createServer(async (req, res) => {
-    assert.equal(req.headers["x-klobflow-token"], "0123456789abcdef");
+    assert.equal(req.headers["x-klobflow-token"], undefined);
     if (req.url === "/api/live")
       res.end(
         JSON.stringify({
-          version: "0.1.0",
+          version: "0.2.0",
+          protocol: 2,
           source: "camera",
           metrics: { deviation: 2 },
         }),
@@ -70,7 +71,6 @@ test("pairing, authenticated phone controls, session downloads and disconnect", 
     (
       await post(url + "/api/pair", {
         address: phoneUrl.replace("http://", ""),
-        token: "0123456789abcdef",
       })
     ).status,
     200,
@@ -140,7 +140,7 @@ test("local app rejects hostile origin, host, non-JSON and oversized control bod
   assert.equal((await fetch(url + "/server.mjs")).status, 404);
   assert.equal((await fetch(url + "/")).status, 200);
 });
-test("upstream redirect is never followed with pairing credentials", async (t) => {
+test("upstream redirect is never followed", async (t) => {
   let reached = false;
   const target = http.createServer((req, res) => {
     reached = true;
@@ -164,10 +164,34 @@ test("upstream redirect is never followed with pairing credentials", async (t) =
     (
       await post(url + "/api/pair", {
         address: phoneUrl.replace("http://", ""),
-        token: "0123456789abcdef",
       })
     ).status,
     502,
   );
   assert.equal(reached, false);
+});
+
+test("USB selection relays binary streaming and closes its own tunnel on disconnect", async (t) => {
+  let closed = 0, refreshed = 0;
+  const payload = Buffer.from([0, 0, 0, 2, 0, 0, 0, 4, 123, 125, 255, 216, 255, 217]);
+  const phone = http.createServer((req, res) => {
+    if (req.url === "/api/live") res.end(JSON.stringify({ version: "0.2.0", protocol: 2 }));
+    else if (req.url === "/api/stream") {
+      res.writeHead(200, { "Content-Type": "application/x-klobflow-stream" });
+      res.write(payload.subarray(0, 5)); res.end(payload.subarray(5));
+    } else res.end("{}");
+  });
+  const address = await listen(phone);
+  const server = createCompanion({ usbConnect: async () => ({
+    address, transport: "usb", fetch,
+    refresh: async () => { refreshed++; }, close: async () => { closed++; },
+  }) });
+  const url = await listen(server);
+  t.after(() => { server.closeAllConnections(); phone.closeAllConnections(); server.close(); phone.close(); });
+  assert.equal((await post(url + "/api/pair", { transport: "usb" })).status, 200);
+  assert.equal((await (await fetch(url + "/api/status")).json()).transport, "usb");
+  assert.deepEqual(Buffer.from(await (await fetch(url + "/api/stream")).arrayBuffer()), payload);
+  assert.equal(refreshed, 1);
+  await post(url + "/api/disconnect", {});
+  assert.equal(closed, 1);
 });

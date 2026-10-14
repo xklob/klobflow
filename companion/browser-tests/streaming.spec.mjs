@@ -1,0 +1,67 @@
+import { test, expect } from "@playwright/test";
+import http from "node:http";
+import { demoFrame, defaults } from "../public/demo.mjs";
+
+test("continuous preview, reconnect, zoom, and four-corner calibration controls", async ({ page }) => {
+  const errors = []; page.on("pageerror", e => errors.push(e.message));
+  await page.setViewportSize({ width: 1600, height: 1200 });
+  await page.goto("/");
+  const jpeg = Buffer.from(await page.evaluate(() => {
+    const c = document.createElement("canvas"); c.width = 960; c.height = 720;
+    c.getContext("2d").fillRect(0, 0, 960, 720);
+    return c.toDataURL("image/jpeg").split(",")[1];
+  }), "base64");
+  let config = { ...defaults }, commands = [], streams = 0, activeStream;
+  const phone = http.createServer(async (req, res) => {
+    if (req.url === "/api/live") return res.end(JSON.stringify({ protocol: 2, version: "0.2.0" }));
+    if (req.url === "/api/sessions") return res.end('{"sessions":[]}');
+    if (req.url === "/api/control") {
+      let body = ""; for await (const c of req) body += c;
+      const command = JSON.parse(body); commands.push(command);
+      config = { ...config, ...command.config };
+      if (command.action === "calibrate") config.planeCorners = command.points;
+      return res.end(JSON.stringify({ ok: true, config }));
+    }
+    if (req.url === "/api/stream") {
+      streams++; activeStream = res;
+      res.writeHead(200, { "Content-Type": "application/x-klobflow-stream" });
+      const timer = setInterval(() => {
+        const frame = { ...demoFrame(config, Date.now()), source: "camera", cameraReady: true, zoom: { min: .7, max: 8, ratio: config.zoom || .7 } };
+        const json = Buffer.from(JSON.stringify(frame)), head = Buffer.alloc(8);
+        head.writeUInt32BE(json.length); head.writeUInt32BE(jpeg.length, 4);
+        res.write(Buffer.concat([head, json, jpeg]));
+      }, 33);
+      res.on("close", () => clearInterval(timer)); return;
+    }
+    res.writeHead(404); res.end();
+  });
+  await new Promise(resolve => phone.listen(0, "127.0.0.1", resolve));
+  try {
+    await page.locator("#pair-open").click();
+    await expect(page.locator("#phone-token")).toHaveCount(0);
+    await page.locator("#transport").selectOption("lan");
+    await page.locator("#phone-address").fill(`127.0.0.1:${phone.address().port}`);
+    await page.locator("#pair-submit").click();
+    await expect(page.locator("#source-label")).toHaveText("LIVE FROM YOUR PHONE");
+    await expect(page.locator("#coaching-title")).toHaveText(/Tips on guide|Adjust highlighted tips/);
+    await expect(page.locator("#camera-info")).toContainText("preview fps");
+    await expect(page.locator("#zoom")).toHaveAttribute("min", "0.7");
+    await page.locator("#zoom").fill("2"); await page.locator("#zoom").dispatchEvent("change");
+    await expect.poll(() => commands.some(c => c.config?.zoom === 2)).toBe(true);
+    activeStream.destroy();
+    await expect(page.locator("#source-label")).toHaveText("CAMERA PAUSED");
+    await expect.poll(() => streams, { timeout: 10000 }).toBeGreaterThan(1);
+    await expect(page.locator("#source-label")).toHaveText("LIVE FROM YOUR PHONE");
+    await page.locator("#calibrate").click();
+    await page.locator("#view").scrollIntoViewIfNeeded();
+    const box = await page.locator("#view").boundingBox();
+    for (const [x, y] of [[.15, .15], [.85, .2], [.8, .85], [.2, .8]])
+      await page.mouse.click(box.x + box.width * x, box.y + box.height * y);
+    await expect.poll(() => commands.some(c => c.action === "calibrate" && c.points.length === 4 && c.aspect === 1)).toBe(true);
+    await expect(page.locator("#calibration-info")).toContainText("Perspective correction active");
+    expect(errors).toEqual([]);
+  } finally {
+    await page.request.post("/api/disconnect", { data: {} });
+    phone.closeAllConnections(); await new Promise(resolve => phone.close(resolve));
+  }
+});

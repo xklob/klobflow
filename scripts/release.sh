@@ -20,7 +20,7 @@ python3 - "$version" <<'PY'
 import pathlib,sys,zipfile
 version=sys.argv[1]
 with zipfile.ZipFile(f'artifacts/klobflow-companion-{version}.zip','w',zipfile.ZIP_DEFLATED) as z:
-    for name in ['companion/server.mjs','companion/package.json','companion/package-lock.json','README.md']:
+    for name in ['companion/server.mjs','companion/usb.mjs','companion/package.json','companion/package-lock.json','companion/README.md']:
         z.write(name, name.removeprefix('companion/'))
     for f in pathlib.Path('companion/public').iterdir():
         if f.is_file(): z.write(f,'public/'+f.name)
