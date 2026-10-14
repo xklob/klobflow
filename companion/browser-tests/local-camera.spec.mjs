@@ -218,7 +218,10 @@ test('overlay uses display resolution and short fullscreen keeps room for the ca
  await expect(page.locator('#tracking-detail')).toBeHidden();await page.locator('#focus-details').click();await expect(page.locator('#tracking-detail')).toBeVisible();
  await page.locator('#focus-details').click();await expect(page.locator('#tracking-detail')).toBeHidden();
  await expect(page.locator('#tracking-brief')).toBeVisible();await expect(page.locator('#tracking-title')).toBeHidden();
+ // Chromium headless-shell cannot resize a native fullscreen window.
+ await page.locator('#exit-fullscreen').click();await expect(page.locator('#practice-view:fullscreen')).toHaveCount(0);
  await page.setViewportSize({width:844,height:390});
+ await page.locator('#fullscreen').click();await expect(page.locator('#practice-view:fullscreen')).toBeVisible();
  await expect.poll(async()=> (await page.locator('#stage').boundingBox()).height).toBeGreaterThan(260);
  const camera=await page.locator('#stage').boundingBox(),side=await page.locator('.status-row').boundingBox();expect(side.x).toBeGreaterThan(camera.x+camera.width);
 });
