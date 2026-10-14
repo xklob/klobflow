@@ -7,7 +7,7 @@ const fixture=JSON.parse(readFileSync(new URL('./fixtures/native-core.json',impo
 function close(actual,expected,path='root'){
   if(typeof expected==='number')assert.ok(Math.abs(actual-expected)<1e-7,`${path}: ${actual} != ${expected}`);
   else if(Array.isArray(expected)){assert.equal(actual.length,expected.length,path);expected.forEach((e,i)=>close(actual[i],e,`${path}[${i}]`));}
-  else if(expected&&typeof expected==='object')for(const [k,v]of Object.entries(expected))close(actual[k]??(k==='occluded'?false:actual[k]),v,`${path}.${k}`);
+  else if(expected&&typeof expected==='object')for(const [k,v]of Object.entries(expected))close(actual[k]??(['occluded','blurred'].includes(k)?false:actual[k]),v,`${path}.${k}`);
   else assert.equal(actual,expected,path);
 }
 test('browser projection, scoring, tracking and occlusion match native oracle',()=>{

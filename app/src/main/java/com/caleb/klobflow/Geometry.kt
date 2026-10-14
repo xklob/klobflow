@@ -11,12 +11,12 @@ data class P(val x: Double, val y: Double) {
     fun distance(o: P) = hypot(x-o.x,y-o.y)
     fun json() = JSONArray(listOf(x,y))
 }
-data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false) {
+data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false, val blurred:Boolean=false) {
     val center get() = (a+b)*0.5
     val length get() = a.distance(b)
     val angle get() = atan2(b.y-a.y,b.x-a.x)
     fun reversed() = copy(a=b,b=a)
-    fun json() = JSONObject().put("a",a.json()).put("b",b.json()).put("confidence",confidence).put("occluded",occluded)
+    fun json() = JSONObject().put("a",a.json()).put("b",b.json()).put("confidence",confidence).put("occluded",occluded).put("blurred",blurred)
 }
 fun angleDifference(a: Double,b: Double): Double = abs(atan2(sin(2*(a-b)),cos(2*(a-b))))/2
 fun nearestOnSegment(p: P,s: Segment): P {

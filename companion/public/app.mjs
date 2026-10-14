@@ -3,6 +3,8 @@ import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
 import {SystemAudio} from "./system-audio.mjs";
 import {length} from "./core.mjs";
+import {AlignmentFeedback} from './feedback.mjs';
+const alignmentFeedback=new AlignmentFeedback();let displayedFeedback={tips:[],state:'paused'};
 const $ = (id) => document.getElementById(id);
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
@@ -45,7 +47,7 @@ async function startLocal(recheck = false) {
     resetView(); updateSourceControls(); syncConfig(localCamera.config);
     await localCamera.start({deviceId: $("local-camera-select").value || undefined, target: $("capture-target").value, reuse: !recheck && !!localCamera.profile});
     await updateDeviceList();
-    $("camera-profile").textContent = `Selected ${localCamera.settings.width} × ${localCamera.settings.height}, ${Math.round(localCamera.profile.measuredFps)} fps measured. ` + (localCamera.zoom.min === localCamera.zoom.max ? "This camera does not expose adjustable zoom." : "Widest supported zoom is the default.");
+    updateCameraDetails();
     try { localStorage.setItem("klobflow.lastMode", "local"); } catch {}
     connected(false); loadSessions();
   } catch (e) { message(e.message); }
@@ -72,6 +74,25 @@ $("local-stage").onclick = () => startLocal();
 $("local-camera-select").onchange = () => { localCamera.profile = null; startLocal(true); };
 $("capture-target").onchange = () => startLocal(true);
 $("optimize-camera").onclick = () => startLocal(true);
+let exposurePending=false;
+$('camera-exposure').onchange=async()=>{
+  exposurePending=true;$('camera-exposure').disabled=true;
+  try{await localCamera.exposure($('camera-exposure').value);}
+  catch(e){message(e.message);$('camera-exposure').value=localCamera.exposureChoice||'auto';}
+  finally{exposurePending=false;updateCameraDetails();}
+};
+function updateCameraDetails(frame=null){
+ if(!localMode||!localCamera.active)return;
+ const settings=localCamera.settings,profile=localCamera.profile,caps=localCamera.track?.getCapabilities?.()||{};
+ const measured=frame?.cameraFps||localCamera.cameraFps||profile.measuredFps;
+ $('camera-profile').textContent=`${settings.width} × ${settings.height} · requested ${Math.round(profile.requestedFps||profile.fps)} fps · camera reports ${Math.round(settings.frameRate||0)} fps · ${Math.round(measured)} fps measured live.`+(measured<(settings.frameRate||0)*.8?' Delivery is below the configured rate. Try shorter exposure and check lighting or USB bandwidth.':'');
+ $('camera-probes').textContent=(localCamera.probes||[]).map(p=>`${p.width} × ${p.height}: ${Math.round(p.measuredFps)} fps measured, ${Math.round(p.reportedFps||0)} fps reported`).join('; ');
+ const supported=!!caps.exposureTime&&caps.exposureMode?.includes('manual');
+ $('camera-exposure').disabled=!supported||exposurePending;
+ $('camera-exposure').options[0].disabled=supported&&!caps.exposureMode?.includes('continuous');
+ if(!exposurePending)$('camera-exposure').value=localCamera.exposureChoice||'auto';
+ $('exposure-info').textContent=!supported?'This webcam does not expose shutter control here. Shorten exposure or disable low-light compensation in its camera software.':settings.exposureMode==='manual'&&settings.exposureTime?`Actual exposure: about 1/${Math.round(10000/settings.exposureTime)} s. Shorter settings reduce blur but darken the image.`:'Automatic exposure can lengthen light trails. Try Short or Shorter for spinning; add light if the image gets too dark.';
+}
 let tutorials={},tutorialMode='';
 fetch('/practice-guides.json').then(r=>r.json()).then(data=>{tutorials=data;showTutorial(false);}).catch(()=>{});
 function showTutorial(force=false){
@@ -332,6 +353,7 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
+  alignmentFeedback.reset();displayedFeedback={tips:[],state:'paused'};
   $("beat-feedback").hidden=true;
   current = null;
   lastTime = null;
@@ -525,8 +547,8 @@ function render(frame, image) {
   if (c.trails)
     trail.forEach((f, i) =>
       f.staffs.forEach((s, n) => {
-        if (!s || s.confidence < 0.55) return;
-        ctx.globalAlpha = Math.min(1, ((i + 1) / trail.length) * 1.35);
+        if (!s || s.occluded || (s.confidence < 0.55&&!s.blurred)) return;
+        ctx.globalAlpha = Math.min(1, ((i + 1) / trail.length) * 1.35)*(s.blurred?.55:1);
         ctx.fillStyle = n ? "#b5a3ff" : "#b6f36b";
         for (const p of [s.a, s.b]) {
           ctx.beginPath();
@@ -539,12 +561,14 @@ function render(frame, image) {
   frame.staffs.forEach((s, n) => {
     if (!s) return;
     const color = n ? "#b5a3ff" : "#b6f36b";
-    ctx.globalAlpha = s.confidence < 0.55 ? 0.35 : 1;
+    ctx.globalAlpha = s.occluded ? .35 : s.blurred ? .75 : s.confidence < .55 ? .7 : 1;
+    if(s.blurred&&!s.occluded)ctx.setLineDash([8,5]);
     if (frame.source === "demo" && !image) {
       ctx.shadowBlur = 20;
       ctx.shadowColor = color;
     }
     line(s.a, s.b, color, frame.source === "demo" && !image ? 6 : 3);
+    ctx.setLineDash([]);
     ctx.shadowBlur = 0;
     for (const p of [s.a, s.b]) {
       ctx.strokeStyle = color;
@@ -556,13 +580,13 @@ function render(frame, image) {
     ctx.fillStyle = color;
     ctx.font = "12px system-ui";
     ctx.fillText(
-      `${n ? "B" : "A"}  ${s.occluded ? "briefly hidden" : Math.round(s.confidence * 100) + "%"}`,
+      `Staff ${n ? "B" : "A"}${s.occluded ? " · hidden tip" : s.blurred ? " · blur" : ""}`,
       s.a[0] * u + 10,
       s.a[1] * u - 10,
     );
   });
   ctx.globalAlpha = 1;
-  if (c.showFeedback !== false) for (const cue of frame.feedback || []) {
+  if (c.showFeedback !== false) for (const cue of displayedFeedback.tips || []) {
     const color = cue.onTarget ? "#b6f36b" : "#ffb45e";
     const a = cue.tip, b = cue.target;
     ctx.strokeStyle = color; ctx.lineWidth = 3;
@@ -571,8 +595,13 @@ function render(frame, image) {
       line(a, b, "#000b", 6); line(a, b, color, 3);
       const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
       for (const d of [-0.5, 0.5]) line(b, [b[0] - Math.cos(angle + d) * 12 / u, b[1] - Math.sin(angle + d) * 12 / u], color, 3);
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b[0] * u, b[1] * u, 5, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#000';ctx.lineWidth=5;ctx.beginPath();ctx.arc(b[0]*u,b[1]*u,6,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b[0] * u, b[1] * u, 6, 0, Math.PI * 2); ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(b[0]*u,b[1]*u,2,0,Math.PI*2);ctx.fill();
     }
+    const dx=b[0]-a[0],dy=b[1]-a[1],direction=Math.abs(dx)>Math.abs(dy)?dx>0?'→':'←':dy>0?'↓':'↑';
+    const label=cue.onTarget?'ON GUIDE':`MOVE ${direction}`,font=Math.max(8,Math.min(16,u*.033));ctx.font=`bold ${font}px system-ui`;
+    const labelWidth=ctx.measureText(label).width+10,x=Math.max(2,Math.min(w-labelWidth-2,a[0]*u+9)),y=Math.max(font+6,Math.min(h-4,a[1]*u-10));
+    ctx.fillStyle='#101510ee';ctx.fillRect(x,y-font-4,labelWidth,font+8);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(x,y-font-4,labelWidth,font+8);ctx.fillStyle=color;ctx.fillText(label,x+5,y);
   }
   if(frame.beat?.enabled){
     ctx.globalAlpha=1;ctx.font='bold 12px system-ui';
@@ -588,6 +617,7 @@ function render(frame, image) {
 }
 function showBeat(f){
  const beat=f.beat;
+ $('beat-legend').hidden=!f.config.tempoEnabled;
  if(!beat?.enabled){
   const paused=f.config.tempoEnabled&&f.config.tempoSource!=='manual';$('beat-feedback').hidden=!paused;
   if(paused){$('beat-feedback').classList.remove('pulse');$('beat-pulse').textContent='Beat timing paused';$('beat-hits').textContent=f.audio?.status?.includes('Following')?'Waiting for fresh audio timing':f.audio?.status||'Connect system audio or choose manual BPM.';}
@@ -598,14 +628,13 @@ function showBeat(f){
  $('beat-hits').replaceChildren(...beat.hits.map((hit,i)=>{const row=document.createElement('div');if(!hit){row.textContent=`${i?'B':'A'} · waiting for a visible tip to pass a point`;return row;}const early=hit.offsetMs<0,timing=Math.abs(hit.offsetMs)<=75?'On beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${early?'early':'late'}`,precise=hit.error<=f.config.tolerance;row.textContent=`${i?'B':'A'} · point ${hit.point}: ${timing} · ${hit.error.toFixed(1)}% from point ${precise?'✓':'→ adjust position'}`;row.className=precise&&Math.abs(hit.offsetMs)<=75?'good':'';return row;}));
 }
 function setCoaching(f) {
-  const good = f?.staffs?.filter(s => s && s.confidence >= 0.55).length || 0;
-  const count=f?.config?.staffCount||config.staffCount||2;
-  const cues = f?.feedback || [], aligned = cues.length === count*2 && cues.every(c => c.onTarget);
-  const free = f?.config?.mode === "free";
-  $("coaching").classList.toggle("aligned", aligned); $("coaching").classList.toggle("adjust", cues.length > 0 && !aligned);
-  $("coaching-title").textContent = f?.staffs?.some(s => s?.occluded) ? "Tip hidden · keeping staff identity" : good < count ? count===1?"Keep the staff visible":"Keep both staves visible" : free ? "Free flow · no alignment target" : !cues.length ? "Alignment cues paused" : aligned ? "✓ Tips on guide" : "Adjust highlighted tips";
-  $("coaching-detail").textContent = f?.staffs?.some(s => s?.occluded) ? "Continue your movement. Tracking reconnects when the tip returns; precision scores wait for visible tips." : good < count ? `${good} / ${count} staves tracked. Scores pause until tips are clear.` : free ? "Choose Grid, Circles, or Cube for alignment cues." : !cues.length ? "Keep all tips inside the calibrated plane. Saved older sessions may not include cues." : aligned ? `All ${count*2} tips are within the ${f.config.tolerance}% target. Keep tracing the guide.` : `${cues.filter(c => !c.onTarget).length} / ${count*2} tips outside target. Follow orange arrows toward white rings.`;
+  const feedback=displayedFeedback;
+  $("coaching").classList.toggle("aligned",feedback.state==='aligned');
+  $("coaching").classList.toggle("adjust",feedback.state==='adjust');
+  $("coaching-title").textContent=feedback.title;
+  $("coaching-detail").textContent=feedback.detail;
 }
+
 function setMetrics(metrics) {
   for (const [key, suffix] of [
     ["deviation", "%"],
@@ -692,6 +721,7 @@ function drawChart() {
   chartCtx.stroke();
 }
 function acceptFrame(f, image = null) {
+  displayedFeedback=alignmentFeedback.update(f);
   current = f;
   if (lastImage && lastImage !== image) lastImage.close?.();
   lastImage = image;
@@ -717,6 +747,8 @@ function acceptFrame(f, image = null) {
             ? " · within target"
             : " · outside target")
       : `${good} / ${count} staves visible · scores paused`;
+  if(displayedFeedback.state==='paused')$('tracking-label').textContent='Precision paused · waiting for clear tips';
+  if(localMode&&!replay)updateCameraDetails(f);
   $("camera-info").textContent = replay
     ? `Sample at ${(f.elapsedMs / 1000).toFixed(2)}s`
     : `${f.status ?? "Phone camera"} · ${Math.round(f.analysisFps ?? 0)} analysis fps` + (localMode ? ` · ${Math.round(f.cameraFps || 0)} camera fps` : f.source === "demo" ? "" : ` · ${Math.round(previewFps)} preview fps`);
@@ -727,7 +759,7 @@ function acceptFrame(f, image = null) {
       ? `■ Stop · ${Math.floor(f.elapsedMs / 1000)}s`
       : "● Record practice";
   trail.push(f);
-  trail = trail.filter((t) => f.time - t.time < 4200).slice(-135);
+  trail = trail.filter((t) => f.time - t.time < 4200).slice(-512);
   render(f, image);
   if (f.zoom && document.activeElement !== $("zoom")) {
     $("zoom").min = f.zoom.min; $("zoom").max = f.zoom.max; $("zoom").value = f.zoom.ratio;
@@ -853,7 +885,7 @@ function loadAnalysis(text) {
 }
 function showReplay(index) {
   const f = replay[index];
-  trail = replay.slice(Math.max(0, index - 135), index).filter(f => replay[index].time - f.time < 4200);
+  trail = replay.slice(Math.max(0, index - 512), index).filter(f => replay[index].time - f.time < 4200);
   syncConfig(f.config);
   acceptFrame(f);
   document.querySelector('output[for="scrubber"]').textContent =

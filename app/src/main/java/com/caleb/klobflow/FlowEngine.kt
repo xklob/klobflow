@@ -135,8 +135,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     }
     private fun analyzeImage(image:ImageProxy,mirror:Boolean,streamGeneration:Int) {
         val now=SystemClock.elapsedRealtime()
-        // Keep CPU/display work bounded independently of the video encoder's requested 60 fps.
-        if(now-lastTime<30)return
+        // KEEP_ONLY_LATEST bounds work without discarding every other 60 fps frame.
         val original=image.toBitmap()
         val matrix=Matrix().apply {postRotate(image.imageInfo.rotationDegrees.toFloat());if(mirror)postScale(-1f,1f)}
         val oriented=Bitmap.createBitmap(original,0,0,original.width,original.height,matrix,true)
@@ -150,7 +149,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             val scale=384.0/max(bitmap.width,bitmap.height)
             val small=Bitmap.createScaledBitmap(bitmap,max(2,(bitmap.width*scale).toInt()),max(2,(bitmap.height*scale).toInt()),true)
             val pixels=IntArray(small.width*small.height);small.getPixels(pixels,0,small.width,0,0,small.width,small.height)
-            val detected=detector.detect(pixels,small.width,small.height,c)
+            val detected=detector.detect(pixels,small.width,small.height,c,tracker.hints(now,c.staffCount))
             if(small!==bitmap)small.recycle()
             val staffs=tracker.update(detected,now,c.staffCount)
             val guide=Guide(c,bitmap.width,bitmap.height)
@@ -194,8 +193,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             val canvas=Canvas(bitmap);canvas.drawColor(Color.rgb(15,20,18))
             val t=SystemClock.elapsedRealtime()/1500.0
             val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {strokeWidth=7f;strokeCap=Paint.Cap.ROUND}
-            listOf(0,1).forEach {i->
-                val angle=if(i==0)t else PI-t;val cx=if(i==0)225.0 else 415.0;val cy=240.0
+            (0 until config.staffCount).forEach {i->
+                val angle=if(i==0)t else PI-t;val cx=if(config.staffCount==1)320.0 else if(i==0)225.0 else 415.0;val cy=240.0
                 paint.color=if(i==0)Color.rgb(182,243,107)else Color.rgb(181,163,255)
                 canvas.drawLine((cx-cos(angle)*105).toFloat(),(cy-sin(angle)*105).toFloat(),(cx+cos(angle)*105).toFloat(),(cy+sin(angle)*105).toFloat(),paint)
             }

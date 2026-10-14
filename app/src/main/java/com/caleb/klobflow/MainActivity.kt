@@ -212,8 +212,10 @@ class MainActivity:ComponentActivity() {
     var calibrating by remember {mutableStateOf(false)}
     var planeAspect by remember {mutableStateOf("1.0")}
     var picks by remember {mutableStateOf(emptyList<P>())}
+    val feedbackCoach=remember {AlignmentFeedback()}
+    val feedback=remember(ui.frame?.time){ui.frame?.let {feedbackCoach.update(it.time,it.staffs,it.guide)}}
     val trails=remember {mutableStateListOf<Pair<Long,List<Segment?>>>()}
-    LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>4200 || trails.size>135))trails.removeAt(0)}}
+    LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>4200 || trails.size>512))trails.removeAt(0)}}
     val aspect=ui.bitmap?.let {it.width.toFloat()/it.height} ?: (4f/3f)
     Box(Modifier.fillMaxWidth().aspectRatio(aspect).background(Color(0xff080b08),RoundedCornerShape(16.dp))
         .pointerInput(identifying,calibrating,ui.config.staffCount,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
@@ -232,9 +234,9 @@ class MainActivity:ComponentActivity() {
                 g.circlePaths.forEach {path->path.zipWithNext().forEach {(a,b)->drawLine(Color.White.copy(alpha=0.4f),p(a),p(b),1.5f)}}
                 if(ui.config.mode in listOf("grid","cube"))g.displayVertices.forEach {drawCircle(Lime.copy(alpha=0.65f),3f,p(it))}
             }
-            if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && s.confidence>=0.55)listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=(1.5f*(index+1)/trails.size).coerceAtMost(1f)),3.5f,p(it))}}}
-            f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.confidence>=0.55)1f else 0.35f);drawLine(col,p(s.a),p(s.b),4f);drawCircle(col,6f,p(s.a),style=Stroke(2f));drawCircle(col,6f,p(s.b),style=Stroke(2f))}}
-            if(ui.config.showFeedback)g.cues(f.staffs).forEach {cue->
+            if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && !s.occluded && (s.confidence>=0.55 || s.blurred))listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=(1.5f*(index+1)/trails.size).coerceAtMost(1f)*(if(s.blurred).55f else 1f)),3.5f,p(it))}}}
+            f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.occluded).35f else if(s.blurred).75f else if(s.confidence>=0.55)1f else .35f);drawLine(col,p(s.a),p(s.b),4f,pathEffect=if(s.blurred&&!s.occluded)PathEffect.dashPathEffect(floatArrayOf(8f,5f))else null);drawCircle(col,6f,p(s.a),style=Stroke(2f));drawCircle(col,6f,p(s.b),style=Stroke(2f))}}
+            if(ui.config.showFeedback)feedback?.tips?.forEach {cue->
                 val from=p(cue.tip);val to=p(cue.target);val col=if(cue.onTarget)Lime else Color(0xffffb45e)
                 drawCircle(col,10f,from,style=Stroke(3f))
                 if(!cue.onTarget){
@@ -242,8 +244,15 @@ class MainActivity:ComponentActivity() {
                     drawLine(col,from,to,3f)
                     val a=atan2(to.y-from.y,to.x-from.x)
                     listOf(-0.5f,0.5f).forEach {d->drawLine(col,to,Offset(to.x-12*cos(a+d),to.y-12*sin(a+d)),3f)}
-                    drawCircle(Color.White,5f,to,style=Stroke(2f))
+                    drawCircle(Color.White,6f,to,style=Stroke(2f));drawCircle(Color.White,2f,to)
                 }
+                val delta=to-from
+                val arrow=if(abs(delta.x)>abs(delta.y)){if(delta.x>0)"→"else"←"}else if(delta.y>0)"↓"else"↑"
+                val label=if(cue.onTarget)"ON GUIDE"else"MOVE $arrow"
+                val textPaint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {textSize=(unit*.033f).coerceIn(10f,22f);isFakeBoldText=true;color=if(cue.onTarget)android.graphics.Color.rgb(182,243,107)else android.graphics.Color.rgb(255,180,94)}
+                val labelWidth=textPaint.measureText(label)+10;val x=(from.x+9).coerceIn(2f,(size.width-labelWidth-2).coerceAtLeast(2f));val y=(from.y-10).coerceIn(textPaint.textSize+6,size.height-4)
+                drawRect(Color(0xee101510),Offset(x,y-textPaint.textSize-4),androidx.compose.ui.geometry.Size(labelWidth,textPaint.textSize+8))
+                drawContext.canvas.nativeCanvas.drawText(label,x+5,y,textPaint)
             }
             if(f.beat.enabled){
                 val textPaint=android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {color=android.graphics.Color.WHITE;textSize=12f}
@@ -273,14 +282,13 @@ class MainActivity:ComponentActivity() {
     }
 }
 @Composable private fun AlignmentCue(ui:FlowUi) {
+    val coach=remember {AlignmentFeedback()}
     val f=ui.frame
-    val cues=f?.guide?.cues(f.staffs).orEmpty()
-    val good=f?.staffs?.count {it!=null && it.confidence>=0.55} ?: 0
-    val count=ui.config.staffCount
-    val aligned=cues.size==count*2 && cues.all {it.onTarget}
-    val hidden=f?.staffs?.any {it?.occluded==true}==true
-    val title=when {hidden->"Tip hidden · keeping staff identity";good<count->if(count==1)"Keep the staff visible"else"Keep both staves visible";ui.config.mode=="free"->"Free flow · no alignment target";cues.isEmpty()->"Move inside the calibrated plane";aligned->"✓ Tips on guide";else->"Adjust highlighted tips"}
-    val detail=when {hidden->"Continue your movement. Precision scores wait for visible tips; tracking reconnects when the tip returns.";good<count->"$good / $count staves tracked. Alignment cues pause until tips are clear.";ui.config.mode=="free"->"Choose Grid, Circles, or Cube for alignment cues.";cues.isEmpty()->"Keep all tips inside your calibration rectangle.";aligned->"All ${count*2} tips are within the ${ui.config.tolerance.toInt()}% target. Keep tracing the guide.";else->"${cues.count {!it.onTarget}} / ${count*2} tips outside target. Follow orange arrows toward white rings."}
+    val feedback=remember(f?.time){f?.let {coach.update(it.time,it.staffs,it.guide)}}
+    val aligned=feedback?.state=="aligned"
+    val cues=feedback?.tips.orEmpty()
+    val title=feedback?.title?:"WAITING FOR CAMERA"
+    val detail=feedback?.detail?:"Put the whole staff in view."
     Surface(color=if(aligned)Color(0xff263e1d)else if(cues.isNotEmpty())Color(0xff42301b)else Color(0xff242830),shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth().padding(bottom=10.dp)){
         Column(Modifier.padding(14.dp)){Text(title,fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=if(aligned)Lime else if(cues.isNotEmpty())Color(0xffffbd77)else Lavender);Text(detail,fontSize=12.sp,modifier=Modifier.padding(top=4.dp))}
     }

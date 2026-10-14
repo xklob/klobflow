@@ -1,5 +1,5 @@
 import {defaults,patchConfig} from "./core.mjs";
-import {optimizeCamera} from "./camera.mjs";
+import {optimizeCamera,applyCameraProfile,applyTrackSettings,setExposure} from "./camera.mjs";
 import {saveSession,listSessions,getSession} from "./sessions.mjs";
 
 export class BrowserCamera {
@@ -31,10 +31,12 @@ export class BrowserCamera {
       if(generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return;}
       this.stream=stream;this.track=stream.getVideoTracks()[0];this.video.srcObject=stream;await this.video.play();
       const actualId=this.track.getSettings().deviceId;
-      if(this.deviceId&&actualId!==this.deviceId)this.config={...this.config,planeCorners:[],zoom:0};
+      if(this.deviceId&&actualId!==this.deviceId){this.config={...this.config,planeCorners:[],zoom:0};this.exposureChoice='auto';}
       this.deviceId=actualId;
+      this.exposureChoice??='auto';
+      if(this.exposureChoice!=='auto')await setExposure(this.track,this.exposureChoice);
       if(reuse&&this.profile){
-        try{await this.track.applyConstraints({width:{exact:this.profile.width},height:{exact:this.profile.height},frameRate:{ideal:this.profile.fps},resizeMode:{ideal:"none"}});}
+        try{await applyCameraProfile(this.track,this.profile);}
         catch{reuse=false;}
       }
       if(!reuse||!this.profile){const result=await optimizeCamera(this.track,this.video,{target,signal:controller.signal,onProgress:this.onStatus});this.profile=result.selected;this.probes=result.probes;}
@@ -42,7 +44,8 @@ export class BrowserCamera {
       this.settings=this.track.getSettings();
       if(this.config.planeCorners.length&&Math.abs(this.settings.width/this.settings.height-this.config.calibrationImageAspect)>.03)this.config={...this.config,planeCorners:[]};
       if(this.config.autoFit&&!this.config.planeCorners.length)this.config={...this.config,zoom:0};
-      await this.applyZoom();this.video.style.transform=this.config.mirror?"scaleX(-1)":"none";
+      await this.applyZoom();
+      this.video.style.transform=this.config.mirror?"scaleX(-1)":"none";
       this.worker=new Worker(new URL("./tracker-worker.mjs",import.meta.url),{type:"module"});
       this.worker.onmessage=({data})=>{
         if(generation!==this.generation)return;
@@ -50,6 +53,7 @@ export class BrowserCamera {
         if(data.type==="fit"&&data.revision===this.configRevision)this.command({action:"config",config:data.config,fromFit:true}).catch(e=>this.onStatus(e.message));
         if(data.type==="error"){if(data.frame)this.busy=false;this.onStatus(data.error);}
         if(data.type==="frame"){
+          if(this.track&&(!this.settingsAt||performance.now()-this.settingsAt>1000)){this.settings=this.track.getSettings();this.settingsAt=performance.now();}
           this.busy=false;const f={...data.frame,cameraReady:this.active,recording:this.recording,finalizing:this.finalizing,elapsedMs:this.recording?Math.max(0,data.frame.time-this.recordingStarted):0,status:this.status,zoom:this.zoom,cameraFps:this.cameraFps||this.profile.measuredFps};
           this.lastFrame=f;
           if(this.recording&&f.time>=this.recordingStarted){this.analysis.push(JSON.stringify(f));this.frameCount++;if(f.metrics.deviation!=null){this.validCount++;this.errorSum+=f.metrics.deviation;}this.analysisBytes+=this.analysis.at(-1).length;if(this.analysisBytes>30_000_000)this.stopRecording().then(()=>this.onStatus("Session saved at the analysis size limit. Start another recording to continue."));}
@@ -60,7 +64,7 @@ export class BrowserCamera {
       await this.request("config",{config:this.config,restore:true,start:true,zoom:this.zoom,revision:this.configRevision});
       this.active=true;this.busy=false;this.lastSubmitted=0;this.cameraSamples=[];
       this.track.onended=()=>{if(this.active){this.stop().catch(()=>{});this.onStatus("Camera disconnected. Reconnect it and choose Start PC camera.");}};
-      this.status=`${this.settings.width} × ${this.settings.height} · ${Math.round(this.profile.measuredFps)} fps measured · PC camera`;
+      this.status=`${this.settings.width} × ${this.settings.height} · PC camera`;
       this.onStatus(this.status);this.remember();this.schedule(generation);
     }catch(e){
       stream?.getTracks().forEach(t=>t.stop());if(generation===this.generation)await this.stop();
@@ -87,7 +91,8 @@ export class BrowserCamera {
     this.cameraSamples.push({time,frames:metadata.presentedFrames});this.cameraSamples=this.cameraSamples.filter(s=>time-s.time<1500);
     if(this.cameraSamples.length>1){const first=this.cameraSamples[0];this.cameraFps=(metadata.presentedFrames-first.frames)*1000/(time-first.time);}
     if(this.recording)this.draw(this.recordContext,this.recordCanvas.width,this.recordCanvas.height);
-    if(this.busy||time-this.lastSubmitted<30)return;
+    // Analyze each delivered camera frame when the worker is ready. Never queue old frames.
+    if(this.busy||time===this.lastSubmitted)return;
     const scale=384/Math.max(this.video.videoWidth,this.video.videoHeight),width=Math.max(2,Math.round(this.video.videoWidth*scale)),height=Math.max(2,Math.round(this.video.videoHeight*scale));
     if(this.canvas.width!==width)this.canvas.width=width;if(this.canvas.height!==height)this.canvas.height=height;
     this.draw(this.context,width,height);
@@ -98,8 +103,12 @@ export class BrowserCamera {
     const cap=this.track.getCapabilities?.().zoom;
     if(!cap){this.zoom={min:1,max:1,ratio:1};return;}
     const ratio=this.config.zoom===0?cap.min:Math.min(cap.max,Math.max(cap.min,this.config.zoom));
-    await this.track.applyConstraints({advanced:[{zoom:ratio}]});
+    await applyTrackSettings(this.track,{zoom:ratio});this.settings=this.track.getSettings();
     this.zoom={min:cap.min,max:cap.max,ratio:this.track.getSettings().zoom??ratio};
+  }
+  async exposure(choice){
+    if(!this.track)throw Error('Start the PC camera first.');
+    this.settings=await setExposure(this.track,choice);this.exposureChoice=choice;this.cameraSamples=[];
   }
   audioTempo(audio){this.worker?.postMessage({type:"audio",audio});}
   async command(command){

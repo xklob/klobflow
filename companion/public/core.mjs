@@ -138,15 +138,16 @@ export class Scorer {
 
 export class StaffDetector {
   constructor(){this.cosines=Array.from({length:180},(_,i)=>Math.cos(i*Math.PI/180));this.sines=Array.from({length:180},(_,i)=>Math.sin(i*Math.PI/180));}
-  detect(argb,w,h,c){
+  detect(argb,w,h,c,hints=[]){
     if(argb.length!==w*h||w<1||h<1)throw Error("Invalid camera pixels");
+    if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return recovered;}
     const short=Math.min(w,h),mask=new Uint8Array(w*h),value=i=>{const p=argb[i];return Math.max((p>>>16)&255,(p>>>8)&255,p&255);};
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
       const i=y*w+x,p=argb[i],hi=value(i),lo=Math.min((p>>>16)&255,(p>>>8)&255,p&255);
       mask[i]=c.led?hi>=c.threshold&&(hi-lo>35||hi>=Math.min(250,c.threshold+35)):Math.abs(value(i+1)-value(i-1))+Math.abs(value(i+w)-value(i-w))>c.threshold/2;
     }
     const pixels=[];for(let y=4;y<h-4;y++)for(let x=4;x<w-4;x++){const i=y*w+x;if(mask[i]&&(!mask[i-1]||!mask[i+1]||!mask[i-w]||!mask[i+w]))pixels.push([x,y]);}
-    if(pixels.length<12)return [];
+    if(pixels.length<12)return c.led?motionCandidates(argb,w,h,c,hints,[]):[];
     const step=Math.max(1,Math.floor((pixels.length+3499)/3500)),diag=Math.ceil(Math.hypot(w,h)),bins=2*diag+1,votes=new Int32Array(180*bins);
     for(let i=0;i<pixels.length;i+=step){const p=pixels[i];for(let a=0;a<180;a++)votes[a*bins+Math.round(p[0]*this.cosines[a]+p[1]*this.sines[a])+diag]++;}
     const result=[];
@@ -173,16 +174,110 @@ export class StaffDetector {
       const s=segment(mul(aa,1/short),mul(bb,1/short),clamp(support*.9+.1*Math.min(1,len/(short*.6)),0,1));
       if(!result.some(old=>angleDifference(angle(old),angle(s))<.14&&(distanceToSegment(center(s),old)<.035||distanceToSegment(center(old),s)<.035)))result.push(s);
     }
-    return result.sort((a,b)=>b.confidence*Math.sqrt(length(b))-a.confidence*Math.sqrt(length(a))).slice(0,8);
+    return (c.led?motionCandidates(argb,w,h,c,hints,result):result).sort((a,b)=>b.confidence*Math.sqrt(length(b))-a.confidence*Math.sqrt(length(a))).slice(0,8);
   }
+}
+
+// Pair the observed luminous halves across a dark grip. Work without a fixed hue:
+// rainbow LEDs change color, while their bright geometry remains observable.
+function ledRegions(argb,w,h,c,hints){
+ const unit=Math.min(w,h),mask=new Uint8Array(w*h),queue=new Int32Array(w*h),weights=new Float64Array(w*h);
+ for(let i=0;i<mask.length;i++){const p=argb[i],hi=Math.max(p>>>16&255,p>>>8&255,p&255),lo=Math.min(p>>>16&255,p>>>8&255,p&255);if(hi>=c.threshold&&(hi-lo>35||hi>=Math.min(250,c.threshold+35))){mask[i]=1;weights[i]=hi;}}
+ const describe=points=>{
+  let mass=0,mx=0,my=0,color=0;for(const i of points){const v=weights[i],p=argb[i];mass+=v;mx+=i%w*v;my+=Math.floor(i/w)*v;if(Math.max(p>>>16&255,p>>>8&255,p&255)-Math.min(p>>>16&255,p>>>8&255,p&255)>35)color++;}mx/=mass;my/=mass;
+  let xx=0,xy=0,yy=0;for(const i of points){const x=i%w-mx,y=Math.floor(i/w)-my,v=weights[i];xx+=x*x*v;xy+=x*y*v;yy+=y*y*v;}xx/=mass;xy/=mass;yy/=mass;
+  const theta=.5*Math.atan2(2*xy,xx-yy),dx=Math.cos(theta),dy=Math.sin(theta),spread=Math.hypot(xx-yy,2*xy),major=(xx+yy+spread)/2,minor=Math.max(0,(xx+yy-spread)/2);
+  let low=Infinity,high=-Infinity;for(const i of points){const a=(i%w-mx)*dx+(Math.floor(i/w)-my)*dy;low=Math.min(low,a);high=Math.max(high,a);}
+  const ratio=minor/Math.max(1,major),clipped=points.some(i=>i%w<2||i%w>=w-2||Math.floor(i/w)<2||Math.floor(i/w)>=h-2),blurred=ratio>.008||clipped;
+  return {points,color:color/points.length,ratio,clipped,mid:[mx/unit,my/unit],s:{a:[(mx+dx*low)/unit,(my+dy*low)/unit],b:[(mx+dx*high)/unit,(my+dy*high)/unit],confidence:blurred?.5:.8,blurred}};
+ };
+ const regions=[];
+ for(let i=0;i<mask.length;i++)if(mask[i]){let head=0,tail=1;queue[0]=i;mask[i]=0;const points=[];while(head<tail){const at=queue[head++];points.push(at);const x=at%w,y=Math.floor(at/w);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy,k=yy*w+xx;if(xx>=0&&xx<w&&yy>=0&&yy<h&&mask[k]){mask[k]=0;queue[tail++]=k;}}}if(points.length>=8&&points.length<w*h*.12)regions.push(describe(points));}
+ regions.sort((a,b)=>b.points.length-a.points.length);regions.splice(24);
+ const candidates=[];
+ for(let i=0;i<regions.length;i++)for(let j=i+1;j<regions.length;j++){
+  const a=regions[i],b=regions[j],axis=Math.atan2(b.mid[1]-a.mid[1],b.mid[0]-a.mid[0]);
+  if(Math.min(a.points.length,b.points.length)<Math.max(a.points.length,b.points.length)*.12)continue;
+  if((a.ratio<.12&&angleDifference(angle(a.s),axis)>.45)||(b.ratio<.12&&angleDifference(angle(b.s),axis)>.45))continue;
+  const merged=describe([...a.points,...b.points]),s=merged.s,len=length(s),gap=distance(a.mid,b.mid)-(length(a.s)+length(b.s))/2;
+  if(len<c.minLength||len>1.65||merged.ratio>.16||gap>len*.48)continue;
+  if(Math.min(a.color,b.color)<.18&&(a.ratio>.008||b.ratio>.008||a.clipped||b.clipped)&&!hints.some(p=>distance(center(s),center(p))<.15&&len>length(p)*.72&&len<length(p)*1.35))continue;
+  candidates.push({s,points:merged.points,complete:true,rank:Math.sqrt(a.points.length*b.points.length)*Math.sqrt(len)/(1+merged.ratio*4)});
+ }
+ for(const r of regions)if(length(r.s)>=c.minLength&&((r.ratio<.008&&!r.clipped)||(r.ratio<.12&&r.color>.35))){
+  candidates.push({s:r.s,points:r.points,complete:r.s.blurred,rank:r.points.length*.5*Math.sqrt(length(r.s))/(1+r.ratio*4)});
+ }
+ // Prefer full staffs over bright room edges. Half-staff pairs are exclusive.
+ candidates.sort((a,b)=>b.rank-a.rank);const selected=[],used=new Set();let complete=false;
+ for(const candidate of candidates){if(candidate.points.some(i=>used.has(i)))continue;selected.push(candidate.s);complete||=candidate.complete;candidate.points.forEach(i=>used.add(i));if(selected.length===c.staffCount)break;}
+ return {segments:selected,paired:complete,crossing:regions.some(r=>r.ratio>.12&&r.color>.5&&r.points.length>c.minLength*unit*6)};
+}
+
+// A long exposure spreads LED energy into a dim fan. Fit its observed light mass,
+// only near an already tracked staff. Never turn that uncertain axis into a score.
+function motionCandidates(argb,w,h,c,hints,sharp){
+ if(!hints.length)return sharp;
+ const short=Math.min(w,h),histogram=new Int32Array(256),mask=new Uint8Array(w*h),weights=new Float64Array(w*h),queue=new Int32Array(w*h);let samples=0;
+ for(let y=1;y<h-1;y+=2)for(let x=1;x<w-1;x+=2)if(hints.some(s=>distance([x/short,y/short],center(s))<length(s)*.7+.12)){const p=argb[y*w+x];histogram[Math.max(p>>>16&255,p>>>8&255,p&255)]++;samples++;}
+ let median=0,total=0;while(median<255&&(total+=histogram[median])<samples/2)median++;
+ const floor=Math.max(24,c.threshold*.14,median+6);
+ for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
+  const i=y*w+x,p=argb[i],hi=Math.max((p>>>16)&255,(p>>>8)&255,p&255),lo=Math.min((p>>>16)&255,(p>>>8)&255,p&255);
+  if(hi<floor||!(hi-lo>Math.max(10,hi*.14)||hi>Math.max(50,c.threshold*.3)))continue;
+  if(!hints.some(s=>distance([x/short,y/short],center(s))<length(s)*.7+.12))continue;
+  mask[i]=1;weights[i]=Math.max(1,hi-(hi-lo>12?lo:floor));
+ }
+ const describe=points=>{
+  let mass=0,mx=0,my=0;for(const i of points){const v=weights[i];mass+=v;mx+=(i%w)*v;my+=Math.floor(i/w)*v;}mx/=mass;my/=mass;
+  let xx=0,xy=0,yy=0;for(const i of points){const dx=i%w-mx,dy=Math.floor(i/w)-my,v=weights[i];xx+=dx*dx*v;xy+=dx*dy*v;yy+=dy*dy*v;}xx/=mass;xy/=mass;yy/=mass;
+  const theta=.5*Math.atan2(2*xy,xx-yy),dx=Math.cos(theta),dy=Math.sin(theta),spread=Math.hypot(xx-yy,2*xy),major=(xx+yy+spread)/2,minor=Math.max(0,(xx+yy-spread)/2);
+  let low=Infinity,high=-Infinity;for(const i of points){const along=(i%w-mx)*dx+(Math.floor(i/w)-my)*dy;low=Math.min(low,along);high=Math.max(high,along);}
+  const ratio=minor/Math.max(1,major),blurred=ratio>.006;
+  return {points,ratio,s:{a:[(mx+dx*low)/short,(my+dy*low)/short],b:[(mx+dx*high)/short,(my+dy*high)/short],confidence:blurred?.5:.7,blurred}};
+ };
+ const components=[];
+ for(let i=0;i<mask.length;i++)if(mask[i]){
+  let head=0,tail=1;queue[0]=i;mask[i]=0;const points=[];
+  while(head<tail){const at=queue[head++];points.push(at);const x=at%w,y=Math.floor(at/w);for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy,next=yy*w+xx;if(xx>=0&&xx<w&&yy>=0&&yy<h&&mask[next]){mask[next]=0;queue[tail++]=next;}}}
+  if(points.length>=12&&points.length<w*h*.18)components.push(describe(points));
+ }
+ // A dark hand/grip can split the two luminous halves. Join only nearby collinear regions.
+ components.sort((a,b)=>b.points.length-a.points.length);components.splice(24);
+ for(let i=0;i<components.length;i++)for(let j=i+1;j<components.length;j++){
+  const a=components[i],b=components[j];
+  const owner=s=>hints.reduce((best,p,n)=>distance(center(s),center(p))<distance(center(s),center(hints[best]))?n:best,0);
+  if(owner(a.s)!==owner(b.s))continue;
+  const d=sub(center(b.s),center(a.s)),axis=Math.atan2(d[1],d[0]);
+  if(a.ratio<.12&&angleDifference(angle(a.s),axis)>.45||b.ratio<.12&&angleDifference(angle(b.s),axis)>.45)continue;
+  const joined=describe([...a.points,...b.points]);if(joined.ratio>.14||distance(center(a.s),center(b.s))-(length(a.s)+length(b.s))/2>length(joined.s)*.48||!hints.some(s=>length(joined.s)<length(s)*1.2))continue;
+  components[i]=joined;components.splice(j--,1);
+ }
+ let result=[...sharp];
+ for(const component of components){
+  let s=component.s;const len=length(s);
+  if(component.ratio>.14||len<c.minLength||!hints.some(p=>len>=length(p)*.72&&len<=length(p)*1.2&&distance(center(s),center(p))<.12+length(p)*.25&&angleDifference(angle(s),angle(p))<1.4))continue;
+  // Broad blur observes an axis, not exact ends. Retain the recent length for a
+  // stable uncertain outline instead of chasing whichever rainbow tip is brightest.
+  if(s.blurred){const reference=minimum(hints,p=>distance(center(s),center(p))+angleDifference(angle(s),angle(p))*.1),axis=angle(s),unit=[Math.cos(axis),Math.sin(axis)],d=mul(unit,length(reference)/2);let mid=center(s);
+   // If dim light hides an end, its asymmetric extent cannot locate the center
+   // along the axis. Keep that part of the recent pose, still explicitly uncertain.
+   if(len<length(reference)*.9){const delta=sub(mid,center(reference));mid=sub(mid,mul(unit,delta[0]*unit[0]+delta[1]*unit[1]));}
+   s={...s,a:sub(mid,d),b:add(mid,d)};}
+  const nearby=old=>distance(center(old),center(s))<.07+len*.12&&length(old)>len*.45&&length(old)<len*1.3&&angleDifference(angle(old),angle(s))<Math.max(.2,3*Math.sqrt(component.ratio));
+  if(component.ratio<.003&&result.some(old=>nearby(old)&&length(old)>len*.85))continue;
+  result=result.filter(old=>!nearby(old));result.push(s);
+ }
+ return result;
 }
 export class StaffTracker {
   constructor(){this.reset();}
-  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];}
-  seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];this.streak=[0,0];}
+  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.motion=[[0,0,0],[0,0,0]];}
+  seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.reset();this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];}
+  predicted(i,time){const s=this.last[i];if(!s)return null;const dt=clamp((time-this.lastAt[i])/1000,0,.15),v=this.motion[i],c=add(center(s),[v[0]*dt,v[1]*dt]),a=angle(s)+v[2]*dt,d=mul([Math.cos(a),Math.sin(a)],length(s)/2);return {...s,a:sub(c,d),b:add(c,d)};}
+  hints(time,count=2){return this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<250?this.predicted(i,time):null).filter(Boolean);}
   update(candidates,time,count=2){
-    const prior=this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<1500?s:null);
-    const cost=(i,s)=>{const p=prior[i];if(!p)return .22-s.confidence*.1;const delta=Math.max(1,time-this.lastAt[i])/1000,dist=distance(center(p),center(s)),ang=angleDifference(angle(p),angle(s)),ratio=length(s)/length(p);if(dist>.16+delta*1.8||ang>.3+delta*8||ratio<.25||ratio>1.9)return 10;return dist+ang*.13+Math.abs(Math.log(ratio))*.10+(1-s.confidence)*.15;};
+    const prior=this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<(s.blurred?350:1500)?s:null);
+    const cost=(i,s)=>{const p=prior[i];if(!p)return .22-s.confidence*.1;const predicted=this.predicted(i,time),delta=Math.max(1,time-this.lastAt[i])/1000,dist=distance(center(predicted),center(s)),ang=angleDifference(angle(predicted),angle(s)),ratio=length(s)/length(p);if(dist>.16+delta*1.8||ang>.3+delta*20||ratio<.25||ratio>1.4)return 10;return dist+ang*.13+Math.abs(Math.log(ratio))*.10+(1-s.confidence)*.15;};
     const assignments=[];
     for(let a=-1;a<candidates.length;a++)for(let b=-1;b<(count===1?0:candidates.length);b++)if(a<0||b<0||a!==b){
       if(a>=0&&b>=0&&distanceToSegment(center(candidates[a]),candidates[b])<.025&&angleDifference(angle(candidates[a]),angle(candidates[b]))<.15)continue;
@@ -192,11 +287,11 @@ export class StaffTracker {
     if(prior.every(p=>!p)&&best[0]>=0&&best[1]>=0&&center(candidates[best[0]])[0]>center(candidates[best[1]])[0])best=[best[1],best[0],best[2]];
     const ambiguous=prior.every(Boolean)&&best[0]>=0&&best[1]>=0&&assignments.some(a=>a[0]===best[1]&&a[1]===best[0]&&a[2]-best[2]<.035);
     const selected=best.slice(0,2).map((index,i)=>{
-      if(index<0){const p=prior[i],established=this.streak[i]>=3;this.streak[i]=0;return p&&(established||p.occluded)?{...p,confidence:.3,occluded:true}:null;}
-      let s=candidates[index];const p=prior[i];if(p&&distance(p.a,s.b)+distance(p.b,s.a)<distance(p.a,s.a)+distance(p.b,s.b))s={...s,a:s.b,b:s.a};
+      if(index<0){const p=prior[i],established=this.streak[i]>=3;this.streak[i]=0;return p&&(established||p.occluded||p.blurred)?{...p,confidence:.3,occluded:true}:null;}
+      let s=candidates[index];const p=prior[i],predicted=p?this.predicted(i,time):null;if(predicted&&distance(predicted.a,s.b)+distance(predicted.b,s.a)<distance(predicted.a,s.a)+distance(predicted.b,s.b))s={...s,a:s.b,b:s.a};
       if(p&&length(s)<length(p)*.72){this.streak[i]=0;return {...s,confidence:.35,occluded:true};}
-      this.streak[i]++;return {...s,occluded:false,confidence:ambiguous?Math.min(.4,s.confidence):this.streak[i]<3?Math.min(.5,s.confidence):s.confidence};
+      if(s.blurred)this.streak[i]=0;else this.streak[i]++;return {...s,occluded:false,confidence:ambiguous?Math.min(.4,s.confidence):this.streak[i]<3?Math.min(.5,s.confidence):s.confidence};
     });
-    this.last=selected.map((s,i)=>{if(s&&!ambiguous&&!s.occluded){this.lastAt[i]=time;return s;}return s?.occluded&&prior[i]?{...prior[i],occluded:true}:prior[i];});return selected;
+    this.last=selected.map((s,i)=>{if(s&&!ambiguous&&!s.occluded){const p=prior[i],dt=(time-this.lastAt[i])/1000;if(p&&dt>=.008&&dt<=.2){const delta=sub(center(s),center(p)),da=.5*Math.atan2(Math.sin(2*(angle(s)-angle(p))),Math.cos(2*(angle(s)-angle(p))));this.motion[i]=[clamp(delta[0]/dt,-3,3),clamp(delta[1]/dt,-3,3),clamp(da/dt,-30,30)].map((v,j)=>this.motion[i][j]*.35+v*.65);}else this.motion[i]=[0,0,0];this.lastAt[i]=time;return s;}return s?.occluded&&prior[i]?{...prior[i],occluded:true}:prior[i];});return selected;
   }
 }

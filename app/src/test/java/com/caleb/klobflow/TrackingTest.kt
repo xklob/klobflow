@@ -28,6 +28,14 @@ class TrackingTest {
         val result=StaffDetector().detect(frame(x to 0xffff4488.toInt(),y to 0xff44ffff.toInt()),w,h,Config())
         assertTrue(result.any{angleDifference(it.angle,x.angle)<.06});assertTrue(result.any{angleDifference(it.angle,y.angle)<.06})
     }
+    @Test fun joinsLuminousHalvesAcrossALargeGripWithoutTrackingWindowEdges(){
+        val left=Segment(P(.39,.5),P(.64,.5));val right=Segment(P(.86,.5),P(1.11,.5))
+        val pixels=frame(left to 0xffff77dd.toInt(),right to 0xffff77dd.toInt())
+        for(y in 0 until 170)for(x in 27..55)if(x<=30||y%24<3)pixels[y*w+x]=0xffffffff.toInt()
+        val detected=StaffDetector().detect(pixels,w,h,Config(staffCount=1))
+        assertEquals(1,detected.size);val s=detected.single()
+        assertEquals(.75,s.center.x,.03);assertEquals(.5,s.center.y,.03);assertEquals(.72,s.length,.05)
+    }
     @Test fun trackerDoesNotInventMissingMeasurements(){
         val t=StaffTracker();repeat(4){t.update(listOf(a,b),1000L+it*33)}
         assertEquals(2,t.update(listOf(a,b),1150).filterNotNull().count {it.confidence>=.55})

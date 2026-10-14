@@ -1,12 +1,22 @@
 # Architecture
 
+## Motion and readable feedback (0.5.1)
+
+The native/browser LED detector fits bright connected regions and pairs luminous ends across a dark grip, without selecting a straight edge through a branched window. It handles connected light spill and uses a bounded Hough fallback for crossings or unlit props. Near recent motion-predicted staves, a background-adaptive dim-light mask also joins luminous halves belonging to the same prior staff and fits the observed light distribution. Shape, length, position, and angular gates reject broad blobs and unrelated regions. The fit uses brightness/chroma within each frame without assigning persistent color identities, so changing rainbow patterns are supported.
+
+Broad exposure sweeps produce `blurred: true` observations with confidence below the precision threshold. Dim recovery retains the recent staff length around the observed axis; incomplete extents also retain the along-axis center. This avoids jumps between whichever rainbow tip is brightest. These outlines and their dimmer trails are approximate. They cannot earn guide scores, fit calibration, or beat hits. A 250 ms detector-prior window, 350 ms expiry for uncertain blur association, and 1.5-second expiry for previously clear occluded tracks prevent indefinite prediction without image evidence. Angular/center velocity improve association at fast rotation rates.
+
+`AlignmentFeedback` / `feedback.mjs` stabilize only presentation. Clear tracking must persist for 650 ms before guidance returns; on-guide tip labels need a margin and 300 ms confirmation; the overall on-guide message needs 1.2 seconds. A confidence loss immediately suppresses precision guidance, using one consistent paused message. Raw scores and exported observations retain their actual uncertainty.
+
+Browser mode negotiation tries required frame-rate ranges and backs off unsupported combinations. All later zoom/exposure constraints retain capture-mode constraints. Live diagnostics distinguish configured and delivered frame rates. Both native and browser analysis consume the next available frame without queuing or the former 30 ms submission throttle.
+
 `app/` is a native Kotlin/Compose Android application. `companion/` is a Node loopback relay and dependency-free browser UI. The only development dependency is Playwright.
 
 ## Phone pipeline
 
 CameraX binds ImageAnalysis and VideoCapture to the activity lifecycle. It tries FHD/60, HD/60, HD/30, and SD/30 according to the selected target. Images are rotated into display orientation and mirrored by default for both cameras before both analysis and presentation, so staff coordinates and overlays share an image. VideoCapture uses the same mirror setting for the saved MP4. CameraX reports hardware zoom bounds; the default selects the minimum supported ratio.
 
-A downsampled image (maximum 384 pixels on its long side) goes through an LED brightness/saturation mask or experimental edge mask. Boundary pixels vote into a bounded Hough transform. Candidate line segments need length, continuity, narrow cross-sections, and support from actual pixels. Nearby parallel edges are suppressed. Temporal assignment considers position, axis angle, and apparent length. Two staff slots cannot use the same candidate. Ambiguous assignments and newly acquired tracks are below the score threshold. Seeds bias assignment but never create detections.
+A downsampled image (maximum 384 pixels on its long side) goes through an LED brightness/saturation mask or experimental edge mask. LED regions are fitted and paired as above; the edge/crossing fallback votes boundary pixels into a bounded Hough transform. Candidate line segments need length, continuity, narrow cross-sections, and support from actual pixels. Nearby parallel edges are suppressed. Temporal assignment considers position, axis angle, and apparent length. Two staff slots cannot use the same candidate. Ambiguous assignments and newly acquired tracks are below the score threshold. Seeds bias assignment but never create detections.
 
 The detector does not use a trained model, body pose, colored markers, or external inference. Bright elongated background objects remain a possible false positive. Pure shape confidence cannot prove semantic identity. Motion blur, illuminated sections separated by large dark gaps, partial occlusion, and strongly foreshortened staves are challenging.
 
@@ -23,7 +33,7 @@ The browser can review JSONL exports with a scrubber and an error timeline. It i
 Sharing explicitly starts a NanoHTTPD listener on 0.0.0.0:8787. Pairing codes were removed by user request. Anyone on the same network can access an enabled share. Browser-origin requests remain refused. Leaving the foreground stops capture and the listener; the enabled preference is retained and both resume on Activity.onStart. Pending camera callbacks and analyzers are invalidated by generation IDs.
 
 - `GET /api/live`: current frame metadata, protocol/version, camera/recording/zoom status. No base64 image.
-- `GET /api/stream`: continuous `application/x-klobflow-stream`; each packet has uint32 big-endian JSON length and JPEG length, UTF-8 metadata, then the matching JPEG. An all-zero header is a heartbeat. The phone keeps only the latest complete packet. Browser decoding likewise retains only the newest pending packet. The Node relay uses stream backpressure and aborts upstream when the browser disconnects. Preview frames follow analysis cadence, capped near 30 fps, rather than polling at 10 fps.
+- `GET /api/stream`: continuous `application/x-klobflow-stream`; each packet has uint32 big-endian JSON length and JPEG length, UTF-8 metadata, then the matching JPEG. An all-zero header is a heartbeat. The phone keeps only the latest complete packet. Browser decoding likewise retains only the newest pending packet. The Node relay uses stream backpressure and aborts upstream when the browser disconnects. Preview frames follow the available analysis cadence without a fixed 30 fps cap.
 - `POST /api/control`: bounded JSON commands: `config`, `seed`, `calibrate`, `reset`, `record`, `stop`. Android dispatches mutations to the main thread.
 - `GET /api/sessions`: completed session metadata.
 - `GET /api/session?id=klobflow-<13-digit epoch>`: JSONL export.

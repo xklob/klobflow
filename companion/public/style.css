@@ -740,6 +740,9 @@ dialog .button-row {
 .coaching.aligned strong { color: var(--lime); }
 .coaching.adjust { background: #42301b; border-color: #7d5a31; }
 .coaching.adjust strong, .correction { color: #ffbd77; }
+.feedback-legend { display:flex;flex-wrap:wrap;gap:7px 20px;padding:10px 2px 14px;font-size:12px;line-height:1.6;color:#d5ddce; }
+.on-guide { color:var(--lime); }
+#camera-probes { line-height:1.7; }
 .overlay-key { font-size: 12px; line-height: 1.7; color: var(--muted); margin: 12px 0; }
 .staff-a { color: var(--lime); } .staff-b { color: var(--purple); }
 #calibrate, #clear-calibration { width: 100%; margin-top: 8px; }

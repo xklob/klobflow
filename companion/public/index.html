@@ -188,6 +188,8 @@
           </div>
           <div id="coaching" class="coaching" role="status"><strong id="coaching-title">Keep both staves visible</strong><span id="coaching-detail">Alignment cues appear when both staves are tracked.</span></div>
           <section id="beat-feedback" class="beat-feedback" hidden><strong id="beat-pulse"></strong><div id="beat-hits"></div></section>
+          <div class="feedback-legend"><span><b class="on-guide">ON GUIDE</b> = aligned</span><span><b class="correction">MOVE →</b> = move that tip to the white bullseye</span><span>Dashed staff = blur; precision paused</span></div>
+          <p id="beat-legend" class="small-note" hidden>Blue numbered rings are beat targets. The small white dot marks the staff tip used for timing.</p>
           <div id="stage">
             <video id="local-video" autoplay muted playsinline hidden></video>
             <canvas
@@ -285,6 +287,9 @@
             <label class="select-label">Capture priority<select id="capture-target"><option value="auto">Highest measured frame rate</option><option value="60">Up to 60 fps</option><option value="30">Up to 30 fps</option><option value="120">Up to 120 fps</option></select></label>
             <button id="optimize-camera" class="subtle">Recheck camera modes</button>
             <p id="camera-profile" class="small-note">Compares actual frame rates at 720p, 480p, 1080p, and 240p. Prefers detail only when frame rates are nearly equal.</p>
+            <details><summary>Camera mode results</summary><p id="camera-probes" class="small-note"></p></details>
+            <label class="select-label">Exposure for spinning<select id="camera-exposure" disabled><option value="auto">Camera automatic</option><option value="120">Short · about 1/120 s</option><option value="240">Shorter · about 1/240 s</option><option value="500">Shortest · about 1/500 s</option></select></label>
+            <p id="exposure-info" class="small-note">Shorter exposure reduces light smears; the image may become darker. Availability depends on the webcam.</p>
           </div>
           <label class="select-label" id="phone-camera-setting"
             >Camera<select data-config="facing">

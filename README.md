@@ -2,7 +2,7 @@
 
 A practice tool for double staves: use the native Android app with its local PC companion, or practice entirely in your browser with a PC webcam. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, or a projected cube, and inspect your practice in real time.
 
-**Experimental markerless tracking.** Camera recording and the full analysis pipeline are tested on an Android emulator and generated LED images. Accuracy with real LED staves, motion blur, occlusion, and Pixel 60 fps capture still needs physical practice validation. This is a measurement aid, not a universal technique grade.
+**Experimental markerless tracking.** The tracker has been replayed against private Pixel 4K/60 fps and C920 practice recordings, plus generated LED motion and emulator tests. Broad blur stays explicitly uncertain; controlled endpoint-accuracy and live device-latency measurements remain outstanding. This is a measurement aid, not a universal technique grade.
 
 ## Screenshots
 
@@ -29,13 +29,19 @@ Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/re
 5. Start slowly. Stave outlines show tracking; low confidence pauses the scores. Brighter trails show the last 4.2 seconds of tip motion. A brief hidden tip keeps its staff association for up to 1.5 seconds and is explicitly labelled; precision scores pause until visible endpoints are confirmed again.
 6. **Record practice** saves a silent MP4 to `Movies/Klobflow` and per-frame analysis privately in the app. **Sessions** plays the video or exports the JSONL measurements. The overlay is live and is **not burned into the MP4**.
 
-Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fails. CameraX treats frame rate as a target, not a guarantee. Analysis/display run independently at up to approximately 30 fps; The PC preview continuously streams matching JPEG frames and analysis at the available analysis rate, with a measured preview-fps readout and no 10 fps polling cap. A higher video frame rate does not eliminate motion blur. Camera hardware, exposure, and processing load affect the actual rates.
+Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fails. CameraX treats frame rate as a target, not a guarantee. Analysis consumes the latest available frame without a fixed 30 fps cap. The PC preview continuously streams matching JPEG frames and analysis at the available analysis rate, with a measured preview-fps readout and no 10 fps polling cap. A higher video frame rate does not eliminate motion blur. Camera hardware, exposure, and processing load affect the actual rates.
 
 ## Browser-only practice
 
 Open **http://localhost:8788** after starting the companion, then choose **Use PC camera**. No phone is needed. Camera capture, LED detection, tracking, perspective correction, scoring, guides, and recording all run locally in the browser. Chrome and Edge are the primary tested browsers.
 
 The first start measures available 720p, 480p, 1080p, and 240p modes, requesting up to the camera's advertised 120 fps. It chooses the fastest measured delivery rate, preferring more detail when rates differ by no more than 5%. A 720p60 mode therefore wins over 1080p30. Choose another camera or **Recheck fastest mode** after lighting or USB changes. The browser's live video remains independent of the analysis worker so analysis cannot queue old preview frames.
+
+Frame-rate requests now require a rate and back off unsupported resolution/rate combinations. Zoom and exposure changes preserve those constraints. **Camera mode results** shows each measured mode; the live readout distinguishes requested fps, camera-reported fps, delivered video fps, and analysis fps. Both native and browser analysis have no fixed 30 fps cap, though processing and capture can still limit it. A configured 30 fps does not guarantee 30 distinct delivered images in every lighting condition.
+
+For smeared LED arcs, try **Exposure for spinning → Short** (about 1/120 s), then **Shorter** if needed. The UI reports the actual shutter setting returned by the camera. Manual shutter controls appear only when exposed by the webcam/browser; otherwise use the webcam's own exposure or low-light settings. Shorter exposure can darken the image. The [W3C image-capture specification](https://www.w3.org/TR/image-capture/#exposuretime) defines these controls and their units.
+
+Hold the staff still briefly to establish tracking, then spin. Recent motion helps associate successive observations, and a local light-shape fit follows dim exposure sweeps without requiring a fixed LED color. Animated RGB/rainbow patterns, white LEDs, dark grips, and two staves have generated-video regression coverage. A broad smear is shown as a dashed, approximate staff using its recent length; its exact endpoints, alignment scores, and beat hits remain uncertain. A blank image or expired observation cannot supply a measurement. Very broad overlapping light sweeps can still be ambiguous.
 
 Browser sessions save mirrored, silent video plus JSONL analysis to this browser's local storage. Play or export them in the practice log. The browser chooses an available WebM/MP4 encoder; Android uses MP4. Export recordings to retain them if browser storage is cleared. The tab saves recording and releases the camera when hidden, then reacquires it when visible. Reopening the page can resume camera access if permission was already granted. Zoom is available only when the webcam/browser exposes a real zoom control.
 
@@ -62,7 +68,9 @@ On WSL, Windows owns the USB device. The companion finds Windows adb and uses Wi
 
 ### Seeing and correcting alignment
 
-The large cue above the preview says **Tips on guide**, **Adjust highlighted tips**, or why scoring is paused. Lime and purple lines identify the two tracked staves. White guides show the target. Green rings mark tips within tolerance; orange arrows point off-target tips toward the nearest white target rings. These are local geometric corrections, not automatic trick instruction. **Alignment arrows** toggles the cues.
+The large cue above the preview says **ON GUIDE**, **MOVE ORANGE TIPS TOWARD WHITE TARGETS**, or **PRECISION PAUSED**. Each measured tip has an **ON GUIDE** label or a **MOVE** label with a direction arrow. The colored ring is the actual tip; the white bullseye is where to move it. Lime and purple identify staff A and B. Dashed staff outlines mean motion blur, not an alignment error. Blue numbered rings are beat targets, and the small white dot marks the endpoint used for timing. The visible legend explains these symbols.
+
+Guidance waits for a clear view to settle, and tip labels use a tolerance margin before turning green, so noisy detection does not rapidly cycle instructions. Uncertain measurements still pause immediately; this presentation filter does not change recorded scores. These are local geometric corrections, not automatic trick instruction. **Alignment arrows** toggles the cues.
 
 Both cameras are mirrored by default, including the streamed preview and recorded video. **Mirror camera** switches this off. **Zoom** controls the camera's actual zoom range, and **Widest** uses its hardware-reported minimum, which may be below 1×. Switching cameras resets to widest; automatic startup fitting begins at widest when enabled. Disable automatic fitting to preserve your chosen zoom on reopening.
 
@@ -136,3 +144,5 @@ Camera/sharing/recording integration tests live under `app/src/androidTest`. Run
 The release key lives outside the repository, configured with `KLOBFLOW_SIGNING_PROPERTIES`. Keep the same key forever. For each major feature or update: bump `versionCode` and `versionName`, run validation, commit the source, then run `scripts/release.sh VERSION NOTES_FILE`. The script builds, verifies the APK, packages the companion, tags/pushes the source, and publishes a GitHub release with SHA-256 checksums. No signing secrets belong in Git or GitHub assets.
 
 See [architecture](docs/architecture.md) and [validation](docs/validation.md) for implementation details and verification limits.
+
+For a private, repeatable tracking diagnostic, run `node scripts/evaluate-video.mjs /path/to/video.mp4 review/video-analysis.json 1` (requires FFmpeg). This saves timestamps, uncertain observations, and processing times locally. Detection coverage is not a ground-truth accuracy score. Do not commit recordings or generated private analysis.

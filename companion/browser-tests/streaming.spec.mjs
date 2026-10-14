@@ -45,7 +45,7 @@ test("continuous preview, reconnect, zoom, and four-corner calibration controls"
     await page.locator("#phone-address").fill(`127.0.0.1:${phone.address().port}`);
     await page.locator("#pair-submit").click();
     await expect(page.locator("#source-label")).toHaveText("LIVE FROM YOUR PHONE");
-    await expect(page.locator("#coaching-title")).toHaveText(/Tips on guide|Adjust highlighted tips/);
+    await expect(page.locator("#coaching-title")).toHaveText(/ON GUIDE|MOVE ORANGE TIPS/);
     await expect(page.locator("#camera-info")).toContainText("preview fps");
     await expect(page.locator("#zoom")).toHaveAttribute("min", "0.7");
     await page.locator("#zoom").fill("2"); await page.locator("#zoom").dispatchEvent("change");

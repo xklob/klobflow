@@ -21,7 +21,7 @@ self.onmessage=({data})=>{
     if(data.type!=="frame")return;
     const start=performance.now(),{width,height,time}=data,rgba=new Uint8ClampedArray(data.pixels),argb=new Int32Array(width*height);
     for(let i=0;i<argb.length;i++)argb[i]=(255<<24)|(rgba[i*4]<<16)|(rgba[i*4+1]<<8)|rgba[i*4+2];
-    const detected=detector.detect(argb,width,height,config),staffs=tracker.update(detected,time,config.staffCount),g=new Guide(config,width,height);
+    const detected=detector.detect(argb,width,height,config,tracker.hints(time,config.staffCount)),staffs=tracker.update(detected,time,config.staffCount),g=new Guide(config,width,height);
     if(previous&&time>previous)fps=fps?fps*.85+1000/(time-previous)*.15:1000/(time-previous);previous=time;
     const fitPatch=fit.update(time,staffs,g,zoom.min,zoom.max,zoom.ratio);if(fitPatch)self.postMessage({type:"fit",config:fitPatch,revision});
     const ready=config.tempoSource==="manual"||(audio.running&&audio.bpm&&audio.confidence>=.6&&time-audio.at>=-100&&time-audio.at<2000);

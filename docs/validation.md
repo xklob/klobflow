@@ -1,3 +1,17 @@
+# v0.5.1 validation
+
+Validated locally on 2026-10-14, prioritizing 60 fps phones and capable webcams.
+
+- 41 JVM and 24 Node tests cover bright ends separated by a large dark grip, branched white-window distractors, changing rainbow patterns, exposure sweeps, crossings, angular prediction, uncertain scoring, stable coaching, and camera/exposure/zoom constraint preservation. Native-generated motion fixtures establish browser/native agreement.
+- Ten browser flows pass, including a generated 60 fps rainbow spin through the camera, analysis worker, recording, and replay. The native 30 ms analysis throttle is removed as well. This verifies the path, not the maximum sustainable frame rate of every device.
+- Four Android emulator integration checks cover lifecycle recovery, sharing, recording with decoded-video verification, playback audio tempo, and one-staff fitting/timing. The native single-staff demo now renders one centered staff.
+- Replayed both private sample recordings at their original presentation timestamps and the same 384-pixel analysis scale. The Pixel file contains 1,910 frames and averages 59.49 fps. In its 2–28 second practice section, 1,409 of 1,547 frames (91.1%) retain an observed staff. Across the full clip, only 49 frames meet the precision-confidence gate because most light is visibly smeared. These are coverage/confidence counts, not ground-truth endpoint accuracy. The local desktop run's detector/tracker median was about 1 ms; this excludes camera, conversion, rendering, and streaming costs.
+- Visual comparison exposed the old detector repeatedly tracking a window edge. The new luminous-region/pairing path follows the staff in the inspected spin frames. Remaining failures include clipping, heavily merged light, occlusion, and ambiguous ends. Recordings, decoded frames, and private overlays remain outside Git/release assets.
+- The C920 file contains 368 frames over 25.75 seconds, about 14.3 fps overall with a roughly 15 fps cadence. It is a fallback stress test, not evidence of 30 fps capture. Requested/reported/live rates and shorter-exposure controls now help distinguish configuration from actual delivery.
+- Signed APK continuity, alignment, asset hashes, and CI are checked during publication. README screenshots use generated practice, not the private recordings.
+
+`node scripts/evaluate-video.mjs VIDEO review/analysis.json 1` provides a local replay diagnostic using FFmpeg. The app cannot recover exact instantaneous tip positions from a broad integrated arc. Dashed outlines may use recent geometry and never earn alignment or beat credit. Live Pixel latency, high-end webcam settings, and annotated endpoint accuracy remain unmeasured.
+
 # v0.5.0 validation
 
 Validated locally on 2026-10-14.

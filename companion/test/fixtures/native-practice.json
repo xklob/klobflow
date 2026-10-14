@@ -42,7 +42,8 @@
             0.775437448641262
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -84,7 +85,8 @@
             0.7528496039602208
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -126,7 +128,8 @@
             0.7262741699796952
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -168,7 +171,8 @@
             0.6961302571689525
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -210,7 +214,8 @@
             0.6628932530401188
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -252,7 +257,8 @@
             0.6270873250031298
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -294,7 +300,8 @@
             0.5892771539325534
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -336,7 +343,8 @@
             0.5500590288128738
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -378,7 +386,8 @@
             0.510051442905001
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -425,7 +434,8 @@
             0.46988533973807545
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -472,7 +482,8 @@
             0.4301941627531064
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -519,7 +530,8 @@
             0.3916038655215067
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -566,7 +578,8 @@
             0.35472304008334504
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -613,7 +626,8 @@
             0.32013331908731824
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -779,7 +793,8 @@
             0.19891815393464785
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -821,7 +836,8 @@
             0.18770663617960087
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -863,7 +879,8 @@
             0.18142017132701438
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -910,7 +927,8 @@
             0.1801579006829659
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -957,7 +975,8 @@
             0.1839397310095559
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1004,7 +1023,8 @@
             0.1927060205833782
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1051,7 +1071,8 @@
             0.20631851978112603
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1098,7 +1119,8 @@
             0.22456255135873804
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1145,7 +1167,8 @@
             0.247150396039779
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1192,7 +1215,8 @@
             0.27372583002030476
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1239,7 +1263,8 @@
             0.30386974283104756
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1286,7 +1311,8 @@
             0.33710674695988113
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1333,7 +1359,8 @@
             0.3729126749968702
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1380,7 +1407,8 @@
             0.4107228460674467
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1427,7 +1455,8 @@
             0.44994097118712606
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1474,7 +1503,8 @@
             0.48994855709499896
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1521,7 +1551,8 @@
             0.5301146602619247
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1568,7 +1599,8 @@
             0.5698058372468936
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1615,7 +1647,8 @@
             0.6083961344784933
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         null
       ]
@@ -1667,6 +1700,7 @@
       0.3
     ],
     "confidence": 1,
-    "occluded": false
+    "occluded": false,
+    "blurred": false
   }
 }

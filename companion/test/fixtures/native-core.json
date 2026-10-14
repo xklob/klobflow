@@ -153,7 +153,8 @@
               0.7330796258164252
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -165,7 +166,8 @@
               0.2669203741835748
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -177,7 +179,8 @@
               0.8104946324083189
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -189,7 +192,8 @@
               0.5774150065918937
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -201,7 +205,8 @@
               0.8879096390002126
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -213,7 +218,8 @@
               0.8879096390002126
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -225,7 +231,8 @@
               0.8879096390002126
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -237,7 +244,8 @@
               0.2669203741835748
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           }
         ],
         "calibrated": false,
@@ -366,7 +374,8 @@
               0.6063085931494374
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -378,7 +387,8 @@
               0.3405843954723235
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -390,7 +400,8 @@
               0.6936560340969378
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -402,7 +413,8 @@
               0.5502245254660812
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -414,7 +426,8 @@
               0.7830631633608303
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -426,7 +439,8 @@
               0.7830631633608303
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -438,7 +452,8 @@
               0.7830631633608303
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -450,7 +465,8 @@
               0.3405843954723235
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           }
         ],
         "calibrated": true,
@@ -2359,7 +2375,8 @@
               0.31353629934685984
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2371,7 +2388,8 @@
               0.9345255641634975
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2383,7 +2401,8 @@
               0.7796955509797103
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2395,7 +2414,8 @@
               0.15870628616307247
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2407,7 +2427,8 @@
               0.22030444902028973
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2419,7 +2440,8 @@
               0.8412937138369275
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2431,7 +2453,8 @@
               0.6864637006531402
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2443,7 +2466,8 @@
               0.06547443583650242
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2455,7 +2479,8 @@
               0.06547443583650242
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2467,7 +2492,8 @@
               0.22030444902028973
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2479,7 +2505,8 @@
               0.8412937138369275
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2491,7 +2518,8 @@
               0.6864637006531402
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           }
         ],
         "calibrated": false,
@@ -2616,7 +2644,8 @@
               0.3652669912280614
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2628,7 +2657,8 @@
               0.8143879730757955
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2640,7 +2670,8 @@
               0.6353889824681004
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2652,7 +2683,8 @@
               0.2132759167582952
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2664,7 +2696,8 @@
               0.3162858238250995
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2676,7 +2709,8 @@
               0.7522791864581297
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2688,7 +2722,8 @@
               0.5777188170210691
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2700,7 +2735,8 @@
               0.1676212563783723
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2712,7 +2748,8 @@
               0.1676212563783723
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2724,7 +2761,8 @@
               0.3162858238250995
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2736,7 +2774,8 @@
               0.7522791864581297
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           },
           {
             "a": [
@@ -2748,7 +2787,8 @@
               0.5777188170210691
             ],
             "confidence": 1,
-            "occluded": false
+            "occluded": false,
+            "blurred": false
           }
         ],
         "calibrated": true,
@@ -2901,27 +2941,29 @@
   "detected": [
     {
       "a": [
-        1.1645672857473035,
-        0.19587152066348001
+        0.7944978677744012,
+        0.7282679079791327
       ],
       "b": [
-        0.8020340698891135,
-        0.7333491162842366
+        1.156470393632811,
+        0.19041292168687463
       ],
-      "confidence": 1,
-      "occluded": false
+      "confidence": 0.8,
+      "occluded": false,
+      "blurred": false
     },
     {
       "a": [
-        0.5308082256719825,
-        0.7726014327526022
+        0.1745548312364029,
+        0.24197213142193164
       ],
       "b": [
-        0.16429316210155975,
-        0.24916367527354397
+        0.5361304536073572,
+        0.7689140125502499
       ],
-      "confidence": 1,
-      "occluded": false
+      "confidence": 0.8,
+      "occluded": false,
+      "blurred": false
     }
   ],
   "steps": [
@@ -2937,7 +2979,8 @@
             0.76
           ],
           "confidence": 0.5,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -2949,7 +2992,8 @@
             0.2
           ],
           "confidence": 0.5,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -2963,7 +3007,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -2975,7 +3020,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1000
@@ -2992,7 +3038,8 @@
             0.76
           ],
           "confidence": 0.5,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3004,7 +3051,8 @@
             0.2
           ],
           "confidence": 0.5,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3018,7 +3066,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3030,7 +3079,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1033
@@ -3047,7 +3097,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3059,7 +3110,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3073,7 +3125,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3085,7 +3138,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1066
@@ -3102,7 +3156,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3114,7 +3169,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3128,7 +3184,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3140,7 +3197,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1099
@@ -3157,7 +3215,8 @@
             0.505
           ],
           "confidence": 0.35,
-          "occluded": true
+          "occluded": true,
+          "blurred": false
         },
         {
           "a": [
@@ -3169,7 +3228,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3183,7 +3243,8 @@
             0.505
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3195,7 +3256,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1132
@@ -3212,7 +3274,8 @@
             0.76
           ],
           "confidence": 0.3,
-          "occluded": true
+          "occluded": true,
+          "blurred": false
         },
         {
           "a": [
@@ -3224,7 +3287,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [{
@@ -3237,7 +3301,8 @@
           0.2
         ],
         "confidence": 1,
-        "occluded": false
+        "occluded": false,
+        "blurred": false
       }],
       "time": 1165
     },
@@ -3253,7 +3318,8 @@
             0.76
           ],
           "confidence": 0.5,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3265,7 +3331,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3279,7 +3346,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3291,7 +3359,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1198
@@ -3308,7 +3377,8 @@
             0.76
           ],
           "confidence": 0.5,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3320,7 +3390,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3334,7 +3405,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3346,7 +3418,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1231
@@ -3363,7 +3436,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3375,7 +3449,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "input": [
@@ -3389,7 +3464,8 @@
             0.76
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         },
         {
           "a": [
@@ -3401,7 +3477,8 @@
             0.2
           ],
           "confidence": 1,
-          "occluded": false
+          "occluded": false,
+          "blurred": false
         }
       ],
       "time": 1264
@@ -3418,7 +3495,8 @@
             0.76
           ],
           "confidence": 0.3,
-          "occluded": true
+          "occluded": true,
+          "blurred": false
         },
         {
           "a": [
@@ -3430,7 +3508,8 @@
             0.2
           ],
           "confidence": 0.3,
-          "occluded": true
+          "occluded": true,
+          "blurred": false
         }
       ],
       "input": [],
@@ -3456,7 +3535,8 @@
         0.76
       ],
       "confidence": 1,
-      "occluded": false
+      "occluded": false,
+      "blurred": false
     },
     {
       "a": [
@@ -3468,7 +3548,8 @@
         0.2
       ],
       "confidence": 1,
-      "occluded": false
+      "occluded": false,
+      "blurred": false
     }
   ]
 }

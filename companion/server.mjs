@@ -126,7 +126,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           paired: !!pairing,
           address: pairing?.address,
           transport: pairing?.transport,
-          version: "0.5.0",
+          version: "0.5.1",
         });
       if (url.pathname === "/api/pair" && req.method === "POST") {
         const input = await readJson(req);
@@ -209,6 +209,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         "/demo.mjs": ["demo.mjs", "text/javascript"],
         "/stream.mjs": ["stream.mjs", "text/javascript"],
         "/core.mjs": ["core.mjs", "text/javascript"],
+        "/feedback.mjs": ["feedback.mjs", "text/javascript"],
         "/practice.mjs": ["practice.mjs", "text/javascript"],
         "/system-audio.mjs": ["system-audio.mjs", "text/javascript"],
         "/tempo-core.mjs": ["tempo-core.mjs", "text/javascript"],

@@ -8,6 +8,42 @@ export function chooseProfile(results) {
   // Within 5% of the fastest observed cadence, retain more tracking detail.
   return results.filter(r => r.measuredFps >= fastest * .95).sort((a,b) => b.width*b.height-a.width*a.height)[0];
 }
+export async function applyCameraProfile(track,profile) {
+  const wanted=profile.fps||60;
+  // Ask for an actual rate, then back off unsupported resolution/rate combinations.
+  // An ideal-only request can silently select a 15 fps default on a 30 fps webcam.
+  for(const fps of [...new Set([wanted,60,30,24,15].filter(n=>n<=wanted))]){
+    try{
+      await track.applyConstraints({...track.getConstraints?.(),width:{exact:profile.width},height:{exact:profile.height},frameRate:{min:fps*.95,ideal:fps,max:fps},resizeMode:{ideal:"none"}});
+      return {...profile,fps,requestedFps:fps};
+    }catch(e){if(e.name!=="OverconstrainedError")throw e;}
+  }
+  throw new DOMException('This resolution has no usable frame-rate mode.','OverconstrainedError');
+}
+export async function applyTrackSettings(track,settings,drop=[]) {
+  // applyConstraints replaces the previous set. Zoom/exposure must retain capture mode.
+  const remove=new Set([...Object.keys(settings),...drop]),current=track.getConstraints?.()||{};
+  const keep=object=>Object.fromEntries(Object.entries(object).filter(([key])=>!remove.has(key)));
+  const advanced=(current.advanced||[]).map(keep).filter(x=>Object.keys(x).length);
+  await track.applyConstraints({...keep(current),advanced:[...advanced,settings]});
+}
+export async function setExposure(track,choice) {
+  const caps=track.getCapabilities?.()||{};
+  if(choice==='auto'){
+    if(!caps.exposureMode?.includes('continuous'))throw Error('This camera does not expose automatic exposure control.');
+    await applyTrackSettings(track,{exposureMode:'continuous'},['exposureTime']);
+  }else{
+    const range=caps.exposureTime;if(!range||!caps.exposureMode?.includes('manual'))throw Error('This webcam does not expose shutter control to the browser. Use its camera settings to shorten exposure.');
+    if(![120,240,500].includes(Number(choice)))throw Error('Choose one of the available shutter speeds.');
+    let time=Math.min(range.max,Math.max(range.min,10000/Number(choice)));
+    if(range.step)time=range.min+Math.round((time-range.min)/range.step)*range.step;
+    time=Math.min(range.max,Math.max(range.min,time));
+    await applyTrackSettings(track,{exposureMode:'manual',exposureTime:time});
+  }
+  const actual=track.getSettings();
+  if(actual.exposureMode!==(choice==='auto'?'continuous':'manual'))throw Error('The camera did not apply the exposure setting. Use its camera settings instead.');
+  return actual;
+}
 export function measureCadence(video, duration = 850, signal) {
   return new Promise((resolve,reject) => {
     let first=null,last=null,callback=null,timer,done=false;
@@ -28,12 +64,12 @@ export async function optimizeCamera(track, video, {target="auto",signal,onProgr
     if(signal?.aborted)throw new DOMException("Camera setup canceled","AbortError");
     onProgress(`Checking ${profile.width} × ${profile.height} at up to ${profile.fps} fps…`);
     try {
-      await track.applyConstraints({width:{exact:profile.width},height:{exact:profile.height},frameRate:{ideal:profile.fps},resizeMode:{ideal:"none"}});
+      const applied=await applyCameraProfile(track,profile);
       await video.play();
       // Let exposure / capture cadence settle before comparing modes.
       await measureCadence(video,250,signal);
       const measuredFps=await measureCadence(video,850,signal),settings=track.getSettings();
-      if(measuredFps>0)results.push({...profile,width:settings.width,height:settings.height,reportedFps:settings.frameRate,measuredFps});
+      if(measuredFps>0)results.push({...applied,width:settings.width,height:settings.height,reportedFps:settings.frameRate,measuredFps});
     } catch(e) {if(e.name==="AbortError")throw e;}
   }
   if(!results.length){
@@ -43,6 +79,6 @@ export async function optimizeCamera(track, video, {target="auto",signal,onProgr
     results.push({width:settings.width,height:settings.height,fps:settings.frameRate,reportedFps:settings.frameRate,measuredFps});
   }
   const best=chooseProfile(results);
-  await track.applyConstraints({width:{exact:best.width},height:{exact:best.height},frameRate:{ideal:best.fps},resizeMode:{ideal:"none"}});
+  await applyCameraProfile(track,best);
   return {selected:best,probes:results};
 }
