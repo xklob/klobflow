@@ -39,7 +39,7 @@ Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fa
 
 **Auto-fit** and **Background · 5s** sit beside the preview. On Android, **Setup** opens LED colors, background controls, Match staff length, and Reset guide layout. In the browser, **LED colors & lights** takes you directly to those detection controls; fitting sits near the top of the guide panel. Mode tutorials show the first step initially, with the remaining steps available on demand. **What do the lines and rings mean?** opens the overlay legend.
 
-Choose **Full screen** for a focused practice view. Both versions keep tracking, alignment, timing, streaks, recording, and **Exit full screen** available. Android arranges the preview beside the feedback in landscape. Exiting returns to the settings without restarting capture. On the desktop, select **Large** text for viewing from across the room.
+Choose **Full screen** for a focused practice view. Both versions keep tracking, alignment, timing, streaks, recording, and **Exit full screen** available. Android arranges the preview beside the feedback in landscape. Small browser screens show compact status summaries, with **Details** available when needed. Exiting returns to the settings without restarting capture. On the desktop, select **Large** text for viewing from across the room. Browser labels and rings render at display resolution independently of the smaller tracking image.
 
 The **Tracking** box reports the percentage of recent frames with measurable endpoints. **Alignment** reports the percentage of measured frames with every tip inside the target tolerance, over the last five seconds. These are separate: uncertain frames are excluded from alignment, while current numeric scores and correction rings still pause immediately. A brief behind-the-back pass keeps the recent summary and staff association without treating a hidden tip as a measurement. Faded outlines marked **LAST SEEN** are not current detections.
 
@@ -61,6 +61,8 @@ Antispin beat practice has **four outer turnarounds**, alternating tips: top →
 
 <img src="docs/screenshots/android-antispin.png" alt="Android antispin practice with per-axis drift and turnaround timing" width="340">
 
+<img src="docs/screenshots/web-mobile-fullscreen.png" alt="Browser antispin fullscreen on a narrow screen, with compact tracking, alignment, timing, and a Details button" width="340">
+
 ## Ignoring lights in the room
 
 Use **Capture background** with the camera fixed. A five-second countdown gives you time to move the staves out of view, followed by a short multi-frame capture. The live video keeps playing. Stationary pixels matching this baseline are removed from detection, including bright window slits and static lamps. The baseline stays fixed, so a staff introduced afterward can be held still without being learned away.
@@ -68,6 +70,8 @@ Use **Capture background** with the camera fixed. A five-second countdown gives 
 Capture again after moving the camera or changing room lighting. Camera restart, zoom, mirroring, camera/resolution changes, and browser exposure adjustments clear the baseline. **Cancel capture** stops the countdown; **Clear background** restores ordinary detection. Baselines stay in RAM and are never exported or uploaded. An LED directly overlapping an identical bright background can also be suppressed; background subtraction does not recover hidden details.
 
 **Staff LED colors** accepts one or several colors, so two differently colored staves can be tracked. Colored selections retain nearby washed-out white LED cores while excluding unrelated white light. **Any / rainbow** disables the color restriction. White alone cannot distinguish a white LED from sunlight; background capture is useful for that case. Color filtering applies to LED detection, not the unlit-edge mode.
+
+If colored halos or reflections merge with the staff, raise **Brightness threshold** to isolate its brighter core; lower it for dim LEDs. Check that both ends still remain visible. Color filtering can still truncate a white shaft that merges into a bright background, so compare **Any / rainbow** and use background capture or a different camera position when needed. The [recorded-sample review](docs/review-2026-10-14.md#narrated-sample-findings) explains the tested settings and remaining errors.
 
 ## Browser-only practice
 
@@ -81,7 +85,7 @@ For smeared LED arcs, try **Exposure for spinning → Short** (about 1/120 s), t
 
 Hold the staff still briefly to establish tracking, then spin. Recent motion helps associate successive observations, and a local light-shape fit follows dim exposure sweeps without requiring a fixed LED color. Animated RGB/rainbow patterns, white LEDs, dark grips, and two staves have generated-video regression coverage. A broad smear is shown as a dashed, approximate staff using its recent length; its exact endpoints, alignment scores, and beat hits remain uncertain. A blank image or expired observation cannot supply a measurement. Very broad overlapping light sweeps can still be ambiguous.
 
-Browser sessions save mirrored, silent video plus JSONL analysis to this browser's local storage. Play or export them in the practice log. The browser chooses an available WebM/MP4 encoder; Android uses MP4. Export recordings to retain them if browser storage is cleared. The tab saves recording and releases the camera when hidden, then reacquires it when visible. Reopening the page can resume camera access if permission was already granted. Zoom is available only when the webcam/browser exposes a real zoom control. Camera startup retries compatible modes after transient capture failures. If another app or tab still owns the webcam, the error explains how to release it and retry.
+Browser sessions save mirrored, silent video plus JSONL analysis to this browser's local storage. Play or export them in the practice log. The browser chooses an available WebM/MP4 encoder; Android uses MP4. Export recordings to retain them if browser storage is cleared. If storage is unavailable, the practice log still provides downloads from temporary memory; export before closing the tab. A disconnected camera or failed analysis stops recording and clears live scores. The tab saves recording and releases the camera when hidden, then reacquires it when visible. Reopening the page can resume camera access if permission was already granted. Zoom is available only when the webcam/browser exposes a real zoom control. Camera startup retries compatible modes after transient capture failures. If another app or tab still owns the webcam, the error explains how to release it and retry.
 
 ## PC companion
 
@@ -130,7 +134,7 @@ Each of Grid, Circles, Cube, Free, and Antispin has its own tutorial, dismissal 
 
 **Auto-fit** collects two seconds of reliable visible staves. It centers the guide and estimates a full-rotation envelope for Grid/Cube, or the radius and separation for Circles. **Match staff length** makes the circle diameter / guide width equal to the measured staff length, except Antispin where center-to-edge equals one staff length. The width-to-staff ratio helps you see the current size. Keep manual Size available for the pattern you intend to practice. Manual Auto-fit can conservatively tighten hardware zoom, then measures the guide again. It preserves existing perspective calibration and never invents a camera zoom for unsupported webcams. If the view is too tight at minimum zoom, step back and fit again. **Reset guide layout** restores only center X, center Y, size, rotation, and circle separation; it preserves camera choice, zoom, perspective calibration, tempo, and other preferences.
 
-Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start beat now** aligns the visual pulse; **Tap tempo** sets it from your taps. Pass the numbered points on each pulse. The filled tip is the endpoint used for timing. Feedback reports milliseconds early/late and spatial error at the crossing separately. Within ±75 ms is labelled on-beat; the existing target tolerance controls the position indicator. A still or uncertain tip does not earn a timing hit. The most recent hit expires after two beats.
+Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start beat now** aligns the visual pulse; **Tap tempo** sets it from your taps. Display controls such as trails and guide visibility preserve this synchronization. Pass the numbered points on each pulse. The filled tip is the endpoint used for timing. Feedback reports milliseconds early/late and spatial error at the crossing separately. Within ±75 ms is labelled on-beat; the existing target tolerance controls the position indicator. A still or uncertain tip does not earn a timing hit. The most recent hit expires after two beats.
 
 Timing uses interpolated crossings in the measured practice plane. It does not infer musical phrasing or VTG patterns, and display/capture latency still matters. Identical staff ends can swap after occlusion, so use a fresh sync after ambiguous tracking. Browser and Android recordings include beat observations in JSONL alongside ordinary alignment scores.
 
@@ -140,7 +144,7 @@ Keep **every tip** of the selected one or two staves within the guide tolerance 
 
 Tip halos and trails grow with sustained alignment. Levels increase after **2, 5, and 10 seconds**, adding orbiting particles and finally gold rings. Correction arrows and checked white tip rings remain visible above the effects. **Streak glow and particles** turns the extra effects off; the browser uses the label **Streak glow & particles**. Free flow keeps ordinary decorative trails without awarding alignment credit. Reduced-motion preferences stop the particles' orbit.
 
-An off-guide tip ends the streak immediately. Blur, hidden tips, and low-confidence tracking pause credit; uncertainty lasting over 350 ms ends the streak. A camera interruption also restarts the timer. Neither a missing observation nor an averaged error can earn time for an unseen or off-guide tip. Guide, camera, prop-count, and tolerance changes start a fresh attempt and best record. These effects do not alter precision or beat scores. Frame exports retain streak state for analysis replay; videos still contain the camera image without overlays.
+An off-guide tip ends the streak immediately. During a brief hidden-tip pass or blur, **STREAK HELD** preserves the earned counter and glow for up to **1.5 seconds** while tracking reacquires the ends. Unseen time earns no credit, and current precision and timing remain unavailable. Longer uncertainty or a camera interruption restarts the timer. Neither a missing observation nor an averaged error can earn time for an unseen or off-guide tip. Guide, camera, prop-count, and tolerance changes start a fresh attempt and best record. These effects do not alter precision or beat scores. Frame exports retain streak state for analysis replay; videos still contain the camera image without overlays.
 
 ## Automatic tempo from system audio
 
@@ -163,7 +167,7 @@ Tracking coordinates use square-pixel image geometry, normalized by the shorter 
 | Angle error | Mean undirected staff-axis angle to the nearest guide-line orientation, in degrees. |
 | Mirror symmetry | RMS mismatch after reflecting one staff across the guide's rotated center axis, with endpoint order minimized. Only meaningful for mirror-symmetry drills. |
 | Speed variation | Coefficient of variation of mean absolute angular speed over the last 1.2 seconds. Requires enough continuously tracked motion; stalls and transitions can increase it. |
-| Tracking coverage | Fraction of recent analyzed frames with two sufficiently confident staff detections. |
+| Tracking coverage | Fraction of recent analyzed frames with all selected staves and both ends measurable; hidden or blurred ends are excluded. |
 
 Displayed alignment, angle, and symmetry errors use the mean of valid observations in the last **five seconds**. Uncertain current tracking immediately pauses the readout, and changed targets or camera settings reset the window. Raw per-frame measurements remain in exports and drive live corrections, timing, and streaks. Lower error means closer adherence to the selected reference. **Tolerance** sets the visual target band for the error history; it does not change measured error. Missing/ambiguous detections produce null scores, not perfect scores. Shortened detections are treated as possible occlusion against the last full staff. This is a heuristic: rapid motion, foreshortening, or a hidden tip before initial acquisition can still cause inaccurate endpoints. Confidence is a geometric heuristic, not a calibrated probability.
 
@@ -192,6 +196,6 @@ Camera/sharing/recording integration tests live under `app/src/androidTest`. Run
 
 The release key lives outside the repository, configured with `KLOBFLOW_SIGNING_PROPERTIES`. Keep the same key forever. For each major feature or update: bump `versionCode` and `versionName`, run validation, commit the source, then run `scripts/release.sh VERSION NOTES_FILE`. The script builds, verifies the APK, packages the companion, tags/pushes the source, and publishes a GitHub release with SHA-256 checksums. No signing secrets belong in Git or GitHub assets.
 
-See [architecture](docs/architecture.md) and [validation](docs/validation.md) for implementation details and verification limits.
+See [architecture](docs/architecture.md), [validation](docs/validation.md), and the [practice reliability review](docs/review-2026-10-14.md) for implementation details and verification limits. The [vision framework comparison](docs/vision-framework-review.md) records why a dependency replacement alone would not resolve uncertain endpoints.
 
 For a private, repeatable tracking diagnostic, run `node scripts/evaluate-video.mjs /path/to/video.mp4 review/video-analysis.json 1` (requires FFmpeg). This saves timestamps, uncertain observations, and processing times locally. Detection coverage is not a ground-truth accuracy score. Do not commit recordings or generated private analysis.

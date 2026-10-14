@@ -155,3 +155,94 @@ test('PC audio is clock-synchronized before forwarding tempo to an Android compa
   await page.evaluate(()=>window.audioFixture.ctx.close());
  }finally{await page.request.post('/api/disconnect',{data:{}});phone.closeAllConnections();await new Promise(resolve=>phone.close(resolve));}
 });
+
+test('unplug clears live scores and source state, then the camera can reopen',async({page})=>{
+ await page.addInitScript(()=>{const open=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async c=>{const stream=await open(c);window.fixtureTrack=stream.getVideoTracks()[0];return stream;};});
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.evaluate(()=>{window.fixtureTrack.stop();window.fixtureTrack.dispatchEvent(new Event('ended'));});
+ await expect(page.locator('#tracking-title')).toHaveText('CAMERA DISCONNECTED');
+ await expect(page.locator('#source-label')).not.toContainText('LIVE');await expect(page.locator('#connection')).toContainText('STOPPED');
+ await expect(page.locator('#local-open')).toHaveText('Use PC camera');await expect(page.locator('#record')).toBeDisabled();await expect(page.locator('#deviation')).toContainText('—');
+ await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA');
+});
+
+test('recording locks camera choices and restores rejected control values',async({page})=>{
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.locator('#record').click();await expect(page.locator('#record')).toContainText('Stop');
+ for(const selector of ['#capture-target','#local-camera-select','#optimize-camera','[data-config="mirror"]'])await expect(page.locator(selector)).toBeDisabled();
+ // A queued/programmatic change can still reach the rejection path after controls lock.
+ await page.locator('[data-config="mirror"]').evaluate(e=>{e.checked=false;e.dispatchEvent(new Event('change'));});
+ await expect(page.locator('[data-config="mirror"]')).toBeChecked();await expect(page.locator('#message')).toContainText('Stop recording');
+ await page.locator('#record').click();await expect(page.locator('#record')).toContainText('Record practice');
+ await expect(page.locator('#capture-target')).toBeEnabled();
+ await page.locator('#bpm').fill('500');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#bpm')).toHaveValue('120');
+});
+
+test('storage failure preserves immediate video and analysis exports in this tab',async({page})=>{
+ await page.addInitScript(()=>{Object.defineProperty(window,'indexedDB',{configurable:true,value:{open(){const request={};queueMicrotask(()=>{request.error=new DOMException('Storage is unavailable','SecurityError');request.onerror?.();});return request;}}});});
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.locator('#record').click();await expect(page.locator('#record')).toContainText('1s');await page.locator('#record').click();
+ await expect(page.locator('#sessions')).toContainText('Kept only in this tab');
+ for(const name of ['Download video','Export ↗']){
+  const download=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();expect(await (await download).failure()).toBeNull();
+ }
+ await expect(page.locator('#message')).toContainText('Export this session now');
+});
+
+test('analysis interruption never removes the ability to finish a recording',async({page})=>{
+ await page.addInitScript(()=>{const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{constructor(...args){super(...args);if(String(args[0]).includes('tracker-worker'))window.fixtureWorker=this;}};});
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.locator('#record').click();await expect(page.locator('#record')).toContainText('1s');await page.evaluate(()=>window.fixtureWorker.terminate());
+ await expect(page.locator('#tracking-title')).toHaveText('NO FRESH FRAMES');await expect(page.locator('#record')).toBeEnabled();await page.locator('#record').click();
+ await expect(page.locator('#sessions')).toContainText('Play video');
+ // A reported fatal worker error also releases the source and saves without another camera frame.
+ await page.locator('#local-open').click();await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA');
+ await page.locator('#record').click();await expect(page.locator('#record')).toContainText('1s');
+ await page.evaluate(()=>window.fixtureWorker.dispatchEvent(new ErrorEvent('error',{message:'fixture analysis failure'})));
+ await expect(page.locator('#local-open')).toHaveText('Use PC camera');await expect(page.locator('#tracking-title')).toHaveText('CAMERA STOPPED');
+ await expect(page.getByRole('button',{name:'Play video'})).toHaveCount(2);
+});
+
+test('overlay uses display resolution and short fullscreen keeps room for the camera',async({page})=>{
+ await page.setViewportSize({width:1920,height:1080});await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await expect(page.locator('#tracking-brief')).toBeHidden();
+ await expect.poll(()=>page.locator('#view').evaluate(c=>c.width)).toBeGreaterThan(640);
+ const backing=await page.locator('#view').evaluate(c=>({width:c.width,shown:c.getBoundingClientRect().width}));expect(backing.width).toBeGreaterThanOrEqual(backing.shown*.95);
+ await page.locator('[data-mode="antispin"]').click();await page.locator('[data-config="tempoEnabled"]').check();
+ await page.setViewportSize({width:390,height:667});await page.locator('#fullscreen').click();
+ const stage=await page.locator('#stage').boundingBox(),status=await page.locator('.status-row').boundingBox();expect(stage.height).toBeGreaterThan(300);expect(status.height).toBeLessThan(180);
+ await expect(page.locator('#tracking-detail')).toBeHidden();await page.locator('#focus-details').click();await expect(page.locator('#tracking-detail')).toBeVisible();
+ await page.locator('#focus-details').click();await expect(page.locator('#tracking-detail')).toBeHidden();
+ await expect(page.locator('#tracking-brief')).toBeVisible();await expect(page.locator('#tracking-title')).toBeHidden();
+ await page.setViewportSize({width:844,height:390});
+ await expect.poll(async()=> (await page.locator('#stage').boundingBox()).height).toBeGreaterThan(260);
+ const camera=await page.locator('#stage').boundingBox(),side=await page.locator('.status-row').boundingBox();expect(side.x).toBeGreaterThan(camera.x+camera.width);
+});
+
+test('visibility and page-cache events resume once, while an explicit stop stays stopped',async({page})=>{
+ await page.addInitScript(()=>{const open=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);window.cameraOpens=0;navigator.mediaDevices.getUserMedia=async c=>{window.cameraOpens++;return open(c);};});
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('pagehide'));});
+ await expect(page.locator('#tracking-title')).toHaveText('CAMERA PAUSED');await expect(page.locator('#record')).toBeDisabled();
+ await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});window.dispatchEvent(new Event('pageshow'));document.dispatchEvent(new Event('visibilitychange'));});
+ await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA');expect(await page.evaluate(()=>window.cameraOpens)).toBe(2);
+ await page.locator('#local-open').click();await page.evaluate(()=>{window.dispatchEvent(new Event('pageshow'));document.dispatchEvent(new Event('visibilitychange'));});
+ await expect(page.locator('#local-open')).toHaveText('Use PC camera');expect(await page.evaluate(()=>window.cameraOpens)).toBe(2);
+});
+
+test('a browser without camera support exits opening state and stays restartable',async({page})=>{
+ await page.addInitScript(()=>Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:undefined}));
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#tracking-title')).toHaveText('CAMERA DID NOT START');
+ await expect(page.locator('#message')).toContainText('localhost or HTTPS');await expect(page.locator('#connection')).toContainText('STOPPED');await expect(page.locator('#local-open')).toBeEnabled();
+});
+
+test('a held streak label clears immediately when retained progress ends',async({page})=>{
+ await page.addInitScript(()=>{const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{
+  set onmessage(handler){super.onmessage=event=>{if(event.data.type==='frame'&&window.fixtureStreak)handler({data:{...event.data,frame:{...event.data.frame,streak:window.fixtureStreak}}});else handler(event);};}
+ };window.fixtureStreak={state:'building',seconds:4,bestSeconds:4,level:2,energy:.4,progress:.4};});
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await expect(page.locator('#streak-title')).toContainText('FLOW STREAK');
+ await page.evaluate(()=>window.fixtureStreak.state='held');await expect(page.locator('#streak-title')).toContainText('STREAK HELD',{timeout:1000});
+ await page.evaluate(()=>{window.fixtureStreak={...window.fixtureStreak,state:'paused',seconds:0,progress:0};});
+ await expect(page.locator('#streak-title')).toContainText('STREAK PAUSED',{timeout:1000});await expect(page.locator('#streak-hud')).toHaveAttribute('data-state','paused');
+});

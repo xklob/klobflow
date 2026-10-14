@@ -174,7 +174,7 @@
           >
           <p class="small-note">Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.</p>
           <label class="toggle"><input type="checkbox" data-config="streakEffects" checked><span>Streak glow &amp; particles</span></label>
-          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds. Blur pauses the streak; leaving the guide ends it.</p>
+          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds. Brief blur or hidden tips hold your place for up to 1.5 seconds without adding time. Leaving the guide ends the streak.</p>
           <label class="toggle"
             ><input type="checkbox" data-config="symmetry" checked /><span
               >Mirror symmetry</span
@@ -206,11 +206,11 @@
             <button id="quick-lights" class="subtle">LED colors &amp; lights</button>
           </div>
           <div id="practice-view">
-            <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
+            <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="focus-details" class="subtle" aria-expanded="false" aria-controls="tracking-detail coaching-detail beat-hits">Details</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
             <div class="status-row">
               <section id="tracking-box" class="status-box" data-tone="idle" role="status" aria-label="Tracking">
-                <div class="box-head"><i class="tone-dot"></i>Tracking</div>
-                <div class="fade-stack"><div class="fade-live"><strong id="tracking-title">NO CAMERA YET</strong><p id="tracking-detail">Connect your phone, use your PC camera, or explore the demo.</p></div></div>
+                <div class="box-head"><i class="tone-dot"></i><span class="focus-full-label">Tracking</span><span id="tracking-short-label" class="focus-short">Tracking</span></div>
+                <div class="fade-stack"><div class="fade-live"><strong id="tracking-title">NO CAMERA YET</strong><strong id="tracking-brief" class="focus-short">NO CAMERA YET</strong><p id="tracking-detail">Connect your phone, use your PC camera, or explore the demo.</p></div></div>
               </section>
               <section id="coaching" class="status-box coaching" data-tone="idle" role="status" aria-label="Alignment">
                 <div class="box-head"><i class="tone-dot"></i>Alignment</div>
@@ -218,7 +218,7 @@
               </section>
               <section id="beat-feedback" class="status-box beat-feedback" data-tone="timing" role="status" aria-label="Timing" hidden>
                 <div class="box-head"><i id="beat-dot" class="beat-dot"></i>Timing</div>
-                <div class="fade-stack"><div class="fade-live"><strong id="beat-pulse"></strong><div id="beat-hits"></div></div></div>
+                <div class="fade-stack"><div class="fade-live"><strong id="beat-pulse"></strong><div id="beat-brief"></div><div id="beat-hits"></div></div></div>
               </section>
             </div>
             <div id="stage">

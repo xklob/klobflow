@@ -1,4 +1,5 @@
 // Cosmetic rewards use observed alignment only. They never alter precision metrics.
+const HOLD_MS=1500;
 export class FlowStreak {
  constructor(){this.reset();}
  reset(clearBest=true){this.time=null;this.key='';this.ms=0;if(clearBest)this.best=0;this.energy=0;this.previousGood=false;this.uncertainSince=null;}
@@ -11,11 +12,12 @@ export class FlowStreak {
   const good=clear&&feedback.every(c=>Number.isFinite(c.error)&&c.error<=config.tolerance);
   let state;
   if(config.mode==='free'||config.streakEffects===false){this.ms=0;this.energy=0;this.previousGood=false;this.uncertainSince=null;state=config.mode==='free'?'free':'off';}
-  else if(!clear){this.uncertainSince??=time;if(time-this.uncertainSince>350)this.ms=0;this.previousGood=false;state='paused';}
+  else if(!clear){this.uncertainSince??=time;if(time-this.uncertainSince>HOLD_MS)this.ms=0;this.previousGood=false;state=this.ms>0?'held':'paused';}
   else if(!good){this.ms=0;this.previousGood=false;this.uncertainSince=null;state='ready';}
-  else {if(this.uncertainSince!==null&&time-this.uncertainSince>350)this.ms=0;this.uncertainSince=null;if(this.previousGood)this.ms+=dt;this.previousGood=true;state='building';}
+  else {if(this.uncertainSince!==null&&time-this.uncertainSince>HOLD_MS)this.ms=0;this.uncertainSince=null;if(this.previousGood)this.ms+=dt;this.previousGood=true;state='building';}
   this.best=Math.max(this.best,this.ms);
-  const target=state==='building'?Math.min(1,this.ms/10000):0;
+  // Retain the earned effect through a short pass behind the body, without adding hidden time.
+  const target=state==='held'?this.energy:state==='building'?Math.min(1,this.ms/10000):0;
   this.energy+=(target-this.energy)*(1-Math.exp(-dt/350));
   const level=this.ms>=10000?4:this.ms>=5000?3:this.ms>=2000?2:1;
   return {state,seconds:this.ms/1000,bestSeconds:this.best/1000,level,energy:this.energy,progress:Math.min(1,this.ms/10000)};
@@ -24,6 +26,7 @@ export class FlowStreak {
 export function streakText(flow){
  if(flow.state==='off')return 'STREAK EFFECTS OFF';
  if(flow.state==='free')return 'FREE FLOW · trails without alignment streaks';
+ if(flow.state==='held')return 'STREAK HELD · reacquiring tips';
  if(flow.state==='paused')return 'STREAK PAUSED · waiting for clear tips';
  if(flow.state==='ready')return 'BUILD YOUR STREAK · keep every tip on the guide';
  return `FLOW STREAK · ${flow.seconds.toFixed(1)}s · LEVEL ${flow.level}`;

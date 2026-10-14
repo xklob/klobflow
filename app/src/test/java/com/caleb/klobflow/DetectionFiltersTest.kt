@@ -23,6 +23,24 @@ class DetectionFiltersTest {
         assertEquals(listOf("red","blue"),Config().patch(JSONObject("""{"staffColors":["red","blue","red"]}""")).staffColors)
         try{Config().patch(JSONObject("""{"staffColors":["ultraviolet"]}"""));fail("Invalid color accepted")}catch(_:IllegalArgumentException){}
     }
+    @Test fun largeWhiteCapsKeepTheirInteriorWhenSurroundedBySelectedGlow(){
+        val p=IntArray(w*h){0xff101010.toInt()}
+        for(cx in listOf(38,104))for(y in 0 until h)for(x in 0 until w){
+            val d=(x-cx)*(x-cx)+(y-60)*(y-60)
+            if(d<=12*12)p[y*w+x]=if(d<=10*10)0xffffffff.toInt()else 0xffff20dd.toInt()
+        }
+        val actual=filterStaffColors(p,w,h,listOf("pink"))
+        for(cx in listOf(38,104))for(y in 51..69)for(x in cx-9..cx+9)
+            if((x-cx)*(x-cx)+(y-60)*(y-60)<=9*9)assertEquals("White cap interior at $x,$y",p[y*w+x],actual[y*w+x])
+    }
+    @Test fun localColorCannotFloodFillAnUnrelatedWhiteLight(){
+        val p=scene(false)
+        // A small reflection touches a long white slit, but does not surround it.
+        for(y in 55..59)for(x in 127..129)p[y*w+x]=0xffff20dd.toInt()
+        val actual=filterStaffColors(p,w,h,listOf("pink"))
+        assertEquals(0,actual[20*w+131]);assertEquals(0,actual[100*w+131])
+        assertEquals(0,filterStaffColors(IntArray(w*h){0xffffffff.toInt()},w,h,listOf("pink"))[60*w+80])
+    }
     @Test fun backgroundRemovesStaticLightsWithoutLearningAwayHeldStaves(){
         val bg=BackgroundFilter();val empty=scene(false);bg.begin(1000)
         assertTrue(bg.apply(empty,w,h,5999,"camera").all {it==0});assertEquals(1L,bg.status.remainingMs)

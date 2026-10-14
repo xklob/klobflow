@@ -50,11 +50,14 @@ class FadeBox {
   }
 }
 const inactive=state=>state==='paused'||state==='idle';
+// Compact fullscreen keeps the coverage value legible without splitting MEASURED across lines.
+function syncTrackingBrief(){const title=$('tracking-title').textContent,coverage=title.match(/^(\d+)% MEASURED$/);$('tracking-brief').textContent=coverage?coverage[1]+'%':title;$('tracking-short-label').textContent=coverage?'Measured':'Tracking';}
+new MutationObserver(syncTrackingBrief).observe($('tracking-title'),{childList:true,subtree:true,characterData:true});syncTrackingBrief();
 const trackingBox=new FadeBox('tracking-box',{urgent:(shown,next)=>shown.tone==='ok'&&next.tone!=='ok'||next.snapshot!==shown.snapshot});
 // Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
 const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.mode!==next.mode||shown.cues&&!next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
 const timingBox=new FadeBox('beat-feedback',{urgent:(shown,next)=>shown.paused!==next.paused||Math.abs(shown.bpm-next.bpm)>3});
-const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||['off','free'].includes(next.state)});
+const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||shown.state==='held'&&['paused','ready'].includes(next.state)||['off','free'].includes(next.state)});
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
   chart = $("chart"),
@@ -73,13 +76,19 @@ let config = { ...defaults },
   transport = "lan",
   picks = [],
   lastImage = null;
-let streamController = null, nextStreamAt = 0, arrivals = [], previewFps = 0, lastConfigText = "";
+let streamController = null, nextStreamAt = 0, arrivals = [], previewFps = 0, lastConfigText = "", sourceStalled = false;
 let trail = [],
   history = [];
 const localCamera = new BrowserCamera($("local-video"), {
   onFrame: f => { if (localMode && !replay) { lastArrival = Date.now(); syncConfig(f.currentConfig); acceptFrame(f); } },
   onStatus: text => { if (localMode) { message(text); enableControls(); } },
   onSessions: () => { if (localMode) loadSessions(); },
+  onState: () => {
+    if (!localMode) return;
+    // Lifecycle changes can arrive without another analyzed frame (unplug, hide, encoder failure).
+    if (!localCamera.active && !replay) { resetView(); setCoaching(null, localCamera.phase); }
+    connected(false); updateSourceControls();
+  },
 });
 async function updateDeviceList() {
   const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
@@ -169,7 +178,7 @@ $('ui-size').onchange=()=>applyUiSize($('ui-size').value);
 let viewBox={width:0,height:0},hudBox=null;
 // Canvas labels avoid the streak box drawn over the stage (measured after layout, not every frame).
 function measureHud(){const e=$('streak-hud');hudBox=e.hidden||e.parentElement!==$('stage')?null:{x:e.offsetLeft-canvas.offsetLeft,y:e.offsetTop-canvas.offsetTop,w:e.offsetWidth,h:e.offsetHeight};}
-new ResizeObserver(([entry])=>{viewBox=entry.contentRect;measureHud();if(replay&&current)render(current,lastImage);}).observe(canvas);
+new ResizeObserver(([entry])=>{viewBox=entry.contentRect;measureHud();if(current)render(current,lastImage);}).observe(canvas);
 new ResizeObserver(measureHud).observe($('streak-hud'));
 new ResizeObserver(([entry])=>{chartBox=entry.contentRect;rootPx=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;drawChart();}).observe(chart);
 const setText=(id,text)=>{const e=$(id);if(e.textContent!==text)e.textContent=text;};
@@ -290,7 +299,7 @@ function connected(value) {
   $("connection").replaceChildren(
     Object.assign(document.createElement("i"), {}),
     document.createTextNode(
-      value ? (transport === "usb" ? "USB CONNECTED" : "WI-FI CONNECTED") : localMode ? (localCamera.active ? "PC CAMERA" : "PC CAMERA STOPPED") : demo ? "DEMO MODE" : "PHONE NOT CONNECTED",
+      value ? (transport === "usb" ? "USB CONNECTED" : "WI-FI CONNECTED") : localMode ? (localCamera.active ? "PC CAMERA" : localCamera.phase === "opening" ? "PC CAMERA OPENING" : "PC CAMERA STOPPED") : demo ? "DEMO MODE" : "PHONE NOT CONNECTED",
     ),
   );
   $("pair-open").textContent = value ? "Disconnect" : "Connect phone ↗";
@@ -299,10 +308,18 @@ function connected(value) {
 }
 function enableControls() {
   const available = paired || (localMode && localCamera.active);
+  const recording = localMode ? localCamera.recording : !!current?.recording;
+  const finalizing = localMode ? localCamera.finalizing : !!current?.finalizing;
+  const cameraLocked = recording || finalizing;
   document
     .querySelectorAll("[data-config], [data-mode]")
     .forEach((e) => (e.disabled = !(available || demo) || !!replay));
   $("staff-count").disabled ||= config.mode === "antispin";
+  for (const key of ["mirror", "facing", "fps"]) {
+    const control = document.querySelector(`[data-config="${key}"]`);
+    if (control) control.disabled ||= cameraLocked;
+  }
+  for (const id of ["local-camera-select", "capture-target", "optimize-camera"]) $(id).disabled = localStarting || cameraLocked;
   for(const id of ["fit-guide","fit-size","sync-beat"])$(id).disabled=!available||!!replay;
   $("audio-pc").disabled=!available||audioStarting||!!replay;
   $("audio-phone").hidden=!paired;
@@ -316,12 +333,12 @@ function enableControls() {
   $("reset").disabled = !available || !!replay;
   $("seed").disabled = !available || !!replay;
   $("optimize-camera").disabled = localStarting || localCamera.recording || localCamera.finalizing;
-  $("record").disabled =
-    !available ||
-    !!replay ||
-    current?.source === "demo" ||
-    !current?.cameraReady ||
-    current?.finalizing;
+  const fresh = Date.now() - lastArrival <= 2000;
+  $("record").disabled = !!replay || finalizing || (!recording && (!available || !current?.cameraReady || current.source === "demo" || !fresh));
+  if (localMode && !replay) {
+    $("record").classList.toggle("recording", recording);
+    setText("record", finalizing ? "Saving…" : recording ? `■ Stop · ${Math.floor(Math.max(0, performance.now() - localCamera.recordingStarted) / 1000)}s` : "● Record practice");
+  }
   // Background snapshots need live camera frames; never the demo or a replay.
   const live=available&&!replay&&!!current?.cameraReady&&current.source!=="demo",bg=current?.background?.state||"off",snapshot=bg==="countdown"||bg==="capturing";
   $("background-capture").hidden=snapshot;$("background-capture").disabled=!live;
@@ -332,14 +349,14 @@ function enableControls() {
   setText("quick-background",snapshot?"Cancel background capture":bg==="ready"?"Recapture · 5s":"Background · 5s");
   for(const chip of document.querySelectorAll("#staff-colors .chip"))chip.disabled=!(available||demo)||!!replay||config.led===false;
 }
-function syncConfig(c) {
+function syncConfig(c, {force=false} = {}) {
   const text = JSON.stringify(c);
-  if (text === lastConfigText) return;
+  if (text === lastConfigText && !force) return;
   lastConfigText = text;
   config = { ...config, ...c };
   document.querySelectorAll("[data-config]").forEach((el) => {
     const key = el.dataset.config;
-    if (document.activeElement === el && ["range","number","text","checkbox"].includes(el.type)) return;
+    if (!force && document.activeElement === el && ["range","number","text","checkbox"].includes(el.type)) return;
     if (el.type === "checkbox") el.checked = !!config[key];
     else el.value = String(config[key]);
     if (el.type === "range") rangeLabel(el);
@@ -407,8 +424,8 @@ function patch(update) {
   if(update.bpm!==undefined){systemAudio.stop();update={...update,tempoSource:"manual"};}
   configChain = configChain.then(async () => {
     if (demo) {
-      syncConfig(patchConfig(config,update));
-      trail = [];
+      try { syncConfig(patchConfig(config,update), {force:true}); trail = []; message(""); }
+      catch (e) { message(e.message); syncConfig(config, {force:true}); }
       return;
     }
     try {
@@ -416,13 +433,13 @@ function patch(update) {
         action: "config",
         config: update,
       });
-      syncConfig(result.config);
+      syncConfig(result.config, {force:true});
       trail = [];
       history = [];
       message("");
     } catch (e) {
       message(e.message);
-      syncConfig(config);
+      syncConfig(config, {force:true});
     }
   });
   return configChain;
@@ -498,12 +515,13 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
+  sourceStalled = false;
   fallbackStreak.reset();$('streak-hud').hidden=true;streakBox.reset();
   alignmentFeedback.reset();displayedFeedback={tips:[],state:'paused'};legacyRolling=null;cueMemory.clear();
   $("beat-feedback").hidden=true;timingBox.reset();setPracticing(false);$("background-overlay").hidden=true;backgroundShown={state:'off',readyAt:0};
   current = null;
   lastTime = null;
-  lastImage = null;
+  lastImage?.close?.();lastImage = null;
   trail = [];
   history = [];
   seeding = false;
@@ -541,6 +559,7 @@ $("fullscreen").onclick = () => {
       .catch((e) => message(e.message));
 };
 $("exit-fullscreen").onclick=()=>document.exitFullscreen().catch(e=>message(e.message));
+$('focus-details').onclick=()=>{const expanded=$('focus-details').getAttribute('aria-expanded')!=='true';$('focus-details').setAttribute('aria-expanded',String(expanded));$('focus-details').textContent=expanded?'Hide details':'Details';$('practice-view').classList.toggle('show-focus-details',expanded);};
 // Both record buttons reflect the same source state, including pending saves and connection loss.
 function syncFocusRecord(){const source=$('record'),target=$('focus-record');target.disabled=source.disabled;setText('focus-record',source.textContent.replace('Record practice','Record').trim());target.classList.toggle('recording',source.classList.contains('recording'));}
 new MutationObserver(syncFocusRecord).observe($('record'),{attributes:true,attributeFilter:['disabled','class'],childList:true,subtree:true,characterData:true});
@@ -556,11 +575,12 @@ $("reset").onclick = async () => {
   }
 };
 $("record").onclick = async () => {
-  const action = current?.recording ? "stop" : "record";
+  const action = (localMode ? localCamera.recording : current?.recording) ? "stop" : "record";
   $("record").disabled = true;
   try {
+    if (action === "stop" && localMode) message("Stopping and saving your practice…");
     await api("/api/control", { action });
-    message(
+    if (action !== "stop" || !localMode) message(
       action === "record"
         ? localMode ? "Recording in this browser. Video and analysis stay on this PC." : "Recording on your phone. Video and analysis save locally."
         : localMode ? "Saving your practice in this browser." : "Saving your practice on the phone.",
@@ -641,11 +661,13 @@ function drawEmpty() {
   }
 }
 function render(frame, image) {
-  if (canvas.width !== frame.width || canvas.height !== frame.height) {
-    canvas.width = frame.width; canvas.height = frame.height;
-    // Match the stage to the camera so a 16:9 webcam is not letterboxed inside a 4:3 box.
-    $("stage").style.setProperty("--stage-aspect", String(frame.width / frame.height));
-  }
+  if (sourceStalled && !replay) frame = {...frame,beat:null,config:{...frame.config,showFeedback:false,streakEffects:false}};
+  // Detection runs at a small image size; display overlays use screen resolution so glyphs stay crisp.
+  $("stage").style.setProperty("--stage-aspect", String(frame.width / frame.height));
+  const fit = viewBox.width && viewBox.height ? Math.min(viewBox.width / frame.width, viewBox.height / frame.height) : 1;
+  const raster = Math.min(4096 / Math.max(frame.width, frame.height), Math.max(1, fit * Math.min(2, devicePixelRatio || 1)));
+  const rasterWidth = Math.round(frame.width * raster), rasterHeight = Math.round(frame.height * raster);
+  if (canvas.width !== rasterWidth || canvas.height !== rasterHeight) { canvas.width = rasterWidth; canvas.height = rasterHeight; }
   const w = canvas.width,
     h = canvas.height,
     u = Math.min(w, h),
@@ -732,12 +754,12 @@ function render(frame, image) {
     if (!s) return;
     const color = n ? "#b5a3ff" : "#b6f36b";
     ctx.globalAlpha = s.occluded ? .35 : s.blurred ? .75 : s.confidence < .55 ? .7 : 1;
-    if(s.blurred&&!s.occluded)ctx.setLineDash([8,5]);
+    if(s.blurred&&!s.occluded)ctx.setLineDash([8*k,5*k]);
     if (frame.source === "demo" && !image) {
       ctx.shadowBlur = 20;
       ctx.shadowColor = color;
     }
-    line(s.a, s.b, color, frame.source === "demo" && !image ? 6 : 3);
+    line(s.a, s.b, color, (frame.source === "demo" && !image ? 6 : 3) * k);
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
     for (const p of [s.a, s.b]) {
@@ -821,20 +843,25 @@ function showBeat(f){
  if(!visible)return;
  if(paused){
   const why=f.audio?.status?.includes('Following')?'Waiting for fresh audio timing.':f.audio?.status||'Connect system audio or choose manual BPM.';
-  timingBox.show({key:`paused|${why}`,paused:true,bpm:0,tone:'wait',render(){$('beat-pulse').textContent='Beat timing paused';$('beat-hits').replaceChildren(Object.assign(document.createElement('div'),{textContent:why}));}},{immediate});
+  timingBox.show({key:`paused|${why}`,paused:true,bpm:0,tone:'wait',render(){$('beat-pulse').textContent='Beat timing paused';$('beat-brief').textContent='Waiting for audio';$('beat-hits').replaceChildren(Object.assign(document.createElement('div'),{textContent:why}));}},{immediate});
   return;
  }
- const bpm=Math.round(beat.bpm),rows=beat.hits.map((hit,i)=>{
+ const bpm=Math.round(beat.bpm),brief=beat.hits.map((hit,i)=>!hit?'Follow the pulse':`${beat.hits.length>1?'AB'[i]+': ':''}${Math.abs(hit.offsetMs)<=75?'On beat':Math.round(Math.abs(hit.offsetMs))+' ms '+(hit.offsetMs<0?'early':'late')} · ${hit.error<=f.config.tolerance?'on target':'off target'}`).join(' / '),rows=beat.hits.map((hit,i)=>{
   if(!hit)return {text:f.config.mode==='antispin'?'Alternate tips at the four outer turnarounds, one per pulse.':`${'AB'[i]} · pass the BEAT TIP across a numbered target on a pulse`,good:false};
   const onBeat=Math.abs(hit.offsetMs)<=75,precise=hit.error<=f.config.tolerance,timing=onBeat?'on beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${hit.offsetMs<0?'early':'late'}`;
   return {text:`${'AB'[i]} · ${f.config.mode==='antispin'?'turnaround':'point'} ${hit.point}: ${timing} · ${precise?'on target':'off target'} (${hit.error.toFixed(1)}%)`,good:onBeat&&precise};
  });
- timingBox.show({key:`${bpm}|${rows.map(r=>r.text).join('|')}`,paused:false,bpm,tone:'timing',render(){$('beat-pulse').textContent=`${bpm} BPM`;$('beat-hits').replaceChildren(...rows.map(r=>Object.assign(document.createElement('div'),{textContent:r.text,className:r.good?'good':''})));}},{immediate});
+ timingBox.show({key:`${bpm}|${rows.map(r=>r.text).join('|')}`,paused:false,bpm,tone:'timing',render(){$('beat-pulse').textContent=`${bpm} BPM`;$('beat-brief').textContent=brief;$('beat-hits').replaceChildren(...rows.map(r=>Object.assign(document.createElement('div'),{textContent:r.text,className:r.good?'good':''})));}},{immediate});
 }
 function setCoaching(f,reason='idle') {
   const immediate=!!replay;
   if(!f){
     const stalled=reason==='stalled';
+    const phases={opening:['OPENING CAMERA','Keep this tab visible while the camera starts.'],paused:['CAMERA PAUSED','Return to this tab to resume. Any recording has stopped.'],disconnected:['CAMERA DISCONNECTED','Reconnect the webcam, then choose Use PC camera.'],error:['CAMERA STOPPED','Choose Use PC camera to restart. Any recording is in the practice log.'],stopped:['CAMERA STOPPED','Choose Use PC camera when you are ready.']};
+    if (localMode && phases[reason]) {
+      const [title,detail]=phases[reason];
+      trackingBox.show({key:`local|${reason}`,tone:'idle',render(){$('tracking-title').textContent=title;$('tracking-detail').textContent=detail;}},{immediate:true});
+    } else
     if(cameraError&&!stalled)trackingBox.show({key:`error|${cameraError}`,tone:'warn',render(){$('tracking-title').textContent='CAMERA DID NOT START';$('tracking-detail').textContent=cameraError;}},{immediate:true});
     else trackingBox.show({key:`idle|${reason}`,tone:'idle',render(){$('tracking-title').textContent=stalled?'NO FRESH FRAMES':'NO CAMERA YET';$('tracking-detail').textContent=stalled?'The camera stream paused. Scores pause until frames return.':'Connect your phone, use your PC camera, or explore the demo.';}},{immediate:!stalled});
     coachingBox.show({key:'idle',state:'idle',mode:config.mode,cues:false,tone:'idle',render(){$('coaching-title').textContent='WAITING';$('coaching-detail').textContent='Alignment feedback appears when your staves are tracked.';}},{immediate:!stalled});
@@ -911,6 +938,7 @@ function drawChart() {
   if($('chart-basis').textContent!==basis)$('chart-basis').textContent=basis;
 }
 function acceptFrame(f, image = null) {
+  sourceStalled = false;
   if(!f.streak)f={...f,streak:fallbackStreak.update(f)};
   if(!replay){if(current&&(f.time<current.time||f.source!==current.source))legacyRolling=null;legacyRolling=averageLegacy(f,legacyRolling);}
   // During a background snapshot the capture instruction is the only prompt on the stage.
@@ -1013,7 +1041,7 @@ async function loadSessions() {
       card.textContent = new Date(s.createdAt).toLocaleString();
       card.append(
         Object.assign(document.createElement("small"), {
-          textContent: `${Math.round(s.durationMs / 1000)}s · ${s.validFrames} scored samples${s.recordingError != null ? " · recording error" : ""}`,
+          textContent: `${Math.round(s.durationMs / 1000)}s · ${s.validFrames} scored samples${s.temporary ? " · Kept only in this tab. Download video and export analysis now." : ""}${s.recordingError != null ? " · recording error" : ""}`,
         }),
       );
       const review = Object.assign(document.createElement("button"), {
@@ -1053,6 +1081,7 @@ async function loadSessions() {
 }
 $("refresh-sessions").onclick = loadSessions;
 async function loadAnalysis(text) {
+  if (localCamera.recording || localCamera.finalizing || (!replay && (current?.recording || current?.finalizing))) throw Error("Stop recording before reviewing saved analysis.");
   if (text.length > 30_000_000)
     throw new Error("Analysis export is too large (30 MB limit).");
   const rows = text
@@ -1138,6 +1167,14 @@ $("return-live").onclick = () => {
 function stopStream() {
   streamController?.abort(); streamController = null; nextStreamAt = 0;
 }
+function pauseLiveFeedback() {
+  if (!sourceStalled) {
+    sourceStalled=true;
+    $('streak-hud').hidden=true;$('beat-feedback').hidden=true;streakBox.reset();timingBox.reset();
+    if(current)render(current,lastImage);
+  }
+  setMetrics(null);setCoaching(null,"stalled");
+}
 async function receiveStream() {
   const controller = new AbortController(); streamController = controller;
   const decoder = new FrameDecoder();
@@ -1174,10 +1211,10 @@ async function receiveStream() {
     }
   } catch (e) {
     if (!controller.signal.aborted) {
-      setMetrics(null); setCoaching(null, "stalled");
+      pauseLiveFeedback();
       $("tracking-label").textContent = "Reconnecting · reopen Klobflow on your phone";
       $("source-label").textContent = "CAMERA PAUSED";
-      $("record").disabled = true; message(e.message);
+      enableControls(); message(e.message);
     }
   } finally {
     controller.abort();
@@ -1187,9 +1224,10 @@ async function receiveStream() {
 function loop() {
   if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
   if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
-  if ((paired || (localMode && localCamera.active)) && !replay && !seeding && !calibrating && Date.now() - lastArrival > 2000) {
-    setMetrics(null); setCoaching(null, "stalled"); $("record").disabled = true;
+  if ((paired || (localMode && localCamera.active)) && !replay && Date.now() - lastArrival > 2000) {
+    pauseLiveFeedback(); enableControls();
     $("tracking-label").textContent = "Waiting for fresh camera frames…";
+    $("source-label").textContent = "CAMERA PAUSED";
   }
   if (localMode && !replay) canvas.style.opacity = Date.now() - lastArrival > 200 ? "0" : "1";
   else canvas.style.opacity = "1";

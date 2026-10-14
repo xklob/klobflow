@@ -1,3 +1,14 @@
+# Post-v0.8.0 review branch
+
+Validated locally on 2026-10-14. These changes are proposed in a pull request; this is not another published release.
+
+- 79 regular JVM tests and 63 Node tests pass. Android lint, debug APK, and instrumentation APK builds pass. The optional private-video diagnostic is skipped by the regular suite and run separately below.
+- All 26 browser integration flows pass in one final run. Coverage includes capture/reopen, disconnect and page lifecycle, stale phone overlays, recording through analysis failure, unavailable storage with downloadable fallback, rejected control rollback, display-resolution drawing, compact portrait/landscape fullscreen, background capture, LED colors, beat audio, and prior practice flows. README screenshots use generated motion only.
+- All six disposable Android emulator flows pass on the final debug build, covering camera/sharing recovery, recording and decoded playback, playback audio, one-staff fitting/timing, antispin, and a queued frame arriving after its camera source stops. No physical phone or live LED setup was modified during the review.
+- Android and browser agree on endpoint coordinates, confidence, blur/occlusion flags, score validity, and all five raw metrics across 21,187 frame/configuration cases: the original Pixel recording (1,910 frames), recent practice recording (2,661), and narrated recording (8,308) under both unrestricted and pink/purple color settings. This covers 12,879 distinct decoded frames. Replays preserve original timestamps at 384×216 analysis resolution.
+- Final unrestricted results retain 656 measured frames in the original Pixel clip and 2,161 in the recent practice clip. Observed original-clip frames change from 1,509 to 1,506 after resetting stale uncertain history; recent observed frames remain 2,469. The narrated clip at threshold 250 has 7,606 observed and 5,204 measured frames; with pink/purple selected, 6,320 observed and 4,717 measured. These counts are availability, not physical accuracy.
+- The narrated audio was transcribed locally and used to choose expected-behavior intervals. Sparse visible-cap labels and a fixed early-circle fit distinguish later circle practice from deliberately inaccurate movement. The [review findings](review-2026-10-14.md) record configuration effects and confirmed remaining false endpoints. The [framework comparison](vision-framework-review.md) documents measured OpenCV parity/performance and optical-flow drift. Private recordings, transcript, images, and replay reports remain outside Git.
+
 # v0.8.0 validation
 
 Validated locally on 2026-10-14.

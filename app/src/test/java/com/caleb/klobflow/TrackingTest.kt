@@ -47,6 +47,31 @@ class TrackingTest {
         t.update(listOf(a,b),1033);assertTrue(t.update(listOf(a,b),1066).all {it!!.confidence>=.55})
         t.update(emptyList(),1100);assertTrue(t.update(listOf(a,b),1133).all{it!!.confidence<.55})
     }
+    @Test fun droppedFramesRequireFreshConfirmationEvenWithoutAMissingUpdate(){
+        for(gap in listOf(300L,2000L,10000L)){
+            val t=StaffTracker();repeat(3){t.update(listOf(a),1000L+it*17,1)}
+            val time=1034L+gap
+            // No empty update occurs while the camera/worker is stalled.
+            assertTrue(t.update(listOf(a),time,1)[0]!!.confidence<.55)
+            assertTrue(t.update(listOf(a),time+17,1)[0]!!.confidence<.55)
+            assertTrue(t.update(listOf(a),time+34,1)[0]!!.confidence>=.55)
+        }
+    }
+    @Test fun expiredIdentityCannotConfirmANewObjectOnItsFirstFrame(){
+        val t=StaffTracker();repeat(3){t.update(listOf(a),1000L+it*17,1)}
+        assertTrue(t.update(listOf(b),11000,1)[0]!!.confidence<.55)
+    }
+    @Test fun repeatedAndRewoundTimestampsCannotReuseConfirmation(){
+        val established=StaffTracker();repeat(3){established.update(listOf(a),1000L+it*17,1)}
+        assertTrue(established.hints(900,1).isEmpty())
+        for(time in listOf(1034L,900L)){
+            val t=StaffTracker();repeat(3){t.update(listOf(a),1000L+it*17,1)}
+            assertTrue(t.update(listOf(a),time,1)[0]!!.confidence<.55)
+            assertTrue(t.update(listOf(a),time+17,1)[0]!!.confidence<.55)
+            assertTrue(t.update(listOf(a),time+34,1)[0]!!.confidence>=.55)
+        }
+        val t=StaffTracker();repeat(10){assertTrue(t.update(listOf(a),1000,1)[0]!!.confidence<.55)}
+    }
     @Test fun briefBlurDoesNotForceClearAssociatedFramesToReconfirm(){
         val t=StaffTracker();repeat(3){t.update(listOf(a),1000L+it*17,1)}
         assertTrue(t.update(listOf(a.copy(blurred=true)),1051,1)[0]!!.confidence<.55)

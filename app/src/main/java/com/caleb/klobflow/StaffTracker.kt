@@ -203,16 +203,23 @@ class StaffTracker {
     private var streak=intArrayOf(0,0)
     private var confirmedAt=longArrayOf(-1000000,-1000000)
     private var motion=Array(2){DoubleArray(3)}
-    fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0);confirmedAt=longArrayOf(-1000000,-1000000);motion=Array(2){DoubleArray(3)}}
-    fun seed(staffs: List<Segment>,t:Long){require(staffs.size in 1..2);reset();last=staffs+List(2-staffs.size){null};lastAt=longArrayOf(t,t)}
+    private var updatedAt:Long?=null
+    fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0);confirmedAt=longArrayOf(-1000000,-1000000);motion=Array(2){DoubleArray(3)};updatedAt=null}
+    fun seed(staffs: List<Segment>,t:Long){require(staffs.size in 1..2);reset();last=staffs+List(2-staffs.size){null};lastAt=longArrayOf(t,t);updatedAt=t}
     private fun predicted(i:Int,t:Long):Segment? {
         val s=last[i] ?: return null;val dt=((t-lastAt[i])/1000.0).coerceIn(0.0,.15);val v=motion[i]
         val center=s.center+P(v[0]*dt,v[1]*dt);val a=s.angle+v[2]*dt;val d=P(cos(a),sin(a))*(s.length/2)
         return s.copy(a=center-d,b=center+d)
     }
-    fun hints(t:Long,count:Int=2)=last.mapIndexedNotNull {i,s->if(i<count && s!=null && t-lastAt[i]<250)predicted(i,t)else null}
+    fun hints(t:Long,count:Int=2)=last.mapIndexedNotNull {i,s->if(i<count && s!=null && t-lastAt[i] in 0 until 250)predicted(i,t)else null}
     fun update(candidates: List<Segment>,t:Long,count:Int=2): List<Segment?> {
+        // A restarted/repeated clock cannot supply another independent observation.
+        if(updatedAt?.let {t<=it}==true)reset()
+        updatedAt=t
         val prior=last.mapIndexed {i,s->s?.takeIf {i<count}?.takeIf {t-lastAt[i]<(if(it.blurred)350 else 1500)}}
+        for(i in prior.indices)if(prior[i]==null || t-lastAt[i]>250){
+            streak[i]=0;confirmedAt[i]=-1000000;motion[i]=DoubleArray(3)
+        }
         fun cost(i:Int,s:Segment):Double {
             val p=prior[i] ?: return 0.22-s.confidence*0.1
             val predicted=predicted(i,t)!!

@@ -497,10 +497,10 @@ class MainActivity:ComponentActivity() {
     if(ui.config.streakEffects&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing")ui.frame?.streak?.let {flow->
         // The state label holds like the status boxes; the counter ticks live within the shown state.
         val streakText=remember {StableText<String>()}
-        val shownState=streakText.update(SystemClock.uptimeMillis(),flow.state){a,b->a=="building" && b!="building" || b=="off" || b=="free"}
+        val shownState=streakText.update(SystemClock.uptimeMillis(),flow.state){a,b->a=="building" && b!="building" || a=="held" && (b=="paused" || b=="ready") || b=="off" || b=="free"}
         Surface(color=Color(0xee0b140f),shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth().padding(top=6.dp)){
             Column(Modifier.padding(10.dp)){
-                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused")Slate else Lime,fontSize=14.sp,fontWeight=FontWeight.Bold)
+                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused"||shownState=="held")Slate else Lime,fontSize=14.sp,fontWeight=FontWeight.Bold)
                 LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Lime,trackColor=Color(0xff28332a))
                 if(!focus)Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · levels at 2 / 5 / 10s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
             }

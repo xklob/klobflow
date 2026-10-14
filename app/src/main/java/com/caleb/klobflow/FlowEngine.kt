@@ -144,6 +144,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private fun process(bitmap:Bitmap,now:Long,source:String,streamGeneration:Int=generation) {
         if(closed || !active || streamGeneration!=generation)return
         synchronized(processing) {
+            // A source may have changed while this frame waited for a reset/configuration lock.
+            if(closed || !active || streamGeneration!=generation)return
             val c=config
             val scale=384.0/max(bitmap.width,bitmap.height)
             val small=Bitmap.createScaledBitmap(bitmap,max(2,(bitmap.width*scale).toInt()),max(2,(bitmap.height*scale).toInt()),true)
@@ -190,6 +192,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         demoScheduled=true
         demoTimer.scheduleWithFixedDelay({
             if(!demo || closed)return@scheduleWithFixedDelay
+            val demoGeneration=generation
             val bitmap=Bitmap.createBitmap(640,480,Bitmap.Config.ARGB_8888)
             val canvas=Canvas(bitmap);canvas.drawColor(Color.rgb(15,20,18))
             val t=SystemClock.elapsedRealtime()/1500.0
@@ -202,22 +205,22 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                     canvas.drawLine((a.x*480).toFloat(),(a.y*480).toFloat(),(b.x*480).toFloat(),(b.y*480).toFloat(),paint)
                 }else canvas.drawLine((cx-cos(angle)*105).toFloat(),(cy-sin(angle)*105).toFloat(),(cx+cos(angle)*105).toFloat(),(cy+sin(angle)*105).toFloat(),paint)
             }
-            process(bitmap,SystemClock.elapsedRealtime(),"demo")
+            process(bitmap,SystemClock.elapsedRealtime(),"demo",demoGeneration)
         },0,33,TimeUnit.MILLISECONDS)
     }
     private var demoScheduled=false
     fun updateConfig(patch:JSONObject,fromFit:Boolean=false) {
         val next=config.patch(patch)
-        if(next.tempoSource!="phone" || !next.tempoEnabled)context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))
-        if(next.tempoSource!="pc")pcAudio=AudioTempo()
         val cameraChange=next.facing!=config.facing || next.fps!=config.fps || next.mirror!=config.mirror
         val zoomChange=next.zoom!=config.zoom
         require(!(cameraChange && (ui.value.recording || ui.value.finalizing))){"Stop recording before changing camera or frame rate."}
+        if(next.tempoSource!="phone" || !next.tempoEnabled)context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))
+        if(next.tempoSource!="pc")pcAudio=AudioTempo()
         synchronized(processing){
             if(!fromFit){fitRevision++;fit.cancel()}
             if(next.staffCount!=config.staffCount || next.staffColors!=config.staffColors || next.led!=config.led || zoomChange)tracker.reset()
             if(cameraChange || zoomChange)backgroundFilter.clear()
-            config=next;scorer.reset();timingCoach.reset()
+            timingCoach.reconfigure(config,next);config=next;scorer.reset()
         }
         preferences.edit().putString("config",next.json().toString()).apply()
         mutable.update {it.copy(config=next)}

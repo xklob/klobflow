@@ -6635,8 +6635,8 @@
       "level": 4,
       "bestSeconds": 10.1,
       "progress": 1,
-      "state": "paused",
-      "energy": 0.7344014752987904
+      "state": "held",
+      "energy": 0.977277001003429
     },
     "time": 10200,
     "config": {
@@ -6701,7 +6701,7 @@
       "bestSeconds": 10.1,
       "progress": 1,
       "state": "building",
-      "energy": 0.8004087396127455
+      "energy": 0.9829241822235043
     },
     "time": 10300,
     "config": {
@@ -6766,7 +6766,7 @@
       "bestSeconds": 10.2,
       "progress": 1,
       "state": "building",
-      "energy": 0.8500116999227014
+      "energy": 0.9871679106802722
     },
     "time": 10400,
     "config": {
@@ -6830,8 +6830,8 @@
       "level": 4,
       "bestSeconds": 10.2,
       "progress": 1,
-      "state": "paused",
-      "energy": 0.6387644913402339
+      "state": "held",
+      "energy": 0.9871679106802722
     },
     "time": 10500,
     "config": {
@@ -6895,8 +6895,8 @@
       "level": 4,
       "bestSeconds": 10.2,
       "progress": 1,
-      "state": "paused",
-      "energy": 0.48001701086497095
+      "state": "held",
+      "energy": 0.9871679106802722
     },
     "time": 10600,
     "config": {
@@ -6960,8 +6960,8 @@
       "level": 4,
       "bestSeconds": 10.2,
       "progress": 1,
-      "state": "paused",
-      "energy": 0.3607218839548985
+      "state": "held",
+      "energy": 0.9871679106802722
     },
     "time": 10700,
     "config": {
@@ -7025,10 +7025,790 @@
       "level": 4,
       "bestSeconds": 10.2,
       "progress": 1,
-      "state": "paused",
-      "energy": 0.27107430490744455
+      "state": "held",
+      "energy": 0.9871679106802722
     },
     "time": 10800,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 10900,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11000,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11100,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11200,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11300,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11400,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11500,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11600,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11700,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11800,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 11900,
+    "config": {
+      "mirror": true,
+      "streakEffects": true,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.23,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "planeAspect": 1,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "staffs": [
+      {
+        "a": [
+          0.43666666666666665,
+          0.5
+        ],
+        "b": [
+          0.8966666666666666,
+          0.5
+        ],
+        "confidence": 1,
+        "occluded": false,
+        "blurred": true
+      },
+      null
+    ]
+  },
+  {
+    "output": {
+      "seconds": 10.2,
+      "level": 4,
+      "bestSeconds": 10.2,
+      "progress": 1,
+      "state": "held",
+      "energy": 0.9871679106802722
+    },
+    "time": 12000,
     "config": {
       "mirror": true,
       "streakEffects": true,
@@ -7091,9 +7871,9 @@
       "bestSeconds": 10.2,
       "progress": 0,
       "state": "paused",
-      "energy": 0.20370618487411113
+      "energy": 0.7418342693287967
     },
-    "time": 10900,
+    "time": 12100,
     "config": {
       "mirror": true,
       "streakEffects": true,
@@ -7156,9 +7936,9 @@
       "bestSeconds": 10.2,
       "progress": 0,
       "state": "building",
-      "energy": 0.1530805723918908
+      "energy": 0.5574716086256868
     },
-    "time": 11000,
+    "time": 12200,
     "config": {
       "mirror": true,
       "streakEffects": true,
@@ -7223,7 +8003,7 @@
       "state": "off",
       "energy": 0
     },
-    "time": 11100,
+    "time": 12300,
     "config": {
       "mirror": true,
       "streakEffects": false,
@@ -7288,7 +8068,7 @@
       "state": "off",
       "energy": 0
     },
-    "time": 11200,
+    "time": 12400,
     "config": {
       "mirror": true,
       "streakEffects": false,

@@ -17,8 +17,14 @@ test('30 and 60 fps award identical elapsed alignment and levels',()=>{
 });
 test('brief uncertainty pauses without credit and sustained uncertainty resets',()=>{
  const coach=new FlowStreak();build(coach);const s=staff();
- assert.equal(update(coach,1020,[{...s,blurred:true},null]).state,'paused');assert.equal(update(coach,1200).seconds,1);assert.equal(update(coach,1220).seconds,1.02);
- update(coach,1240,[{...s,occluded:true},null]);update(coach,1400,[null,null]);update(coach,1580,[null,null]);assert.equal(update(coach,1600).seconds,0);assert.equal(update(coach,1620).bestSeconds,1.02);
+ assert.equal(update(coach,1020,[{...s,blurred:true},null]).state,'held');assert.equal(update(coach,1200).seconds,1);assert.equal(update(coach,1220).seconds,1.02);
+ update(coach,1240,[{...s,occluded:true},null]);for(let t=1400;t<=2800;t+=200)update(coach,t,[null,null]);assert.equal(update(coach,2820).seconds,0);assert.equal(update(coach,2840).bestSeconds,1.02);
+});
+test('a normal behind-the-back pass holds earned glow but awards no unseen time or precision',()=>{
+ const coach=new FlowStreak();build(coach);const g=guide(),hidden={...staff(),occluded:true,confidence:.3},before=update(coach,1020,[hidden,null]);
+ for(let t=1040;t<=2400;t+=20){const v=update(coach,t,[hidden,null]);assert.equal(v.state,'held');assert.equal(v.seconds,1);assert.equal(v.energy,before.energy);assert.equal(new Scorer().score(t,[hidden,null],g).deviation,null);}
+ assert.equal(update(coach,2420).seconds,1);assert.equal(update(coach,2440).seconds,1.02);
+ update(coach,2460,[hidden,null]);const off={...staff(),a:g.point(-1.3,0)};assert.equal(update(coach,2480,[off,null]).seconds,0);assert.equal(update(coach,2480,[off,null]).state,'ready');
 });
 test('one off-guide or missing tip cannot hide in an average or earn a streak',()=>{
  const g=guide({...defaults,staffCount:2}),a={a:g.point(-1,-1),b:g.point(-1,1),confidence:1},b={a:g.point(1,-1),b:g.point(1,1),confidence:1},off={...b,b:g.point(1.12,1)},coach=new FlowStreak();

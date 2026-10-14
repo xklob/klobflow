@@ -128,7 +128,7 @@ export class Scorer {
   reset(){this.history=[];}
   score(time,staffs,g){
     const measured=staffs.slice(0,g.config.staffCount).map(s=>s?g.rectify(s):null);this.history.push([time,measured]);this.history=this.history.filter(x=>time-x[0]<=1200);
-    const good=measured.filter(s=>s&&s.confidence>=.55&&!s.blurred&&!s.occluded),coverage=this.history.filter(x=>x[1].filter(s=>s&&s.confidence>=.55).length===g.config.staffCount).length/this.history.length*100;
+    const valid=s=>s&&s.confidence>=.55&&!s.blurred&&!s.occluded,good=measured.filter(valid),coverage=this.history.filter(x=>x[1].filter(valid).length===g.config.staffCount).length/this.history.length*100;
     const result={deviation:null,angle:null,symmetry:null,steadiness:null,coverage};if(good.length!==g.config.staffCount)return result;
     if(g.config.mode!=="free")result.deviation=g.config.mode==='antispin'?Math.sqrt(mean(g.cues(staffs).map(c=>c.error**2))):Math.sqrt(mean(good.flatMap(s=>[s.a,s.b]).map(p=>g.deviation(p)**2)))/(2*g.radius)*100;
     if(g.lines.length&&g.config.mode!=='antispin')result.angle=mean(good.map(s=>Math.min(...g.lines.map(l=>angleDifference(angle(s),angle(l))*180/Math.PI))));
@@ -139,7 +139,7 @@ export class Scorer {
     const speeds=[];
     for(let i=1;i<this.history.length;i++){
       const prev=this.history[i-1],next=this.history[i],dt=(next[0]-prev[0])/1000;
-      if(dt<=0||dt>.15||[...prev[1],...next[1]].some(s=>!s||s.confidence<.55))continue;
+      if(dt<=0||dt>.15||[...prev[1],...next[1]].some(s=>!valid(s)))continue;
       speeds.push(mean(Array.from({length:g.config.staffCount},(_,n)=>angleDifference(angle(next[1][n]),angle(prev[1][n]))/dt)));
     }
     const avg=speeds.length?mean(speeds):0;
@@ -350,12 +350,15 @@ function motionCandidates(argb,w,h,c,hints,sharp){
 }
 export class StaffTracker {
   constructor(){this.reset();}
-  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.confirmedAt=[-Infinity,-Infinity];this.motion=[[0,0,0],[0,0,0]];}
-  seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.reset();this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];}
+  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.confirmedAt=[-Infinity,-Infinity];this.motion=[[0,0,0],[0,0,0]];this.updatedAt=null;}
+  seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.reset();this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];this.updatedAt=time;}
   predicted(i,time){const s=this.last[i];if(!s)return null;const dt=clamp((time-this.lastAt[i])/1000,0,.15),v=this.motion[i],c=add(center(s),[v[0]*dt,v[1]*dt]),a=angle(s)+v[2]*dt,d=mul([Math.cos(a),Math.sin(a)],length(s)/2);return {...s,a:sub(c,d),b:add(c,d)};}
-  hints(time,count=2){return this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<250?this.predicted(i,time):null).filter(Boolean);}
+  hints(time,count=2){return this.last.map((s,i)=>i<count&&s&&time>=this.lastAt[i]&&time-this.lastAt[i]<250?this.predicted(i,time):null).filter(Boolean);}
   update(candidates,time,count=2){
+    // A restarted/repeated clock cannot supply another independent observation.
+    if(this.updatedAt!==null&&time<=this.updatedAt)this.reset();this.updatedAt=time;
     const prior=this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<(s.blurred?350:1500)?s:null);
+    for(let i=0;i<prior.length;i++)if(!prior[i]||time-this.lastAt[i]>250){this.streak[i]=0;this.confirmedAt[i]=-Infinity;this.motion[i]=[0,0,0];}
     const cost=(i,s)=>{const p=prior[i];if(!p)return .22-s.confidence*.1;const predicted=this.predicted(i,time),delta=Math.max(1,time-this.lastAt[i])/1000,dist=distance(center(predicted),center(s)),ang=angleDifference(angle(predicted),angle(s)),ratio=length(s)/length(p);if(dist>.16+delta*1.8||ang>.3+delta*20||ratio<.25||ratio>1.4)return 10;return dist+ang*.13+Math.abs(Math.log(ratio))*.10+(1-s.confidence)*.15;};
     const assignments=[];
     for(let a=-1;a<candidates.length;a++)for(let b=-1;b<(count===1?0:candidates.length);b++)if(a<0||b<0||a!==b){

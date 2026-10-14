@@ -31,6 +31,45 @@ class PracticeTest {
         var result:JSONObject?=null;repeat(22){result=f.update(4000L+it*100,listOf(s,null),g,1.0,8.0,1.0) ?: result}
         assertEquals(.2,result!!.getDouble("scale"),1e-9);assertFalse(result!!.has("cx"));assertFalse(f.active)
     }
+    @Test fun fittingKeepsTheFullIntervalAtEveryFrameRate(){
+        val g=Guide(Config(mode="antispin",staffCount=1,scale=.3),640,480)
+        for(fps in listOf(30,60,120)){
+            val fit=FitHelper();fit.begin();var result:JSONObject?=null
+            for(i in 0..fps*2){
+                val phase=PI/4+i*PI/fps
+                val s=Segment(g.point(cos(phase),0.0),g.point(0.0,sin(phase)))
+                result=fit.update((i*1000.0/fps).roundToLong(),listOf(s,null),g,1.0,1.0,1.0) ?: result
+            }
+            assertNotNull("Fit did not complete at $fps fps",result)
+            assertEquals(.5,result!!.getDouble("cx"),1e-8);assertEquals(.5,result!!.getDouble("cy"),1e-8)
+            assertEquals(.3,result!!.getDouble("scale"),1e-8)
+        }
+    }
+    @Test fun fittingRestartsAfterStallsOrBackwardTime(){
+        val g=Guide(Config(mode="circles",staffCount=1),640,480);val s=Segment(P(.3,.4),P(.7,.4))
+        for(restart in listOf(500L,5000L)){
+            val fit=FitHelper();fit.begin()
+            repeat(12){assertNull(fit.update(1000+it*17L,listOf(s,null),g,1.0,1.0,1.0))}
+            assertNull(fit.update(restart,listOf(s,null),g,1.0,1.0,1.0))
+            repeat(19){assertNull(fit.update(restart+(it+1)*100L,listOf(s,null),g,1.0,1.0,1.0))}
+            assertNotNull(fit.update(restart+2000,listOf(s,null),g,1.0,1.0,1.0))
+        }
+    }
+    @Test fun cosmeticConfigPreservesBeatSyncAndGeometryOnlyDropsCrossings(){
+        val c=Config(mode="circles",staffCount=1,tempoEnabled=true);val g=Guide(c,640,480)
+        val coach=TimingCoach();coach.reset(0.0);var before=BeatFrame()
+        for(t in 1250L..1700L step 20)before=coach.update(t,listOf(spin(g,t),null),g)
+        assertNotNull(before.hits[0])
+        val display=c.copy(trails=false,showGuide=false,showFeedback=false,streakEffects=false,tolerance=8.0,timing="split-opp",ratio="1:3",symmetry=false)
+        coach.reconfigure(c,display)
+        val after=coach.update(1710,listOf(spin(g,1710),null),Guide(display,640,480))
+        assertEquals(.42,after.phase,1e-8);assertEquals(before.hits[0],after.hits[0])
+        val geometry=display.copy(scale=.4);coach.reconfigure(display,geometry)
+        val moved=coach.update(1750,listOf(spin(g,1750),null),Guide(geometry,640,480))
+        assertEquals(.5,moved.phase,1e-8);assertNull(moved.hits[0])
+        val clock=geometry.copy(bpm=90.0);coach.reconfigure(geometry,clock)
+        assertEquals(0.0,coach.update(1760,listOf(spin(g,1760),null),Guide(clock,640,480)).phase,0.0)
+    }
     @Test fun browserPracticeOracle(){
         val g=Guide(Config(mode="circles",staffCount=1,tempoEnabled=true),640,480);val coach=TimingCoach();coach.reset(0.0)
         val timing=JSONArray();for(t in 1250L..2700L step 40){val staffs=if(t in 1800..1950)listOf(null,null)else listOf(spin(g,t,80.0),null);timing.put(JSONObject().put("time",t).put("staffs",JSONArray(staffs.map {it?.json() ?: JSONObject.NULL})).put("beat",coach.update(t,staffs,g).json()))}

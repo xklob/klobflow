@@ -7,6 +7,7 @@ data class StreakFrame(val state:String="ready",val seconds:Double=0.0,val bestS
     fun json()=JSONObject().put("state",state).put("seconds",seconds).put("bestSeconds",bestSeconds).put("level",level).put("energy",energy).put("progress",progress)
     val label get()=when(state){
         "free"->"FREE FLOW · trails without alignment streaks"
+        "held"->"STREAK HELD · reacquiring tips"
         "paused"->"STREAK PAUSED · waiting for clear tips"
         "off"->"STREAK EFFECTS OFF"
         "ready"->"BUILD YOUR STREAK · keep every tip on the guide"
@@ -15,6 +16,7 @@ data class StreakFrame(val state:String="ready",val seconds:Double=0.0,val bestS
 }
 /** Cosmetic rewards never alter precision scores or award time across missing frames. */
 class FlowStreak {
+    private val holdMs=1500L
     private var time:Long?=null;private var key="";private var ms=0L;private var best=0L;private var energy=0.0
     private var previousGood=false;private var uncertainSince:Long?=null
     fun reset(clearBest:Boolean=true){time=null;key="";ms=0;if(clearBest)best=0;energy=0.0;previousGood=false;uncertainSince=null}
@@ -29,11 +31,12 @@ class FlowStreak {
         val good=clear&&cues.all {it.error.isFinite()&&it.error<=c.tolerance}
         val state=when {
             c.mode=="free"||!c.streakEffects->{ms=0;energy=0.0;previousGood=false;uncertainSince=null;if(c.mode=="free")"free"else"off"}
-            !clear->{if(uncertainSince==null)uncertainSince=t;if(t-uncertainSince!!>350)ms=0;previousGood=false;"paused"}
+            !clear->{if(uncertainSince==null)uncertainSince=t;if(t-uncertainSince!!>holdMs)ms=0;previousGood=false;if(ms>0)"held"else"paused"}
             !good->{ms=0;previousGood=false;uncertainSince=null;"ready"}
-            else->{if(uncertainSince?.let {t-it>350}==true)ms=0;uncertainSince=null;if(previousGood)ms+=dt;previousGood=true;"building"}
+            else->{if(uncertainSince?.let {t-it>holdMs}==true)ms=0;uncertainSince=null;if(previousGood)ms+=dt;previousGood=true;"building"}
         }
-        best=max(best,ms);val target=if(state=="building")min(1.0,ms/10000.0)else 0.0
+        // Hold the earned glow through a brief occlusion; the measured-time counter stays frozen.
+        best=max(best,ms);val target=if(state=="held")energy else if(state=="building")min(1.0,ms/10000.0)else 0.0
         energy+=(target-energy)*(1-exp(-dt/350.0))
         return StreakFrame(state,ms/1000.0,best/1000.0,if(ms>=10000)4 else if(ms>=5000)3 else if(ms>=2000)2 else 1,energy,min(1.0,ms/10000.0))
     }

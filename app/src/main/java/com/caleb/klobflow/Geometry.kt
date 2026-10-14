@@ -164,13 +164,14 @@ data class Metrics(val deviation: Double?=null,val angle: Double?=null,val symme
 }
 class Scorer {
     private val history=ArrayDeque<Pair<Long,List<Segment?>>>()
+    private fun valid(s:Segment?)=s!=null&&s.confidence>=.55&&!s.blurred&&!s.occluded
     fun reset(){history.clear()}
     fun score(t: Long,staffs: List<Segment?>,g: Guide): Metrics {
         val measured=staffs.take(g.config.staffCount).map {it?.let(g::rectify)}
         history.addLast(t to measured)
         while(history.isNotEmpty() && t-history.first().first>1200)history.removeFirst()
-        val good=measured.filterNotNull().filter {it.confidence>=0.55 && !it.blurred && !it.occluded}
-        val coverage=history.count {it.second.count {s->s!=null && s.confidence>=0.55}==g.config.staffCount}.toDouble()/history.size*100
+        val good=measured.filterNotNull().filter(::valid)
+        val coverage=history.count {it.second.count(::valid)==g.config.staffCount}.toDouble()/history.size*100
         if(good.size!=g.config.staffCount)return Metrics(coverage=coverage)
         val pts=good.flatMap {listOf(it.a,it.b)}
         val deviation=if(g.config.mode=="free")null else if(g.config.mode=="antispin")sqrt(g.cues(staffs).sumOf {it.error.pow(2)}/(2*g.config.staffCount))else sqrt(pts.sumOf {g.deviation(it).pow(2)}/(2*g.config.staffCount))/(2*g.radius)*100
@@ -185,7 +186,7 @@ class Scorer {
         val sym=if(g.config.symmetry && g.config.staffCount==2) sqrt(min(reflect(a.a).distance(b.a).pow(2)+reflect(a.b).distance(b.b).pow(2),reflect(a.a).distance(b.b).pow(2)+reflect(a.b).distance(b.a).pow(2))/2)/(2*g.radius)*100 else null
         val speeds=history.zipWithNext().mapNotNull {(prev,next)->
             val dt=(next.first-prev.first)/1000.0
-            if(dt<=0 || dt>0.15 || prev.second.any {it==null || it.confidence<0.55} || next.second.any {it==null || it.confidence<0.55})null
+            if(dt<=0 || dt>0.15 || prev.second.any {!valid(it)} || next.second.any {!valid(it)})null
             else (0 until g.config.staffCount).map {angleDifference(next.second[it]!!.angle,prev.second[it]!!.angle)/dt}.average()
         }
         val mean=if(speeds.isEmpty())0.0 else speeds.average()

@@ -21,6 +21,21 @@ test('selected LED hue rejects sunlight, preserves white cores and supports mult
  assert.deepEqual(patchConfig(defaults,{staffColors:['red','blue','red']}).staffColors,['red','blue']);
  assert.throws(()=>patchConfig(defaults,{staffColors:['ultraviolet']}),/valid staff colors/);
 });
+test('large overexposed caps retain their white interiors inside selected glow',()=>{
+ const pixels=new Int32Array(w*h).fill(0xff101010);
+ for(const cx of [38,104])for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const d=(x-cx)**2+(y-60)**2;if(d<=12**2)pixels[y*w+x]=d<=10**2?0xffffffff:0xffff20dd;
+ }
+ const actual=filterStaffColors(pixels,w,h,['pink']);
+ for(const cx of [38,104])for(let y=51;y<=69;y++)for(let x=cx-9;x<=cx+9;x++)if((x-cx)**2+(y-60)**2<=9**2)
+  assert.equal(actual[y*w+x],pixels[y*w+x],`white cap interior at ${x},${y}`);
+});
+test('a local colored reflection cannot flood fill an unrelated white light',()=>{
+ const pixels=scene(false);for(let y=55;y<=59;y++)for(let x=127;x<=129;x++)pixels[y*w+x]=0xffff20dd;
+ const actual=filterStaffColors(pixels,w,h,['pink']);
+ assert.equal(actual[20*w+131],0);assert.equal(actual[100*w+131],0);
+ assert.equal(filterStaffColors(new Int32Array(w*h).fill(0xffffffff),w,h,['pink'])[60*w+80],0);
+});
 test('fixed background removes static lights but never learns away a stationary foreground staff',()=>{
  const bg=new BackgroundFilter(),empty=scene(false);bg.begin(1000);
  assert.ok(bg.apply(empty,w,h,5999,'camera').every(p=>p===0));assert.equal(bg.status.remainingMs,1);

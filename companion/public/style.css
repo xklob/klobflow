@@ -1330,3 +1330,43 @@ input[type="number"] {
     line-height: 1.6;
   }
 }
+
+/* Fullscreen practice keeps the moving tips primary on narrow or short displays.
+   Details remain available in place with one tap, without shrinking the text size setting. */
+#focus-details, #beat-brief, .status-box .focus-short { display:none; }
+.streak-hud[data-state="held"] strong { color:var(--slate); }
+@media (max-width:720px), (max-height:600px) {
+  #practice-view:fullscreen #focus-details, #practice-view:fullscreen .focus-short { display:block; }
+  #practice-view:fullscreen #tracking-title, #practice-view:fullscreen .focus-full-label { display:none; }
+  #practice-view:fullscreen #tracking-brief { font-size:1.1rem; }
+  #practice-view:fullscreen .fullscreen-bar { gap:.4rem; }
+  #practice-view:fullscreen .fullscreen-bar .button-row { gap:.35rem; }
+  #practice-view:fullscreen .fullscreen-bar button { padding:.4rem .5rem; }
+  #practice-view:fullscreen .status-row,
+  #practice-view:fullscreen .status-row:has(> #beat-feedback:not([hidden])) { grid-template-columns:minmax(0,1.15fr) minmax(0,1.15fr) minmax(0,1fr); gap:.35rem; }
+  #practice-view:fullscreen .status-row:not(:has(> #beat-feedback:not([hidden]))) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #practice-view:fullscreen .status-row > #beat-feedback { grid-column:auto; }
+  #practice-view:fullscreen .status-box { min-height:0; padding:.4rem .45rem; }
+  #practice-view:fullscreen .status-box .fade-stack { min-height:0; }
+  #practice-view:fullscreen .status-box strong { font-size:.95rem; letter-spacing:0; }
+  #practice-view:fullscreen .box-head { font-size:.6rem; letter-spacing:.04em; gap:.25rem; }
+  #practice-view:fullscreen:not(.show-focus-details) #tracking-detail,
+  #practice-view:fullscreen:not(.show-focus-details) #coaching-detail,
+  #practice-view:fullscreen:not(.show-focus-details) #beat-hits { display:none; }
+  #practice-view:fullscreen:not(.show-focus-details) #beat-brief { display:block; font-size:.8rem; margin-top:.25rem; }
+  #practice-view:fullscreen.show-focus-details .status-row { max-height:45vh; overflow-y:auto; }
+  #practice-view:fullscreen.show-focus-details .status-box .fade-stack p,
+  #practice-view:fullscreen.show-focus-details #beat-hits div { font-size:.85rem; }
+}
+
+@media (max-height:500px) and (min-width:600px) {
+  #practice-view:fullscreen { display:grid; grid-template-columns:minmax(0,1fr) minmax(12rem,30%); grid-template-rows:auto minmax(0,1fr) auto; padding:.5rem; gap:.4rem; }
+  #practice-view:fullscreen .fullscreen-bar { grid-column:1 / -1; grid-row:1; }
+  #practice-view:fullscreen #stage { grid-column:1; grid-row:2 / 4; height:100%; }
+  #practice-view:fullscreen .status-row { grid-column:2; grid-row:2; display:flex; flex-direction:column; overflow-y:auto; }
+  #practice-view:fullscreen .status-box { flex:none; }
+  #practice-view:fullscreen #antispin-footer { grid-column:2; grid-row:3; }
+  #practice-view:fullscreen #antispin-footer .streak-hud { min-width:0; font-size:.65rem; }
+  #practice-view:fullscreen #antispin-footer .streak-hud strong { font-size:.65rem; }
+  #practice-view:fullscreen.show-focus-details .status-row { max-height:none; }
+}

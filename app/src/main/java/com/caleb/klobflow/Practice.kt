@@ -16,6 +16,13 @@ class TimingCoach {
     private var previous:Pair<Long,List<Segment?>>?=null
     private var hits=mutableListOf<BeatHit?>(null,null)
     fun reset(time:Double?=null){epoch=time;previous=null;hits=mutableListOf(null,null)}
+    /** Cosmetic controls preserve the user's beat origin; new geometry only clears crossings. */
+    fun reconfigure(before:Config,after:Config) {
+        fun clock(c:Config)=listOf(c.tempoEnabled,c.bpm,c.tempoSource,c.audioRate,c.audioOffsetMs)
+        fun geometry(c:Config)=listOf(c.mode,c.staffCount,c.beatPoints,c.cx,c.cy,c.scale,c.rotation,c.cubeDepth,c.circleSeparation,c.planeCorners,c.planeAspect,c.calibrationImageAspect,c.calibrationRotation,c.facing,c.fps,c.mirror,c.zoom,c.led,c.threshold,c.minLength,c.staffColors)
+        if(clock(before)!=clock(after))reset()
+        else if(geometry(before)!=geometry(after)){previous=null;hits=mutableListOf(null,null)}
+    }
     fun targets(g:Guide,index:Int):List<P> {
         val c=g.config;val center=if(c.mode=="circles")g.circles[index]else g.center
         if(c.mode=="cube")return if(c.beatPoints==8)g.vertices else if(c.beatPoints==4)g.vertices.take(4)else listOf(g.vertices[0],g.vertices[2])
@@ -72,18 +79,22 @@ class FitHelper {
     var allowZoom=false;private set
     var sizeOnly=false;private set
     var status="";private set
-    private var start=0L
+    private var start:Long?=null;private var lastSample:Long?=null
     private val samples=mutableListOf<List<Segment>>()
-    fun begin(zoom:Boolean=false,size:Boolean=false){active=true;allowZoom=zoom;sizeOnly=size;start=0;samples.clear();status=if(size)"Hold each full staff visible to match the guide size." else "Fitting center and size: keep your full staves visible for two seconds."}
-    fun cancel(){active=false;samples.clear();status=""}
+    fun begin(zoom:Boolean=false,size:Boolean=false){active=true;allowZoom=zoom;sizeOnly=size;start=null;lastSample=null;samples.clear();status=if(size)"Hold each full staff visible to match the guide size." else "Fitting center and size: keep your full staves visible for two seconds."}
+    fun cancel(){active=false;start=null;lastSample=null;samples.clear();status=""}
     fun update(t:Long,staffs:List<Segment?>,g:Guide,zoomMin:Double,zoomMax:Double,zoom:Double):JSONObject? {
         if(!active)return null
         val measured=staffs.take(g.config.staffCount).map {it?.takeIf {s->s.confidence>=.7 && !s.occluded && !s.blurred}?.let(g::rectify)}
-        if(measured.size!=g.config.staffCount || measured.any {it==null}){start=0;samples.clear();status="Waiting for ${g.config.staffCount} fully visible staff${if(g.config.staffCount==2)"s"else""} to fit the guide.";return null}
-        if(start==0L)start=t
-        samples.add(measured.filterNotNull());if(samples.size>90)samples.removeAt(0)
-        status="Fitting ${((t-start)/20).coerceAtMost(100)}% · keep the full movement in view"
-        if(t-start<2000 || samples.size<12)return null
+        if(measured.size!=g.config.staffCount || measured.any {it==null}){start=null;lastSample=null;samples.clear();status="Waiting for ${g.config.staffCount} fully visible staff${if(g.config.staffCount==2)"s"else""} to fit the guide.";return null}
+        // Keep the full collection interval at every frame rate, and never count an unseen gap.
+        if(lastSample?.let {t<it || t-it>250}==true){start=null;samples.clear()}
+        if(lastSample==t)return null
+        if(start==null)start=t
+        lastSample=t;samples.add(measured.filterNotNull())
+        val elapsed=t-start!!
+        status="Fitting ${(elapsed/20).coerceAtMost(100)}% · keep the full movement in view"
+        if(elapsed<2000 || samples.size<12)return null
         val all=samples.flatten();val lengths=all.map {it.length}.sorted();val radius=lengths[lengths.size/2]/2
         val endpoints=all.flatMap {listOf(it.a,it.b)}.map(g::local)
         val center=if(g.config.mode=="antispin")g.point((endpoints.minOf {it.x}+endpoints.maxOf {it.x})/(2*g.radius),(endpoints.minOf {it.y}+endpoints.maxOf {it.y})/(2*g.radius))else P(all.map {it.center.x}.average(),all.map {it.center.y}.average())
@@ -94,7 +105,7 @@ class FitHelper {
             val extentX=all.maxOf {abs(it.center.x-x/2)+it.length/2};val extentY=all.maxOf {abs(it.center.y-y/2)+it.length/2}
             val desired=(zoom*min(1.5,min(x*.41/extentX,y*.41/extentY))).coerceIn(zoomMin,zoomMax)
             allowZoom=false
-            if(abs(desired-zoom)>zoom*.08){start=0;samples.clear();status="Adjusting camera framing, then refitting the guide…";return JSONObject().put("zoom",desired)}
+            if(abs(desired-zoom)>zoom*.08){start=null;lastSample=null;samples.clear();status="Adjusting camera framing, then refitting the guide…";return JSONObject().put("zoom",desired)}
         }
         val scale=if(g.config.mode=="antispin")radius*2 else if(sizeOnly || g.config.mode in listOf("circles","free"))radius else max(spanX,spanY)/2/(if(g.config.mode=="cube")1+g.config.cubeDepth/2 else 1.0)
         val patch=JSONObject().put("scale",scale.coerceIn(.1,.48))

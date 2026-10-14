@@ -25,13 +25,27 @@ class StreakTest {
     @Test fun blurPausesWithoutAwardingHiddenTimeAndExpires(){
         val coach=FlowStreak();val g=guide();val s=staff(g);build(coach)
         val blurred=coach.update(1020,listOf(s.copy(blurred=true),null),g)
-        assertEquals("paused",blurred.state);assertEquals(1.0,blurred.seconds,0.0)
+        assertEquals("held",blurred.state);assertEquals(1.0,blurred.seconds,0.0)
         assertEquals(1.0,coach.update(1200,listOf(s,null),g).seconds,0.0)
         assertEquals(1.02,coach.update(1220,listOf(s,null),g).seconds,1e-9)
         coach.update(1240,listOf(s.copy(occluded=true),null),g)
-        coach.update(1400,listOf(null,null),g);coach.update(1580,listOf(null,null),g)
-        assertEquals(0.0,coach.update(1600,listOf(s,null),g).seconds,0.0)
-        assertEquals(1.02,coach.update(1620,listOf(s,null),g).bestSeconds,1e-9)
+        for(t in 1400L..2800L step 200)coach.update(t,listOf(null,null),g)
+        assertEquals(0.0,coach.update(2820,listOf(s,null),g).seconds,0.0)
+        assertEquals(1.02,coach.update(2840,listOf(s,null),g).bestSeconds,1e-9)
+    }
+    @Test fun behindTheBackPassHoldsEarnedGlowWithoutUnseenPrecisionOrTime(){
+        val coach=FlowStreak();val g=guide();val s=staff(g);val hidden=s.copy(occluded=true,confidence=.3);build(coach)
+        val before=coach.update(1020,listOf(hidden,null),g)
+        for(t in 1040L..2400L step 20){
+            val held=coach.update(t,listOf(hidden,null),g)
+            assertEquals("held",held.state);assertEquals(1.0,held.seconds,0.0);assertEquals(before.energy,held.energy,0.0)
+            assertNull(Scorer().score(t,listOf(hidden,null),g).deviation)
+        }
+        assertEquals(1.0,coach.update(2420,listOf(s,null),g).seconds,0.0)
+        assertEquals(1.02,coach.update(2440,listOf(s,null),g).seconds,1e-9)
+        coach.update(2460,listOf(hidden,null),g)
+        val off=coach.update(2480,listOf(s.copy(a=g.point(-1.3,0.0)),null),g)
+        assertEquals("ready",off.state);assertEquals(0.0,off.seconds,0.0)
     }
     @Test fun everySelectedTipMustBeClearAndWithinTolerance(){
         val g=guide(Config(mode="grid",staffCount=2));val a=Segment(g.point(-1.0,-1.0),g.point(-1.0,1.0));val b=Segment(g.point(1.0,-1.0),g.point(1.0,1.0));val coach=FlowStreak()
@@ -65,9 +79,9 @@ class StreakTest {
     @Test fun nativeStreakOracleMatchesBrowserFixture(){
         val coach=FlowStreak();val g=guide();val s=staff(g)
         val steps=JSONArray()
-        for(t in 0L..11200L step 100){
-            val staves=listOf(if(t==10200L || t in 10500L..10900L)s.copy(blurred=true)else s,null)
-            val currentGuide=if(t>=11100)guide(config.copy(streakEffects=false))else g
+        for(t in 0L..12400L step 100){
+            val staves=listOf(if(t==10200L || t in 10500L..12100L)s.copy(blurred=true)else s,null)
+            val currentGuide=if(t>=12300)guide(config.copy(streakEffects=false))else g
             steps.put(JSONObject().put("time",t).put("config",currentGuide.config.json()).put("staffs",JSONArray(staves.map {it?.json()?:JSONObject.NULL})).put("output",coach.update(t,staves,currentGuide).json()))
         }
         val fixture=JSONObject().put("steps",steps);val file=File("../companion/test/fixtures/native-streak.json")

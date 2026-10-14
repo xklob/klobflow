@@ -150,3 +150,10 @@ test('quick setup actions and short tutorials stay discoverable',async({page})=>
  await page.locator('.legend-help summary').click();await expect(page.locator('.feedback-legend')).toBeVisible();
  await page.locator('.legend-help summary').click();await expect(page.locator('.feedback-legend')).toBeHidden();
 });
+
+test('a rejected demo setting restores its value and later changes still apply',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
+ await page.locator('#bpm').fill('500');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#bpm')).toHaveValue('120');
+ await page.locator('#bpm').fill('105');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#bpm')).toHaveValue('105');
+ await page.locator('[data-mode="antispin"]').click();await expect(page.locator('[data-mode="antispin"]')).toHaveClass(/active/);
+});
