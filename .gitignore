@@ -1,0 +1,13 @@
+.gradle/
+**/build/
+local.properties
+signing.properties
+*.jks
+*.keystore
+node_modules/
+artifacts/
+review/
+.DS_Store
+
+companion/test-results/
+companion/playwright-report/

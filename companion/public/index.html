@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Klobflow · Practice space</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/"
+        ><span class="mark">╱╱</span> klobflow<span class="edition"
+          >PRACTICE SPACE</span
+        ></a
+      >
+      <div class="header-right">
+        <span id="connection" class="pill"><i></i> PHONE NOT CONNECTED</span
+        ><button id="pair-open" class="subtle">Connect phone ↗</button>
+      </div>
+    </header>
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">DOUBLE STAVES / FLOW LAB</p>
+          <h1>Find your lines.<span> Feel your flow.</span></h1>
+        </div>
+        <p class="intro-note">
+          A clearer view of your practice.<br />Captured and measured on your
+          phone.
+        </p>
+      </section>
+      <div class="workspace">
+        <aside class="panel controls">
+          <div class="section-title">
+            <span>Practice guide</span><span class="section-num">01</span>
+          </div>
+          <div class="mode-grid" role="group" aria-label="Practice guide">
+            <button data-mode="grid" class="active"><b>⊞</b> Grid</button
+            ><button data-mode="circles"><b>◎</b> Circles</button
+            ><button data-mode="cube"><b>◇</b> Cube</button
+            ><button data-mode="free"><b>~</b> Free flow</button>
+          </div>
+          <p id="mode-description" class="small-note">
+            Trace clean lines through the grid. Error measures tip distance to
+            the nearest guide line.
+          </p>
+          <div class="divider"></div>
+          <div class="section-title">
+            <span>Shape your space</span><span class="section-num">02</span>
+          </div>
+          <label class="range-label"
+            >Center X <output for="cx">50%</output
+            ><input
+              id="cx"
+              data-config="cx"
+              type="range"
+              min="0.1"
+              max="0.9"
+              step="0.01"
+              value="0.5"
+          /></label>
+          <label class="range-label"
+            >Center Y <output for="cy">50%</output
+            ><input
+              id="cy"
+              data-config="cy"
+              type="range"
+              min="0.1"
+              max="0.9"
+              step="0.01"
+              value="0.5"
+          /></label>
+          <label class="range-label"
+            >Size <output for="scale">32%</output
+            ><input
+              id="scale"
+              data-config="scale"
+              type="range"
+              min="0.1"
+              max="0.48"
+              step="0.01"
+              value="0.32"
+          /></label>
+          <label class="range-label"
+            >Rotation <output for="rotation">0°</output
+            ><input
+              id="rotation"
+              data-config="rotation"
+              type="range"
+              min="-90"
+              max="90"
+              step="1"
+              value="0"
+          /></label>
+          <label class="range-label" id="depth-control" hidden
+            >Cube projection depth <output for="cubeDepth">40%</output
+            ><input
+              id="cubeDepth"
+              data-config="cubeDepth"
+              type="range"
+              min="0.1"
+              max="0.9"
+              step="0.01"
+              value="0.4"
+          /></label>
+          <label class="range-label" id="circles-control" hidden
+            >Circle separation <output for="circleSeparation">100%</output
+            ><input
+              id="circleSeparation"
+              data-config="circleSeparation"
+              type="range"
+              min="0"
+              max="1.8"
+              step="0.02"
+              value="1"
+          /></label>
+          <label class="range-label"
+            >Target tolerance <output for="tolerance">4%</output
+            ><input
+              id="tolerance"
+              data-config="tolerance"
+              type="range"
+              min="1"
+              max="15"
+              step="0.5"
+              value="4"
+          /></label>
+          <label class="toggle"
+            ><input type="checkbox" data-config="showGuide" checked /><span
+              >Guide overlay</span
+            ></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-config="diagonals" checked /><span
+              >Grid diagonals</span
+            ></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-config="trails" checked /><span
+              >Tip trails</span
+            ></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-config="symmetry" checked /><span
+              >Mirror symmetry</span
+            ></label
+          >
+        </aside>
+        <section class="live-column">
+          <div class="stage-toolbar">
+            <div class="stage-label">
+              <i id="live-dot"></i
+              ><span id="source-label">YOUR PRACTICE VIEW</span>
+            </div>
+            <div>
+              <span class="key a">Staff A</span
+              ><span class="key b">Staff B</span
+              ><button
+                id="fullscreen"
+                class="icon"
+                aria-label="Expand practice view"
+              >
+                ↗
+              </button>
+            </div>
+          </div>
+          <div id="stage">
+            <canvas
+              id="view"
+              width="960"
+              height="720"
+              aria-label="Camera with grid overlay and staff tracking"
+            ></canvas>
+            <div id="empty-state">
+              <div class="empty-icon">⊞</div>
+              <h2>Give your practice some space.</h2>
+              <p>
+                Open Klobflow on your phone, enable PC sharing,<br />then
+                connect here on the same network.
+              </p>
+              <div class="button-row">
+                <button id="connect-stage" class="primary">
+                  Connect your phone ↗</button
+                ><button id="demo-start" class="subtle">Explore a demo</button>
+              </div>
+            </div>
+            <div id="stage-badge" hidden>DEMO · GENERATED MOTION</div>
+            <div id="seed-message" hidden></div>
+          </div>
+          <div class="capture-bar">
+            <div>
+              <strong id="tracking-label">Waiting for your phone</strong
+              ><small id="camera-info"
+                >Selfie or rear camera · LED tracking · 60 fps recording
+                target</small
+              >
+            </div>
+            <div class="button-row">
+              <button id="seed" class="subtle" disabled>Identify staves</button
+              ><button id="reset" class="subtle" disabled>Reacquire</button
+              ><button id="record" class="primary" disabled>
+                <span class="record-dot"></span> Record practice
+              </button>
+            </div>
+          </div>
+          <div id="message" role="status" hidden></div>
+          <div class="metrics">
+            <article>
+              <span id="error-label">GRID ERROR</span>
+              <div id="deviation">—<small>%</small></div>
+              <p id="deviation-hint">Tip distance / guide width</p>
+            </article>
+            <article>
+              <span>ANGLE ERROR</span>
+              <div id="angle">—<small>°</small></div>
+              <p>Staff to nearest guide line</p>
+            </article>
+            <article>
+              <span>MIRROR SYMMETRY</span>
+              <div id="symmetry">—<small>%</small></div>
+              <p>Reflected tip mismatch</p>
+            </article>
+            <article>
+              <span>SPEED VARIATION</span>
+              <div id="steadiness">—<small>%</small></div>
+              <p>Lower = steadier rotation</p>
+            </article>
+          </div>
+          <section class="panel timeline">
+            <div class="section-title">
+              <span>How your lines are settling</span
+              ><span id="chart-source" class="subtle-text"
+                >LAST 30 SECONDS</span
+              >
+            </div>
+            <canvas
+              id="chart"
+              width="1000"
+              height="140"
+              aria-label="History of measured alignment error"
+            ></canvas>
+            <div class="chart-footer">
+              <span><i></i> Guide error, %</span
+              ><span id="coverage">Tracking coverage: —</span>
+            </div>
+          </section>
+          <p class="measurement-note">
+            Measurements are projected in 2D. The cube is a visual reference,
+            not measured depth. Scores pause when tracking is uncertain.
+            Deliberate transitions can increase error.
+          </p>
+        </section>
+        <aside class="panel details">
+          <div class="section-title">
+            <span>Phone & tracking</span><span class="section-num">03</span>
+          </div>
+          <label class="select-label"
+            >Camera<select data-config="facing">
+              <option value="front">Selfie · mirrored</option>
+              <option value="back">Rear · high quality</option>
+            </select></label
+          >
+          <label class="select-label"
+            >Recording target<select data-config="fps">
+              <option value="60">60 fps</option>
+              <option value="30">30 fps</option>
+            </select></label
+          >
+          <label class="toggle"
+            ><input type="checkbox" data-config="led" checked /><span
+              >LED detection</span
+            ></label
+          >
+          <label class="range-label"
+            >Brightness threshold <output for="threshold">175</output
+            ><input
+              id="threshold"
+              data-config="threshold"
+              type="range"
+              min="60"
+              max="250"
+              step="1"
+              value="175"
+          /></label>
+          <label class="range-label"
+            >Minimum staff length <output for="minLength">22%</output
+            ><input
+              id="minLength"
+              data-config="minLength"
+              type="range"
+              min="0.1"
+              max="0.8"
+              step="0.01"
+              value="0.22"
+          /></label>
+          <p class="small-note">
+            Use a fixed camera and keep both staves fully in frame. Lower the
+            threshold for dimmer LEDs. Avoid long lights in the background.
+          </p>
+          <div class="divider"></div>
+          <div class="section-title">
+            <span>VTG practice notes</span><span class="section-num">04</span>
+          </div>
+          <label class="select-label"
+            >Timing / direction<select data-config="timing">
+              <option value="tog-same">Together / same</option>
+              <option value="split-same">Split / same</option>
+              <option value="tog-opp">Together / opposite</option>
+              <option value="split-opp">Split / opposite</option>
+            </select></label
+          >
+          <label class="select-label"
+            >Pattern ratio<select data-config="ratio">
+              <option>1:1</option>
+              <option>1:3</option>
+              <option>1:5</option>
+            </select></label
+          >
+          <p class="small-note">
+            Drill annotations, not automatic pattern recognition. Identical
+            staff ends cannot establish VTG phase by themselves.
+          </p>
+          <a
+            class="reference"
+            href="https://noelyee.com/instruction/vulcan-tech-gospel/"
+            target="_blank"
+            rel="noreferrer"
+            >Vulcan Tech Gospel ↗</a
+          ><a
+            class="reference"
+            href="https://flowartsinstitute.com/wp-content/uploads/2015/02/VTGpostersmall.jpg"
+            target="_blank"
+            rel="noreferrer"
+            >The VTG reference poster ↗</a
+          >
+          <div class="divider"></div>
+          <div class="section-title">
+            <span>Practice log</span
+            ><button
+              id="refresh-sessions"
+              class="icon"
+              aria-label="Refresh sessions"
+            >
+              ↻
+            </button>
+          </div>
+          <div id="sessions">
+            <p class="small-note">
+              Connect your phone to load recorded sessions.
+            </p>
+          </div>
+          <label class="file-button"
+            >Open exported analysis<input
+              id="import-analysis"
+              type="file"
+              accept=".jsonl,application/x-ndjson" /></label
+          ><button id="return-live" class="subtle" hidden>
+            Return to live view
+          </button>
+          <div id="replay-control" hidden>
+            <label class="range-label"
+              >Review sample <output for="scrubber"></output
+              ><input id="scrubber" type="range" min="0" max="0" value="0"
+            /></label>
+            <p class="small-note">
+              Analysis replay. Open the matching MP4 separately from Movies /
+              Klobflow. Video synchronization is approximate.
+            </p>
+          </div>
+        </aside>
+      </div>
+      <footer>
+        <span>MADE FOR THE MOMENT BETWEEN MOVES.</span
+        ><span>Local video. Local analysis. Your practice.</span>
+      </footer>
+    </main>
+    <dialog id="pair-dialog">
+      <form id="pair-form">
+        <p class="eyebrow">A BIGGER PRACTICE SPACE</p>
+        <h2>Bring your phone into the room.</h2>
+        <p>
+          Enable PC sharing in Klobflow. Enter the address and pairing code
+          displayed on your phone.
+        </p>
+        <label
+          >Phone address<input
+            id="phone-address"
+            placeholder="192.168.1.20:8787"
+            required
+            autocomplete="off"
+            inputmode="url" /></label
+        ><label
+          >Pairing code<input
+            id="phone-token"
+            placeholder="16 characters from the phone"
+            minlength="16"
+            maxlength="16"
+            required
+            autocomplete="off"
+            spellcheck="false"
+            type="password"
+        /></label>
+        <p id="pair-error" role="alert"></p>
+        <div class="button-row">
+          <button type="button" id="cancel-pair" class="subtle">Cancel</button
+          ><button type="submit" class="primary" id="pair-submit">
+            Connect ↗
+          </button>
+        </div>
+        <p class="small-note">
+          Use a trusted LAN. The code stays in this local server's memory.
+          Nothing is uploaded to a cloud service.
+        </p>
+      </form>
+    </dialog>
+    <script type="module" src="/app.mjs"></script>
+  </body>
+</html>
