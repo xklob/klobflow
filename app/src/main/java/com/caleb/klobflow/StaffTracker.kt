@@ -14,7 +14,7 @@ class StaffDetector {
             val lights=ledRegions(argb,w,h,c,hints)
             val recovered=if(lights.second && lights.first.all {s->hints.isEmpty() || hints.any {s.length>it.length*.85}})lights.first
                 else motionCandidates(argb,w,h,c,hints,lights.first)
-            if(recovered.isNotEmpty()||c.staffCount==1||!lights.third)return recovered
+            if(recovered.isNotEmpty()||c.staffCount==1||!lights.third)return recovered.map {s->if(s.blurred)glowBodyEndpoints(argb,w,h,s) ?: s else s}
         }
         val short=min(w,h).toDouble()
         val mask=BooleanArray(w*h)

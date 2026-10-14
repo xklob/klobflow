@@ -316,6 +316,7 @@ select {
 .stage-toolbar {
   min-height: 2.2rem;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 0.6rem;
@@ -365,6 +366,20 @@ select {
 #practice-view {
   display: flex;
   flex-direction: column;
+}
+.quick-actions { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 .6rem; }
+.quick-actions button { flex:1 1 auto; }
+.fullscreen-bar { display:none; }
+#practice-view:fullscreen .fullscreen-bar { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex:none; }
+.legend-help { margin-top:.6rem; padding:.6rem; border:1px solid var(--line); border-radius:.5rem; }
+.legend-help summary { cursor:pointer; font-weight:600; }
+.tutorial:not(.expanded) #tutorial-steps li:not(:first-child) { display:none; }
+#staff-colors { scroll-margin-top:1rem; }
+@media (min-width:1000px) {
+  #practice-view:fullscreen .status-row:has(> #beat-feedback:not([hidden])) { grid-template-columns:minmax(0,1fr) minmax(0,1.35fr) minmax(0,1.1fr); }
+  #practice-view:fullscreen .status-row > #beat-feedback { grid-column:auto; }
+  #practice-view:fullscreen #beat-feedback .fade-stack > *,
+  #practice-view:fullscreen #beat-hits { display:block; }
 }
 #stage {
   position: relative;
@@ -1140,6 +1155,8 @@ input[type="number"] {
   .workspace {
     grid-template-columns: var(--side) minmax(0, 1fr);
   }
+  /* Camera settings occupy the next grid row. The first-row sidebar must not float over them. */
+  .controls { position:static; }
   .details {
     grid-column: 1 / -1;
     position: static;
@@ -1162,6 +1179,7 @@ input[type="number"] {
   :root[data-ui-size="large"] .workspace {
     grid-template-columns: var(--side) minmax(0, 1fr);
   }
+  :root[data-ui-size="large"] .controls { position:static; }
   :root[data-ui-size="large"] .details {
     grid-column: 1 / -1;
     position: static;
@@ -1178,6 +1196,8 @@ input[type="number"] {
   }
 }
 @media (max-width: 720px) {
+  .fullscreen-bar > span { display:none; }
+  .fullscreen-bar .button-row { width:100%; justify-content:space-between; }
   :root {
     font-size: 17px;
   }

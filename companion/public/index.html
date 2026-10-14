@@ -40,12 +40,6 @@
             ><button data-mode="cube"><b>◇</b> Cube</button
             ><button data-mode="free"><b>~</b> Free flow</button>
           </div>
-          <p id="mode-description" class="small-note">
-            Trace clean lines through the grid. Error measures tip distance to
-            the nearest guide line.
-          </p>
-          <button id="show-tutorial" class="subtle">Show mode tutorial</button>
-          <section id="mode-tutorial" class="tutorial" hidden><strong id="tutorial-title"></strong><ol id="tutorial-steps"></ol><button id="dismiss-tutorial" class="subtle">Got it · dismiss for this mode</button></section>
           <div class="divider"></div>
           <div class="section-title">
             <span>Shape your space</span><span class="section-num">02</span>
@@ -57,6 +51,12 @@
             <p id="size-helper" class="small-note"></p>
             <p class="small-note">Reset guide layout only recenters the guide and restores its default size, rotation and circle separation. Camera, exposure, tempo and angle calibration stay as they are.</p>
           </div>
+          <p id="mode-description" class="small-note">
+            Trace clean lines through the grid. Error measures tip distance to
+            the nearest guide line.
+          </p>
+          <button id="show-tutorial" class="subtle">Show mode tutorial</button>
+          <section id="mode-tutorial" class="tutorial" hidden><strong id="tutorial-title"></strong><ol id="tutorial-steps"></ol><div class="button-row wrap"><button id="tutorial-expand" class="subtle" aria-expanded="false" aria-controls="tutorial-steps">Read all 4 steps</button><button id="dismiss-tutorial" class="subtle">Got it</button></div></section>
           <label class="range-label"
             >Center X <output for="cx">50%</output
             ><input
@@ -184,15 +184,21 @@
               ><span class="key b">Staff B</span
               ><button
                 id="fullscreen"
-                class="icon"
-                aria-label="Expand practice view"
+                class="subtle"
+                aria-label="Full screen practice"
                 title="Full screen, with the status boxes"
               >
-                ↗
+                Full screen
               </button>
             </div>
           </div>
+          <div class="quick-actions" aria-label="Practice actions">
+            <button id="quick-fit" class="subtle" title="Get into position first, then fit the guide from your visible staves" disabled>Auto-fit</button>
+            <button id="quick-background" class="subtle" title="Capture an empty background after 5 seconds. Keep the camera still and move your staves out of view." disabled>Background · 5s</button>
+            <button id="quick-lights" class="subtle">LED colors &amp; lights</button>
+          </div>
           <div id="practice-view">
+            <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
             <div class="status-row">
               <section id="tracking-box" class="status-box" data-tone="idle" role="status" aria-label="Tracking">
                 <div class="box-head"><i class="tone-dot"></i>Tracking</div>
@@ -235,6 +241,7 @@
               <div id="seed-message" hidden></div>
             </div>
           </div>
+          <details class="legend-help"><summary>What do the lines and rings mean?</summary>
           <div class="feedback-legend" aria-label="What the practice view shows">
             <span><svg viewBox="0 0 44 24" aria-hidden="true"><line x1="6" y1="19" x2="38" y2="5" stroke="#b6f36b" stroke-width="4" stroke-linecap="round"/><circle cx="6" cy="19" r="3.5" fill="none" stroke="#b6f36b" stroke-width="2"/><circle cx="38" cy="5" r="3.5" fill="none" stroke="#b6f36b" stroke-width="2"/></svg><span><b class="staff-a">Lime line</b> = staff A, <b class="staff-b">purple</b> = staff B. Each line joins that staff's two tracked ends. The colors only tell the staves apart.</span></span>
             <span><svg viewBox="0 0 44 24" aria-hidden="true"><path d="M4 20 C14 2 30 2 40 14" fill="none" stroke="#b6f36b" stroke-opacity=".6" stroke-width="4" stroke-linecap="round"/></svg><span>Faint curve = where each tip traveled in the last 4 seconds. Gaps mean the tip was hidden or unclear.</span></span>
@@ -243,6 +250,7 @@
             <span><svg viewBox="0 0 44 24" aria-hidden="true"><line x1="6" y1="19" x2="38" y2="5" stroke="#b5a3ff" stroke-width="4" stroke-dasharray="6 5"/></svg><span>Dashed staff = motion blur. Scores pause until it is sharp.</span></span>
             <span id="beat-legend" hidden><svg viewBox="0 0 44 24" aria-hidden="true"><circle cx="16" cy="13" r="7" fill="none" stroke="#6dd8ff" stroke-width="2.5"/><text x="26" y="10" fill="#fff" font-size="10" font-weight="700">1</text></svg><span>Blue numbered rings = beat points. The small white dot marks the tip used for timing.</span></span>
           </div>
+          </details>
           <div class="capture-bar">
             <div>
               <strong id="tracking-label">Waiting for your phone</strong
@@ -314,6 +322,29 @@
           <div class="section-title">
             <span>Camera & tracking</span><span class="section-num">03</span>
           </div>
+          <fieldset id="staff-colors" class="color-picker">
+            <legend>LED colors to detect</legend>
+            <p id="color-summary" class="color-summary" aria-live="polite">All colors</p>
+            <div class="chips" role="group" aria-label="LED colors to detect">
+              <button type="button" class="chip any" data-color="" aria-pressed="true">Any / rainbow</button>
+              <button type="button" class="chip" data-color="red" aria-pressed="false"><i style="--swatch:#ff4b4b"></i>Red</button>
+              <button type="button" class="chip" data-color="orange" aria-pressed="false"><i style="--swatch:#ff9a3c"></i>Orange</button>
+              <button type="button" class="chip" data-color="yellow" aria-pressed="false"><i style="--swatch:#ffe14d"></i>Yellow</button>
+              <button type="button" class="chip" data-color="green" aria-pressed="false"><i style="--swatch:#4be37a"></i>Green</button>
+              <button type="button" class="chip" data-color="cyan" aria-pressed="false"><i style="--swatch:#3fe0f0"></i>Cyan</button>
+              <button type="button" class="chip" data-color="blue" aria-pressed="false"><i style="--swatch:#4b7bff"></i>Blue</button>
+              <button type="button" class="chip" data-color="purple" aria-pressed="false"><i style="--swatch:#a35bff"></i>Purple</button>
+              <button type="button" class="chip" data-color="pink" aria-pressed="false"><i style="--swatch:#ff5fc8"></i>Pink</button>
+              <button type="button" class="chip" data-color="white" aria-pressed="false"><i style="--swatch:#ffffff"></i>White</button>
+            </div>
+            <p id="color-help" class="small-note">Match your staff's current LED setting. Choose one or more colors to ignore other lights; pick two for differently colored staves. White can still match sunlight.</p>
+          </fieldset>
+          <section class="background-block" aria-label="Background snapshot">
+            <strong>Background snapshot</strong>
+            <p id="background-status" class="small-note" aria-live="polite">Off. Every bright light in view can be mistaken for a staff.</p>
+            <div class="button-row wrap"><button id="background-capture" class="subtle" disabled>Capture background</button><button id="background-cancel" class="subtle" hidden>Cancel capture</button><button id="background-clear" class="subtle" hidden>Clear background</button></div>
+            <p class="small-note">Ignore lights that never move, like a window or lamp. After you press Capture, move your staves out of view for 5 seconds and keep the camera still. Recapture after moving the camera or changing the lighting.</p>
+          </section>
           <div id="local-camera-settings" hidden>
             <label class="select-label">PC camera<select id="local-camera-select"></select></label>
             <label class="select-label">Capture priority<select id="capture-target"><option value="auto">Highest measured frame rate</option><option value="60">Up to 60 fps</option><option value="30">Up to 30 fps</option><option value="120">Up to 120 fps</option></select></label>
@@ -344,29 +375,6 @@
               >LED detection</span
             ></label
           >
-          <fieldset id="staff-colors" class="color-picker">
-            <legend>LED colors to detect</legend>
-            <p id="color-summary" class="color-summary" aria-live="polite">All colors</p>
-            <div class="chips" role="group" aria-label="LED colors to detect">
-              <button type="button" class="chip any" data-color="" aria-pressed="true">Any / rainbow</button>
-              <button type="button" class="chip" data-color="red" aria-pressed="false"><i style="--swatch:#ff4b4b"></i>Red</button>
-              <button type="button" class="chip" data-color="orange" aria-pressed="false"><i style="--swatch:#ff9a3c"></i>Orange</button>
-              <button type="button" class="chip" data-color="yellow" aria-pressed="false"><i style="--swatch:#ffe14d"></i>Yellow</button>
-              <button type="button" class="chip" data-color="green" aria-pressed="false"><i style="--swatch:#4be37a"></i>Green</button>
-              <button type="button" class="chip" data-color="cyan" aria-pressed="false"><i style="--swatch:#3fe0f0"></i>Cyan</button>
-              <button type="button" class="chip" data-color="blue" aria-pressed="false"><i style="--swatch:#4b7bff"></i>Blue</button>
-              <button type="button" class="chip" data-color="purple" aria-pressed="false"><i style="--swatch:#a35bff"></i>Purple</button>
-              <button type="button" class="chip" data-color="pink" aria-pressed="false"><i style="--swatch:#ff5fc8"></i>Pink</button>
-              <button type="button" class="chip" data-color="white" aria-pressed="false"><i style="--swatch:#ffffff"></i>White</button>
-            </div>
-            <p id="color-help" class="small-note">Match your staff's current LED setting. Choose one or more colors to ignore other lights; pick two for differently colored staves. White can still match sunlight.</p>
-          </fieldset>
-          <section class="background-block" aria-label="Background snapshot">
-            <strong>Background snapshot</strong>
-            <p id="background-status" class="small-note" aria-live="polite">Off. Every bright light in view can be mistaken for a staff.</p>
-            <div class="button-row wrap"><button id="background-capture" class="subtle" disabled>Capture background</button><button id="background-cancel" class="subtle" hidden>Cancel capture</button><button id="background-clear" class="subtle" hidden>Clear background</button></div>
-            <p class="small-note">Ignore lights that never move, like a window or lamp. After you press Capture, move your staves out of view for 5 seconds and keep the camera still. Recapture after moving the camera or changing the lighting.</p>
-          </section>
           <label class="range-label"
             >Brightness threshold <output for="threshold">175</output
             ><input

@@ -111,11 +111,26 @@ test('large-text beat practice keeps the preview on screen and coaching in fulls
  await page.getByRole('button',{name:'Explore a demo'}).click();
  await page.locator('[data-config="tempoEnabled"]').check();
  await page.locator('#ui-size').selectOption('large');
+ await expect(page.locator('#beat-hits')).toContainText('point',{timeout:12000});
+ await page.waitForTimeout(3000);
  await page.evaluate(()=>window.scrollTo(0,0));
  await expect.poll(()=>page.locator('#stage').evaluate(e=>e.getBoundingClientRect().bottom<=innerHeight+1)).toBe(true);
  expect(await page.locator('.small-note').first().evaluate(e=>parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(20);
  await page.locator('#fullscreen').click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(true);
  await expect(page.locator('#coaching')).toBeVisible();await expect(page.locator('#beat-feedback')).toBeVisible();
- await page.evaluate(()=>document.exitFullscreen());
+ await page.locator('#exit-fullscreen').click();await expect.poll(()=>page.evaluate(()=>!!document.fullscreenElement)).toBe(false);
  await page.reload();await expect(page.locator('#ui-size')).toHaveValue('large');
+});
+
+test('quick setup actions and short tutorials stay discoverable',async({page})=>{
+ await page.setViewportSize({width:1920,height:1080});await page.goto('/');
+ await expect(page.locator('#quick-fit')).toBeDisabled();await expect(page.locator('#quick-background')).toBeDisabled();
+ await page.locator('#demo-start').click();
+ await expect(page.locator('#tutorial-steps li').first()).toBeVisible();await expect(page.locator('#tutorial-steps li').nth(1)).toBeHidden();
+ await page.locator('#tutorial-expand').click();await expect(page.locator('#tutorial-steps li').nth(3)).toBeVisible();
+ await page.locator('#tutorial-expand').click();await expect(page.locator('#tutorial-steps li').nth(1)).toBeHidden();
+ await page.locator('#quick-lights').click();await expect(page.locator('[data-color=""]')).toBeFocused();
+ await page.locator('[data-color="red"]').click();await expect(page.locator('#color-summary')).toContainText('Red');
+ await page.locator('.legend-help summary').click();await expect(page.locator('.feedback-legend')).toBeVisible();
+ await page.locator('.legend-help summary').click();await expect(page.locator('.feedback-legend')).toBeHidden();
 });

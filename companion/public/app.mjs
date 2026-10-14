@@ -52,7 +52,7 @@ class FadeBox {
 const inactive=state=>state==='paused'||state==='idle';
 const trackingBox=new FadeBox('tracking-box',{urgent:(shown,next)=>shown.tone==='ok'&&next.tone!=='ok'||next.snapshot!==shown.snapshot});
 // Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
-const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.mode!==next.mode||shown.cues!==next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
+const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.mode!==next.mode||shown.cues&&!next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
 const timingBox=new FadeBox('beat-feedback',{urgent:(shown,next)=>shown.paused!==next.paused||Math.abs(shown.bpm-next.bpm)>3});
 const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||['off','free'].includes(next.state)});
 const canvas = $("view"),
@@ -157,8 +157,10 @@ let tutorials={},tutorialMode='';
 fetch('/practice-guides.json').then(r=>r.json()).then(data=>{tutorials=data;showTutorial(false);}).catch(()=>{});
 function showTutorial(force=false){
   const guide=tutorials[config.mode];if(!guide)return;let dismissed=false;try{dismissed=localStorage.getItem('klobflow.tutorial.'+config.mode)==='1';}catch{}
-  $('mode-tutorial').hidden=!force&&dismissed;$('tutorial-title').textContent=guide.title;$('tutorial-steps').replaceChildren(...guide.steps.map(text=>Object.assign(document.createElement('li'),{textContent:text})));tutorialMode=config.mode;
+  $('mode-tutorial').hidden=!force&&dismissed;$('tutorial-title').textContent=guide.title;$('tutorial-steps').replaceChildren(...guide.steps.map(text=>Object.assign(document.createElement('li'),{textContent:text})));tutorialMode=config.mode;expandTutorial(force);
 }
+function expandTutorial(expanded){$('mode-tutorial').classList.toggle('expanded',expanded);$('tutorial-expand').setAttribute('aria-expanded',String(expanded));$('tutorial-expand').textContent=expanded?'Show first step':'Read all 4 steps';}
+$('tutorial-expand').onclick=()=>expandTutorial($('tutorial-expand').getAttribute('aria-expanded')!=='true');
 $('show-tutorial').onclick=()=>showTutorial(true);
 $('dismiss-tutorial').onclick=()=>{try{localStorage.setItem('klobflow.tutorial.'+config.mode,'1');}catch{}$('mode-tutorial').hidden=true;};
 try{applyUiSize(localStorage.getItem('klobflow.uiSize')||'comfortable');}catch{applyUiSize('comfortable');}
@@ -175,11 +177,11 @@ const setText=(id,text)=>{const e=$(id);if(e.textContent!==text)e.textContent=te
 function fitStage(){
   if(document.fullscreenElement)return;
   const stage=$('stage'),top=stage.getBoundingClientRect().top+scrollY;
-  stage.style.setProperty('--stage-max-h',`${Math.round(Math.max(innerHeight*.45,innerHeight-top-12))}px`);
+  stage.style.setProperty('--stage-max-h',`${Math.round(Math.max(160,innerHeight-top-12))}px`);
 }
 function setPracticing(on){if(document.body.classList.contains('practicing')!==on){document.body.classList.toggle('practicing',on);fitStage();}}
 addEventListener('resize',fitStage);document.addEventListener('fullscreenchange',fitStage);
-const layoutWatch=new ResizeObserver(()=>fitStage());for(const e of [document.querySelector('header'),document.querySelector('.stage-toolbar'),document.querySelector('.status-row')])layoutWatch.observe(e);
+const layoutWatch=new ResizeObserver(()=>fitStage());for(const e of [document.querySelector('header'),document.querySelector('.stage-toolbar'),document.querySelector('.quick-actions'),document.querySelector('.status-row')])layoutWatch.observe(e);
 // LED colors: an empty list means any color, including rainbow patterns.
 const colorNames=colors=>colors.map(c=>c[0].toUpperCase()+c.slice(1)).join(' + ');
 for(const chip of document.querySelectorAll('#staff-colors .chip'))chip.onclick=()=>{
@@ -196,6 +198,9 @@ async function backgroundCommand(mode){try{await api('/api/control',{action:'bac
 $('background-capture').onclick=()=>backgroundCommand('capture');
 $('background-cancel').onclick=()=>backgroundCommand('cancel');
 $('background-clear').onclick=()=>backgroundCommand('clear');
+$('quick-fit').onclick=()=>$('fit-guide').click();
+$('quick-background').onclick=()=>backgroundCommand(['countdown','capturing'].includes(current?.background?.state)?'cancel':'capture');
+$('quick-lights').onclick=()=>{const colors=$('staff-colors');colors.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});colors.querySelector('button:not(:disabled)')?.focus({preventScroll:true});};
 let backgroundShown={state:'off',readyAt:0};
 function showBackground(f){
   const state=f.background?.state||'off',remaining=f.background?.remainingMs||0,snapshot=state==='countdown'||state==='capturing',now=performance.now();
@@ -319,6 +324,9 @@ function enableControls() {
   $("background-capture").hidden=snapshot;$("background-capture").disabled=!live;
   $("background-cancel").hidden=!snapshot;$("background-cancel").disabled=!live;
   $("background-clear").hidden=bg!=="ready";$("background-clear").disabled=!live;
+  $("quick-fit").disabled=$("fit-guide").disabled;
+  $("quick-background").disabled=!live;
+  setText("quick-background",snapshot?"Cancel background capture":bg==="ready"?"Recapture · 5s":"Background · 5s");
   for(const chip of document.querySelectorAll("#staff-colors .chip"))chip.disabled=!(available||demo)||!!replay||config.led===false;
 }
 function syncConfig(c) {
@@ -518,6 +526,11 @@ $("fullscreen").onclick = () => {
       .requestFullscreen()
       .catch((e) => message(e.message));
 };
+$("exit-fullscreen").onclick=()=>document.exitFullscreen().catch(e=>message(e.message));
+// Both record buttons reflect the same source state, including pending saves and connection loss.
+function syncFocusRecord(){const source=$('record'),target=$('focus-record');target.disabled=source.disabled;setText('focus-record',source.textContent.replace('Record practice','Record').trim());target.classList.toggle('recording',source.classList.contains('recording'));}
+new MutationObserver(syncFocusRecord).observe($('record'),{attributes:true,attributeFilter:['disabled','class'],childList:true,subtree:true,characterData:true});
+$('focus-record').onclick=()=>$('record').click();syncFocusRecord();
 $("reset").onclick = async () => {
   try {
     await api("/api/control", { action: "reset" });
@@ -815,7 +828,7 @@ function setCoaching(f,reason='idle') {
   coachingBox.show({key:`${feedback.state}|${feedback.title}|${feedback.detail}`,state:feedback.state,mode:f.config.mode,cues:!!feedback.cues,tone,render(){$('coaching-title').textContent=feedback.title;$('coaching-detail').textContent=feedback.detail;}},{immediate});
 }
 // Alignment errors show 5-second averages of clear samples. Any current uncertainty pauses them at once,
-// and live scores return only after tracking has stayed clear (the same rule as the coaching boxes).
+// and live scores return on confirmed observations without waiting for the text fade.
 function scoreView(f){
   const raw=f.metrics||{},averaged=averagedFor(f),source=averaged||raw,hold=!replay&&!displayedFeedback.tracking?.confirmed;
   const pick=key=>raw[key]==null||hold?null:source[key]??null;

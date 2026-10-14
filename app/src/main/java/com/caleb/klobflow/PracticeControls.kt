@@ -76,7 +76,7 @@ import kotlin.math.*
     Text("Pass the numbered points on the pulse. The Timing box shows milliseconds early or late and the distance from the point separately. Start beat now aligns the pulse to your first beat.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
 }
 /** Timing box: the text holds and fades slowly; only the small dot pulses on the beat. */
-@Composable fun BeatFeedback(ui:FlowUi) {
+@Composable fun BeatFeedback(ui:FlowUi,compact:Boolean=false) {
     val f=ui.frame ?: return
     val beat=f.beat
     val paused=!beat.enabled && ui.config.tempoEnabled && ui.config.tempoSource!="manual"
@@ -91,7 +91,7 @@ import kotlin.math.*
     }.joinToString("\n"),beat.bpm)
     val pulse=beat.enabled && beat.phase<.18
     val (text,urgentChange)=rememberHeldText(next){a,b->(a.tone=="wait")!=(b.tone=="wait")||abs(a.number-b.number)>3}
-    StatusBox("Timing",text,urgentChange,Modifier.padding(bottom=8.dp)){BeatDot(pulse)}
+    StatusBox("Timing",text,urgentChange,Modifier.padding(bottom=8.dp),compact=compact){BeatDot(pulse)}
 }
 @Composable private fun BeatDot(pulse:Boolean) {
     val motion=ValueAnimator.areAnimatorsEnabled()
@@ -127,7 +127,7 @@ private fun toneFill(tone:String)=when(tone){"ok"->Color(0xff13241c);"warn"->Col
 }
 /** A fixed status box. The old text fades out before the new text fades in, so two paragraphs never
  *  overlap. Urgent changes (for example tracking loss) replace it at once. */
-@Composable fun StatusBox(label:String,text:BoxText,urgentChange:Boolean,modifier:Modifier=Modifier,head:@Composable (String)->Unit={ToneDot(it)}) {
+@Composable fun StatusBox(label:String,text:BoxText,urgentChange:Boolean,modifier:Modifier=Modifier,compact:Boolean=false,head:@Composable (String)->Unit={ToneDot(it)}) {
     val motion=ValueAnimator.areAnimatorsEnabled()
     var shown by remember {mutableStateOf(text)}
     val fade=remember {Animatable(1f)}
@@ -142,9 +142,9 @@ private fun toneFill(tone:String)=when(tone){"ok"->Color(0xff13241c);"warn"->Col
         Column(Modifier.padding(horizontal=14.dp,vertical=10.dp)){
             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){head(shown.tone);Text(label.uppercase(),color=Muted,fontSize=12.sp,letterSpacing=1.5.sp)}
             // A minimum text height keeps the box (and the camera preview below it) from jumping between messages.
-            Column(Modifier.heightIn(min=86.dp).alpha(fade.value)){
+            Column(Modifier.heightIn(min=if(compact)28.dp else 86.dp).alpha(fade.value)){
                 Text(shown.title,color=tone,fontSize=21.sp,lineHeight=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=2.dp))
-                if(shown.detail.isNotEmpty())Text(shown.detail,color=Ink,fontSize=15.sp,lineHeight=20.sp,modifier=Modifier.padding(top=3.dp))
+                if(shown.detail.isNotEmpty() && (!compact || label=="Timing"))Text(shown.detail,color=Ink,fontSize=15.sp,lineHeight=20.sp,modifier=Modifier.padding(top=3.dp))
             }
         }
     }

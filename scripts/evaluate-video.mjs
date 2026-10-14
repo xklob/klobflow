@@ -15,7 +15,7 @@ const done=new Promise((resolve,reject)=>{ff.on('error',reject);ff.on('close',co
 const detector=new StaffDetector(),tracker=new StaffTracker(),scorer=new Scorer(),config={...defaults,staffCount:Number(count)},frameBytes=width*height*4,rows=[];
 let pending=Buffer.alloc(0),index=0;
 for await(const chunk of ff.stdout){pending=Buffer.concat([pending,chunk]);while(pending.length>=frameBytes){
- const bytes=Uint8Array.from(pending.subarray(0,frameBytes)),time=1000+times[index]*1000;
+ const bytes=Uint8Array.from(pending.subarray(0,frameBytes)),time=Math.round(1000+times[index]*1000);
  if(!Number.isFinite(time))throw Error('Decoded frames and source timestamps do not match');
  const begin=performance.now(),staffs=tracker.update(detector.detect(new Int32Array(bytes.buffer),width,height,config,tracker.hints(time,config.staffCount)),time,config.staffCount);
  rows.push({time:times[index],staffs,analysisMs:performance.now()-begin,metrics:scorer.score(time,staffs,new Guide(config,width,height))});index++;pending=pending.subarray(frameBytes);

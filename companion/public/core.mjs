@@ -139,12 +139,68 @@ export class Scorer {
   }
 }
 
+// Recover visible end caps from the bright shaft inside a larger colored glow.
+// This uses only current pixels. A broad exposure fan, a clipped end, or two
+// isolated lights without enough shaft support cannot become a precise staff.
+function glowBodyEndpoints(argb,w,h,s){
+ const unit=Math.min(w,h),len=length(s)*unit;if(len<24)return null;
+ const ax=s.a[0]*unit,ay=s.a[1]*unit,bx=s.b[0]*unit,by=s.b[1]*unit,dx=(bx-ax)/len,dy=(by-ay)/len;
+ if(Math.min(ax,bx,ay,by)<2||Math.max(ax,bx)>w-3||Math.max(ay,by)>h-3)return null;
+ const margin=Math.min(unit*.12,len*.18),points=[];let peak=0;
+ for(let y=Math.max(1,Math.floor(Math.min(ay,by)-margin));y<=Math.min(h-2,Math.ceil(Math.max(ay,by)+margin));y++)for(let x=Math.max(1,Math.floor(Math.min(ax,bx)-margin));x<=Math.min(w-2,Math.ceil(Math.max(ax,bx)+margin));x++){
+  const along=(x-ax)*dx+(y-ay)*dy,across=-(x-ax)*dy+(y-ay)*dx;
+  if(along<-len*.06||along>len*1.06||Math.abs(across)>margin)continue;
+  const p=argb[y*w+x],hi=Math.max(p>>>16&255,p>>>8&255,p&255),lo=Math.min(p>>>16&255,p>>>8&255,p&255),light=lo+(hi-lo)*.25;
+  if(hi<80)continue;points.push([x,y,light]);peak=Math.max(peak,light);
+ }
+ if(peak<45)return null;
+ const floor=peak*.72,remaining=new Map(points.filter(p=>p[2]>=floor).map(p=>[p[1]*w+p[0],p])),parts=[];
+ // Isolate the shaft's bright connected pieces before measuring its ends.
+ // Small detached reflections must not stretch an endpoint into the backdrop.
+ while(remaining.size){const first=remaining.keys().next().value,queue=[first],part=[remaining.get(first)];remaining.delete(first);
+  for(let n=0;n<queue.length;n++)for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
+   const i=queue[n]+oy*w+ox,p=remaining.get(i);if(p){remaining.delete(i);queue.push(i);part.push(p);}
+  }
+  if(part.length>=6)parts.push(part);
+ }
+ parts.sort((a,b)=>b.length-a.length);const core=parts.slice(0,2).flat();if(core.length<18)return null;
+ let mass=0,mx=0,my=0;for(const [x,y,v] of core){mass+=v;mx+=x*v;my+=y*v;}mx/=mass;my/=mass;
+ let xx=0,xy=0,yy=0;for(const [x,y,v] of core){xx+=(x-mx)**2*v;xy+=(x-mx)*(y-my)*v;yy+=(y-my)**2*v;}xx/=mass;xy/=mass;yy/=mass;
+ const theta=.5*Math.atan2(2*xy,xx-yy),ux=Math.cos(theta),uy=Math.sin(theta);
+ if(angleDifference(theta,angle(s))>.20)return null;
+ let low=Infinity,high=-Infinity;for(const p of core){p[3]=(p[0]-mx)*ux+(p[1]-my)*uy;p[4]=-(p[0]-mx)*uy+(p[1]-my)*ux;low=Math.min(low,p[3]);high=Math.max(high,p[3]);}
+ const extent=high-low;if(extent<len*.82||extent>len*1.12)return null;
+ const bins=Array.from({length:16},()=>({mass:0,side:0,square:0,count:0}));
+ for(const p of core){const b=bins[Math.min(15,Math.floor((p[3]-low)/extent*16))];b.mass+=p[2];b.side+=p[4]*p[2];b.square+=p[4]**2*p[2];b.count++;}
+ const supported=b=>b.count>=2,first=bins.slice(0,6).filter(supported),last=bins.slice(10).filter(supported);
+ if(first.length<4||last.length<4||bins.filter(supported).length<10)return null;
+ const errorLimit=Math.max(1.5,Math.min(unit*.04,extent*.065));
+ for(const end of [bins.slice(0,3),bins.slice(13)]){
+  const mass=end.reduce((n,b)=>n+b.mass,0),side=end.reduce((n,b)=>n+b.side,0)/mass;
+  const variance=end.reduce((n,b)=>n+b.square,0)/mass-side**2;
+  if(!mass||2*Math.sqrt(Math.max(0,variance))>errorLimit||Math.abs(side)>errorLimit)return null;
+ }
+ // A curved crescent can have narrow tips but no single straight shaft.
+ if(bins.filter(supported).some(b=>Math.abs(b.side/b.mass)>errorLimit))return null;
+ // Locate each actual cap across the shaft, rather than projecting an end
+ // onto the overall axis (which can miss a cap when the glow is asymmetric).
+ const caps=[low,high].map(edge=>{
+  const points=core.filter(p=>Math.abs(p[3]-edge)<=Math.min(3,extent*.03));
+  if(points.length<3)return null;
+  const mass=points.reduce((n,p)=>n+p[2],0),side=points.reduce((n,p)=>n+p[4]*p[2],0)/mass;
+  return [(mx+ux*edge-uy*side)/unit,(my+uy*edge+ux*side)/unit];
+ });
+ const [a,b]=caps;if(!a||!b)return null;
+ if(Math.min(...a,...b)<2/unit||Math.max(a[0],b[0])>(w-3)/unit||Math.max(a[1],b[1])>(h-3)/unit)return null;
+ return {a,b,confidence:.7,blurred:false};
+}
+
 export class StaffDetector {
   constructor(){this.cosines=Array.from({length:180},(_,i)=>Math.cos(i*Math.PI/180));this.sines=Array.from({length:180},(_,i)=>Math.sin(i*Math.PI/180));}
   detect(argb,w,h,c,hints=[]){
     if(argb.length!==w*h||w<1||h<1)throw Error("Invalid camera pixels");
     if(c.led)argb=filterStaffColors(argb,w,h,c.staffColors);
-    if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return recovered;}
+    if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return recovered.map(s=>s.blurred?(glowBodyEndpoints(argb,w,h,s)??s):s);}
     const short=Math.min(w,h),mask=new Uint8Array(w*h),value=i=>{const p=argb[i];return Math.max((p>>>16)&255,(p>>>8)&255,p&255);};
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
       const i=y*w+x,p=argb[i],hi=value(i),lo=Math.min((p>>>16)&255,(p>>>8)&255,p&255);

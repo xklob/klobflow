@@ -36,9 +36,9 @@ test('PC camera tracks locally, stays live during selection, records and reopens
   await expect.poll(()=>page.locator('#local-video').evaluate(v=>v.currentTime)).toBeGreaterThan(time);
   await page.locator(button).click();
  }
- await page.locator('#record').click();await expect(page.locator('#record')).toContainText('Stop');
+ await page.locator('#fullscreen').click();await page.locator('#focus-record').click();await expect(page.locator('#record')).toContainText('Stop');
  await expect.poll(()=>page.locator('#record').textContent()).toContain('2s');
- await page.locator('#record').click();await expect(page.locator('#sessions')).toContainText('Play video');
+ await page.locator('#focus-record').click();await page.locator('#exit-fullscreen').click();await expect(page.locator('#sessions')).toContainText('Play video');
  await page.getByRole('button',{name:'Play video'}).click();
  await expect.poll(()=>page.locator('#session-video').evaluate(v=>v.readyState)).toBeGreaterThanOrEqual(2);
  await page.locator('#close-video').click();
@@ -75,12 +75,13 @@ test('color selection and background capture stay usable while the camera runs',
  await page.locator('[data-color=""]').click();await expect(page.locator('#color-summary')).toHaveText('All colors');
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')).staffColors)).toEqual([]);
  await page.locator('[data-color="white"]').click();await expect(page.locator('#tracking-label')).toContainText('Both staves tracked');
- await page.locator('#background-capture').click();await expect(page.locator('#background-overlay')).toBeVisible();
+ await page.locator('#quick-background').click();await expect(page.locator('#background-overlay')).toBeVisible();
  await expect(page.locator('#streak-hud')).toBeHidden();
  await expect(page.locator('#background-overlay-title')).toContainText(/OUT OF VIEW/);
  const before=await page.locator('#local-video').evaluate(v=>v.currentTime);
  await expect.poll(()=>page.locator('#local-video').evaluate(v=>v.currentTime)).toBeGreaterThan(before+.6);
- await page.locator('#background-cancel').click();await expect(page.locator('#background-overlay')).toBeHidden();
+ await expect(page.locator('#quick-background')).toHaveText('Cancel background capture');
+ await page.locator('#quick-background').click();await expect(page.locator('#background-overlay')).toBeHidden();
  await page.locator('#background-capture').click();await expect(page.locator('#background-clear')).toBeVisible({timeout:10000});
  await expect(page.locator('#background-overlay')).toBeHidden();
  await page.locator('[data-config="mirror"]').uncheck();await expect(page.locator('#background-clear')).toBeHidden();
@@ -113,9 +114,11 @@ test('PC system-audio pipeline detects a beat, pauses on silence, and preserves 
   window.audioFixture={ctx,source};return new MediaStream([...destination.stream.getAudioTracks(),...video.getVideoTracks()]);
  };});
  await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
- await page.locator('#audio-pc').click();await expect(page.locator('#audio-status')).toContainText(/120 BPM.*confidence/,{timeout:25000});
- await expect(page.locator('#beat-pulse')).toContainText('120 BPM');
- await page.locator('[data-config="audioRate"]').selectOption('0.5');await expect(page.locator('#beat-pulse')).toContainText('60 BPM');
+ await page.locator('#audio-pc').click();await expect(page.locator('#audio-status')).toContainText(/(?:118|119|120|121|122) BPM.*confidence/,{timeout:25000});
+ // Real AudioWorklet scheduling and the displayed message hold allow small estimator jitter.
+ const bpmError=async(target)=>Math.abs(Number((await page.locator('#beat-pulse').textContent()).match(/^(\d+) BPM/)?.[1]??NaN)-target);
+ await expect.poll(()=>bpmError(120)).toBeLessThanOrEqual(2);
+ await page.locator('[data-config="audioRate"]').selectOption('0.5');await expect.poll(()=>bpmError(60)).toBeLessThanOrEqual(1);
  await page.evaluate(()=>window.audioFixture.source.stop());await expect(page.locator('#audio-status')).toContainText('No shared audio',{timeout:6000});await expect(page.locator('#beat-pulse')).toHaveText('Beat timing paused');
  await page.locator('#audio-manual').click();await expect(page.locator('#audio-status')).toContainText('Manual tempo');await expect(page.locator('#beat-pulse')).toContainText('120 BPM');
  await page.evaluate(()=>window.audioFixture.ctx.close());expect(errors).toEqual([]);

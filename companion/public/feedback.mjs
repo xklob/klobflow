@@ -1,6 +1,5 @@
 // Presentation stability is separate from measurement: uncertain scores always pause immediately.
-// Clear tracking must persist for CLEAR_MS before guidance and scores return.
-export const CLEAR_MS=650;
+// The tracker already requires consecutive observed frames. Text fades must not delay valid measurements.
 const RANK={uncertain:1,blur:2,hidden:3,missing:4};
 const letter=i=>'AB'[i];
 // The most limiting tracking problem in this frame, or null when every staff is clear.
@@ -27,23 +26,22 @@ function describeIssue(issue,count){
 }
 export class AlignmentFeedback {
  constructor(){this.reset();}
- reset(){this.time=-1;this.key='';this.clearSince=null;this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=null;}
+ reset(){this.time=-1;this.key='';this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=null;}
  update(frame){
   const {time,config,staffs}=frame,key=JSON.stringify([config.mode,config.staffCount,config.tolerance,config.planeCorners]);
   if(time<this.time||key!==this.key)this.reset();this.time=time;this.key=key;
   const cues=frame.feedback||[],count=config.staffCount||2,free=config.mode==='free';
   const issue=trackingIssue(staffs,count)??(!free&&cues.length!==count*2?{kind:'outside',staff:-1}:null);
-  if(issue){this.clearSince=null;this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=issue;}
-  else this.clearSince??=time;
-  const confirmed=!issue&&time-this.clearSince>=CLEAR_MS,snapshot=capturingBackground(frame);
-  // Until clear tracking is confirmed, keep explaining the last problem instead of flashing success.
+  if(issue){this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=issue;}
+  const snapshot=capturingBackground(frame),confirmed=!issue&&!snapshot;
+  // Text changes are held and faded by StableText, independently of current measurements.
   const shown=snapshot?{tone:'wait',title:'BACKGROUND SNAPSHOT',detail:'Move your staves out of view and keep the camera still.'}:confirmed?{tone:'ok',title:'CLEAR',detail:count===1?'Your staff and both of its ends are sharp.':'Both staves and all four ends are sharp.'}:describeIssue(issue??this.lastIssue??{kind:'starting'},count);
   const tracking={...shown,key:`${shown.tone}|${shown.title}`,valid:!issue&&!snapshot,confirmed:confirmed&&!snapshot};
   // `cues` is true only when this text refers to correction marks that are actually drawn.
   const result=(state,title,detail,tips=[],cues=false)=>({state,title,detail,tips,tracking,cues});
   if(free)return result('free','FREE FLOW',config.trails===false?'No alignment score here. Choose Grid, Circles or Cube for targets.':'No alignment score here. Faint curves show where each tip traveled.');
   if(snapshot)return result('paused','PRECISION PAUSED','Scores resume after the background snapshot.');
-  if(!confirmed)return result('paused','PRECISION PAUSED','Scores resume once tracking stays clear for a moment.');
+  if(!confirmed)return result('paused','PRECISION PAUSED','Clear frames update the rings. Hidden or smeared ends do not count.');
   const tips=cues.map((cue,i)=>{
    if(cue.error>config.tolerance){this.on[i]=false;this.onSince[i]=null;}
    else if(!this.on[i]){if(cue.error<=config.tolerance*.85){this.onSince[i]??=time;if(time-this.onSince[i]>=300)this.on[i]=true;}else this.onSince[i]=null;}

@@ -1,3 +1,19 @@
+# v0.7.0 validation
+
+Validated locally on 2026-10-14.
+
+- 58 regular JVM and 43 Node checks retain native/browser detection and measurement parity. An additional opt-in JVM check replays the private Pixel recording. Android lint and builds pass. New regressions cover bright shafts inside broad colored halos, dark grips, red LEDs, detached bright reflections, clipped ends, and immediate recovery of valid feedback without rapid text changes.
+- The full Pixel clip is the primary tracking regression: 1,910 frames at original presentation timestamps, analyzed at 384 × 216. Android and browser agree frame by frame, including endpoints, confidence, blur, and occlusion. Clear-end measurements increase from 49 to 544 while observed tracking remains at 1,509 frames. The 2–28 second practice section retains 1,409/1,547 observed frames (91.1%), with 538 supporting precision feedback. Visual checks compare recovered caps to the actual glow boundaries; this caught and fixed detached tapestry reflections extending an endpoint. These counts measure coverage/confidence, not independently annotated accuracy. Private frames and comparison images remain outside Git and release assets.
+- Sixteen browser flows cover PC capture, recording from fullscreen and decoded playback, source recovery, phone streaming, live calibration, background capture/cancellation through the new shortcut, selected colors, audio detection, replay, and rainbow spins. Estimated system-audio tempo is checked within 2 BPM, while manual tempo remains exact.
+- Quick setup and tutorial expansion/dismissal are exercised with real pointer/keyboard focus. A reproduced sticky-sidebar overlap at narrower desktop widths is fixed. Large text with populated beat feedback keeps the whole preview within a 1920 × 1080 viewport. Generated screenshots also inspect 1600 × 1000, 390 × 844, and fullscreen layouts.
+- Four Android emulator integration flows pass. The practice flow enters fullscreen, verifies the preview bounds, rotates to landscape, returns to portrait, exits, and confirms that frames continue. Camera/sharing recovery, recording, background capture, timing, and playback-audio checks remain covered.
+- Klobflow is confirmed in the published Klobstore v0.1.3 default catalog and its one-time migration from older catalogs. The current checkout's five catalog migration tests pass. ADB also confirms Klobstore v0.1.3 is installed on the Pixel. The release APK retains package `com.caleb.klobflow` and increases the version code to 9.
+- README screenshots use generated practice. Signed publication artifacts, hashes, certificate continuity, and GitHub checks are verified during release.
+
+The endpoint recovery uses current image evidence rather than making an occlusion prediction count as precision. Broad exposure fans, clipped ends, and ambiguous shapes still pause scoring. No new physical LED practice run was performed in this pass; the supplied Pixel recording provides the real-camera regression. End-to-end live latency and annotated endpoint accuracy remain unmeasured.
+
+The local replay diagnostic can also check native/browser parity without publishing recordings. Run `scripts/evaluate-video.mjs` to obtain a JSON report, decode matching frames to raw BGRA at the report's analysis dimensions with FFmpeg using `-fps_mode passthrough`, then run `VideoReplayTest` with `KLOBFLOW_REPLAY_JSON` and `KLOBFLOW_REPLAY_BGRA` pointing to those local files. It is skipped when the paths are absent. Browser integration tests now own a separate server on port 8878, avoiding interruption of normal practice on port 8788.
+
 # v0.6.1 validation
 
 Validated locally on 2026-10-14.

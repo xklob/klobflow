@@ -38,10 +38,15 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -101,6 +106,8 @@ class MainActivity:ComponentActivity() {
     val ui by engine.ui.collectAsStateWithLifecycle()
     val context=LocalContext.current
     var page by remember {mutableIntStateOf(0)}
+    var focus by remember {mutableStateOf(false)}
+    var setup by remember {mutableStateOf(false)}
     var message by remember {mutableStateOf<String?>(null)}
     var permission by remember {mutableStateOf(ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED)}
     val request=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->permission=granted;if(granted)engine.bindCamera()else message="Camera permission is needed to track your practice. You can still try the demo."}
@@ -109,6 +116,7 @@ class MainActivity:ComponentActivity() {
     // One coach for the status boxes and the overlay, so text and drawn cues always agree.
     val coach=remember {AlignmentFeedback()}
     val feedback=remember(ui.frame?.time){ui.frame?.let {coach.update(it.time,it.staffs,it.guide,it.background)}}
+    if(focus)PracticeFocus(ui,engine,feedback,{focus=false}){message=it}
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){permission=ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED}
     Column(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -124,19 +132,33 @@ class MainActivity:ComponentActivity() {
                 0->{
                     Text("Find your lines.",fontSize=28.sp,fontWeight=FontWeight.Medium)
                     Text(ui.status,color=Muted,fontSize=14.sp,modifier=Modifier.padding(top=5.dp,bottom=12.dp))
+                    if(!ui.cameraReady && !ui.demo) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        Button(onClick={if(permission)run{engine.bindCamera()}else request.launch(Manifest.permission.CAMERA)},modifier=Modifier.weight(1f)){Text(if(permission)"Open camera" else "Allow camera")}
+                        OutlinedButton(onClick={engine.startDemo()}){Text("Try demo")}
+                    }
                     Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
                     Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
                     ModeTutorial(ui.config.mode)
-                    CameraPanel(ui,engine,feedback){message=it}
-                    FitControls(ui,engine)
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        OutlinedButton(enabled=ui.frame!=null,onClick={run{engine.command(JSONObject().put("action","fit").put("zoom",true))}},modifier=Modifier.weight(1f)){Text("Auto-fit")}
+                        OutlinedButton(enabled=ui.frame!=null,onClick={focus=true},modifier=Modifier.weight(1f)){Text("Full screen")}
+                    }
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        val capturing=ui.frame?.background?.state in listOf("countdown","capturing")
+                        OutlinedButton(enabled=ui.cameraReady&&!ui.demo,onClick={run{engine.command(JSONObject().put("action","background").put("mode",if(capturing)"cancel" else "capture"))}},modifier=Modifier.weight(1f)){Text(if(capturing)"Cancel capture" else "Background · 5s")}
+                        OutlinedButton(onClick={setup=!setup}){Text(if(setup)"Close setup" else "Setup")}
+                    }
+                    if(setup){
+                        Text("Colors, room lights & guide fit",fontSize=20.sp,color=Lime,modifier=Modifier.padding(top=8.dp))
+                        StaffColorPicker(ui,engine){message=it}
+                        BackgroundControls(ui,engine){message=it}
+                        FitControls(ui,engine)
+                    }
+                    if(!focus)CameraPanel(ui,engine,feedback){message=it}
                     if(ui.cameraReady && ui.zoomMax>ui.zoomMin){
                         var zoomDraft by remember(ui.zoomRatio){mutableFloatStateOf(ui.zoomRatio)}
                         Row(verticalAlignment=Alignment.CenterVertically){Text("Zoom · %.2f×".format(ui.zoomRatio),Modifier.weight(1f),color=Lime,fontSize=15.sp);TextButton(onClick={patch("zoom",0.0)}){Text("Widest")}}
                         Slider(value=zoomDraft.coerceIn(ui.zoomMin,ui.zoomMax),onValueChange={zoomDraft=it},onValueChangeFinished={patch("zoom",zoomDraft.toDouble())},valueRange=ui.zoomMin..ui.zoomMax)
-                    }
-                    if(!ui.cameraReady && !ui.demo) Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                        Button(onClick={if(permission)run{engine.bindCamera()}else request.launch(Manifest.permission.CAMERA)},modifier=Modifier.weight(1f)){Text(if(permission)"Open camera" else "Allow camera")}
-                        OutlinedButton(onClick={engine.startDemo()}){Text("Try demo")}
                     }
                     // Alignment errors are 5-second averages of clear samples. A current raw gap, or tracking that is not
                     // yet confirmed clear, always masks them, so a stale average is never shown as current.
@@ -245,18 +267,55 @@ class MainActivity:ComponentActivity() {
     }
 }
 /** Tracking validity and the alignment explanation live in separate fixed boxes. */
-@Composable private fun StatusBoxes(feedback:Coaching?) {
+@Composable private fun StatusBoxes(feedback:Coaching?,compact:Boolean=false,horizontal:Boolean=false) {
     val tracking=feedback?.tracking ?: BoxText("idle","NO CAMERA YET","Open the camera or try the demo.")
     val alignment=if(feedback==null)BoxText("idle","WAITING","Alignment feedback appears when your staves are tracked.")
         else BoxText(when(feedback.state){"aligned","settling"->"ok";"adjust"->"warn";"free"->"idle";else->"wait"},feedback.title,feedback.detail,cues=feedback.cues)
     val inactive={b:BoxText->b.tone=="wait" || b.tone=="idle"}
     val (trackingText,trackingUrgent)=rememberHeldText(tracking){a,b->a.tone=="ok" && b.tone!="ok" || (a.title=="BACKGROUND SNAPSHOT")!=(b.title=="BACKGROUND SNAPSHOT")}
     // Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
-    val (alignmentText,alignmentUrgent)=rememberHeldText(alignment){a,b->a.cues!=b.cues || a.title=="ON GUIDE" && b.title!="ON GUIDE" || inactive(b) && !inactive(a) || (a.title=="FREE FLOW")!=(b.title=="FREE FLOW")}
-    StatusBox("Tracking",trackingText,trackingUrgent,Modifier.padding(bottom=8.dp))
-    StatusBox("Alignment",alignmentText,alignmentUrgent,Modifier.padding(bottom=8.dp))
+    val (alignmentText,alignmentUrgent)=rememberHeldText(alignment){a,b->a.cues&&!b.cues || a.title=="ON GUIDE" && b.title!="ON GUIDE" || inactive(b) && !inactive(a) || (a.title=="FREE FLOW")!=(b.title=="FREE FLOW")}
+    if(horizontal)Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+        StatusBox("Tracking",trackingText,trackingUrgent,Modifier.weight(1f).padding(bottom=8.dp),compact=compact)
+        StatusBox("Alignment",alignmentText,alignmentUrgent,Modifier.weight(1f).padding(bottom=8.dp),compact=compact)
+    }else{
+        StatusBox("Tracking",trackingText,trackingUrgent,Modifier.padding(bottom=8.dp),compact=compact)
+        StatusBox("Alignment",alignmentText,alignmentUrgent,Modifier.padding(bottom=8.dp),compact=compact)
+    }
 }
-@Composable private fun CameraPanel(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,onError:(String)->Unit) {
+@Composable private fun PracticeFocus(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,onClose:()->Unit,onError:(String)->Unit) {
+    Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)){
+        Surface(Modifier.fillMaxSize(),color=Background){
+            Column(Modifier.fillMaxSize().safeDrawingPadding().padding(12.dp)){
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.SpaceBetween){
+                    TextButton(onClick=onClose){Text("Exit full screen")}
+                    Button(enabled=ui.cameraReady&&!ui.demo&&!ui.finalizing,onClick={try{if(ui.recording)engine.stopRecording()else engine.startRecording()}catch(e:Exception){onError(e.message ?: "Recording failed");onClose()}}){Text(if(ui.finalizing)"Saving…" else if(ui.recording)"Stop · ${ui.elapsed/1000}s" else "Record")}
+                }
+                ui.error?.let {Text(it,color=Amber,fontSize=15.sp)}
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()){
+                    if(maxWidth>maxHeight){
+                        val previewHeight=(maxHeight-58.dp).coerceAtLeast(96.dp)
+                        val feedbackWidth=minOf(300.dp,maxWidth*.45f)
+                        Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                            Column(Modifier.weight(1f).fillMaxHeight(),verticalArrangement=Arrangement.Center){CameraPanel(ui,engine,feedback,focus=true,previewMaxHeight=previewHeight,onError=onError)}
+                            Column(Modifier.width(feedbackWidth).fillMaxHeight().verticalScroll(rememberScrollState())){StatusBoxes(feedback,compact=true,horizontal=true);BeatFeedback(ui,compact=true)}
+                        }
+                    }else{
+                        Column(Modifier.fillMaxSize()){
+                            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(),contentAlignment=Alignment.Center){
+                                val previewHeight=(maxHeight-58.dp).coerceAtLeast(96.dp)
+                                Column{CameraPanel(ui,engine,feedback,focus=true,previewMaxHeight=previewHeight,onError=onError)}
+                            }
+                            StatusBoxes(feedback,compact=true)
+                            BeatFeedback(ui,compact=true)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+@Composable private fun CameraPanel(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,focus:Boolean=false,previewMaxHeight:Dp=Dp.Infinity,onError:(String)->Unit) {
     var identifying by remember {mutableStateOf(false)}
     var calibrating by remember {mutableStateOf(false)}
     var planeAspect by remember {mutableStateOf("1.0")}
@@ -271,7 +330,8 @@ class MainActivity:ComponentActivity() {
     var savedAt by remember {mutableLongStateOf(0L)}
     LaunchedEffect(backgroundState){if(backgroundState=="ready" && (previousBackground=="countdown" || previousBackground=="capturing"))savedAt=SystemClock.uptimeMillis();previousBackground=backgroundState}
     val aspect=ui.bitmap?.let {it.width.toFloat()/it.height} ?: (4f/3f)
-    Box(Modifier.fillMaxWidth().aspectRatio(aspect).background(Color(0xff080b08),RoundedCornerShape(16.dp))
+    BoxWithConstraints(Modifier.fillMaxWidth()){
+    Box(Modifier.width(minOf(maxWidth,previewMaxHeight*aspect)).aspectRatio(aspect).align(Alignment.TopCenter).background(Color(0xff080b08),RoundedCornerShape(16.dp)).semantics{contentDescription="Practice camera preview"}
         .pointerInput(identifying,calibrating,ui.config.staffCount,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
             picks=picks+P((pos.x/size.width).toDouble(),(pos.y/size.height).toDouble())
             if(picks.size==(if(calibrating)4 else ui.config.staffCount*2)){try{if(calibrating)engine.command(JSONObject().put("action","calibrate").put("points",JSONArray(picks.map {it.json()})).put("aspect",planeAspect.toDouble()))else engine.seed(picks)}catch(e:Exception){onError(e.message ?: "Could not apply selection")};picks=emptyList();identifying=false;calibrating=false}
@@ -419,6 +479,7 @@ class MainActivity:ComponentActivity() {
                 }
             }
     }
+    }
     if(ui.config.streakEffects&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing")ui.frame?.streak?.let {flow->
         // The state label holds like the status boxes; the counter ticks live within the shown state.
         val streakText=remember {StableText<String>()}
@@ -427,15 +488,18 @@ class MainActivity:ComponentActivity() {
             Column(Modifier.padding(10.dp)){
                 Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused")Slate else Lime,fontSize=14.sp,fontWeight=FontWeight.Bold)
                 LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Lime,trackColor=Color(0xff28332a))
-                Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · levels at 2 / 5 / 10s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
+                if(!focus)Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · levels at 2 / 5 / 10s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
             }
         }
     }
+    if(focus)return
     Spacer(Modifier.height(8.dp))
     StatusBoxes(feedback)
     BeatFeedback(ui)
     Text(detectionSummary(ui.config,backgroundState),color=Ink,fontSize=14.sp,modifier=Modifier.padding(top=8.dp))
-    Column(Modifier.padding(top=8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+    var showLegend by remember {mutableStateOf(false)}
+    TextButton(onClick={showLegend=!showLegend}){Text(if(showLegend)"Hide line & ring explanations" else "What do the lines and rings mean?")}
+    if(showLegend)Column(Modifier.padding(top=8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
         LegendRow(Lime,"Lime line = staff A, purple = staff B. Each line joins that staff's two tracked ends; the colors only tell the staves apart.")
         LegendRow(Lime.copy(alpha=.5f),"Faint curve = where each tip traveled in the last 4 seconds. Gaps mean the tip was hidden or unclear.")
         LegendRow(Amber,"Amber ring + arrow: move that tip to the white bullseye labeled TARGET.")
@@ -447,7 +511,6 @@ class MainActivity:ComponentActivity() {
         TextButton(onClick={identifying=!identifying;calibrating=false;picks=emptyList()},enabled=ui.frame!=null){Text(if(identifying)"Cancel" else "Identify staves")}
         TextButton(onClick={engine.resetTracking();trails.clear()}){Text("Reacquire")}
     }
-    BackgroundControls(ui,engine,onError)
     Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
         TextButton(onClick={calibrating=!calibrating;identifying=false;picks=emptyList()},enabled=ui.frame!=null){Text(if(calibrating)"Cancel calibration" else "Calibrate angle")}
         if(ui.config.planeCorners.isNotEmpty())TextButton(onClick={engine.updateConfig(JSONObject().put("planeCorners",JSONArray()))}){Text("Clear angle")}

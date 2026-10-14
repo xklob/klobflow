@@ -8,7 +8,6 @@ data class BoxText(val tone:String,val title:String,val detail:String,val number
 data class Coaching(val state:String,val title:String,val detail:String,val tips:List<TipCue> = emptyList(),
     val tracking:BoxText=BoxText("idle","NO CAMERA YET","Open the camera or try the demo."),val trackingConfirmed:Boolean=false,val cues:Boolean=false)
 
-private const val CLEAR_MS=650L
 private val issueRank=mapOf("uncertain" to 1,"blur" to 2,"hidden" to 3,"missing" to 4)
 
 /** The most limiting tracking problem in this frame, or null when every staff is clear. */
@@ -37,29 +36,30 @@ private fun describeIssue(issue:Pair<String,Int>,count:Int):BoxText {
 
 /** Presentation hysteresis never changes scores or makes uncertain observations valid. */
 class AlignmentFeedback {
-    private var time=-1L;private var key="";private var clearSince:Long?=null;private var lastIssue:Pair<String,Int>?=null
+    private var time=-1L;private var key="";private var lastIssue:Pair<String,Int>?=null
     private var onSince=arrayOfNulls<Long>(4);private var on=BooleanArray(4);private var alignedSince:Long?=null
-    private fun clear(){clearSince=null;onSince=arrayOfNulls(4);on=BooleanArray(4);alignedSince=null}
+    private fun clear(){onSince=arrayOfNulls(4);on=BooleanArray(4);alignedSince=null}
     fun update(t:Long,staffs:List<Segment?>,guide:Guide,background:BackgroundStatus=BackgroundStatus()):Coaching {
         val c=guide.config;val nextKey="${c.mode}/${c.staffCount}/${c.tolerance}/${c.planeCorners}"
         if(t<time||nextKey!=key){clear();lastIssue=null}
         time=t;key=nextKey
         val count=c.staffCount;val free=c.mode=="free";val cues=guide.cues(staffs)
         val issue=trackingIssue(staffs,count) ?: if(!free&&cues.size!=count*2)"outside" to -1 else null
-        if(issue!=null){clear();lastIssue=issue}else if(clearSince==null)clearSince=t
+        if(issue!=null){clear();lastIssue=issue}
         // While the background snapshot runs the staves must stay out of view: never ask for them back.
         val snapshot=background.state=="countdown"||background.state=="capturing"
-        val confirmed=issue==null&&!snapshot&&t-(clearSince ?: t)>=CLEAR_MS
+        // The tracker already confirms consecutive observations. Do not add a text-delay gate to scores.
+        val confirmed=issue==null&&!snapshot
         val tracking=when{
             snapshot->BoxText("wait","BACKGROUND SNAPSHOT","Move your staves out of view and keep the phone still.")
             confirmed->BoxText("ok","CLEAR",if(count==1)"Your staff and both of its ends are sharp." else "Both staves and all four ends are sharp.")
-            // Until clear tracking is confirmed, keep explaining the last problem instead of flashing success.
+            // StableText holds and fades text independently of current measurements.
             else->describeIssue(issue ?: lastIssue ?: ("starting" to -1),count)
         }
         fun result(state:String,title:String,detail:String,tips:List<TipCue> = emptyList(),cues:Boolean=false)=Coaching(state,title,detail,tips,tracking,confirmed,cues)
         if(free)return result("free","FREE FLOW",if(c.trails)"No alignment score here. Faint curves show where each tip traveled." else "No alignment score here. Choose Grid, Circles or Cube for targets.")
         if(snapshot)return result("paused","PRECISION PAUSED","Scores resume after the background snapshot.")
-        if(!confirmed)return result("paused","PRECISION PAUSED","Scores resume once tracking stays clear for a moment.")
+        if(!confirmed)return result("paused","PRECISION PAUSED","Clear frames update the rings. Hidden or smeared ends do not count.")
         val tips=cues.mapIndexed {i,cue->
             if(cue.error>c.tolerance){on[i]=false;onSince[i]=null}
             else if(!on[i]){if(cue.error<=c.tolerance*.85){if(onSince[i]==null)onSince[i]=t;if(t-onSince[i]!!>=300)on[i]=true}else onSince[i]=null}

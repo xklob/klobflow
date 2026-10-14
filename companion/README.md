@@ -1,5 +1,7 @@
 # Klobflow local practice space
 
+The practice toolbar puts **Auto-fit**, **Background · 5s**, and **LED colors & lights** beside the preview. **Full screen** keeps large feedback, recording, and an explicit exit button visible. Tutorials start with one step; expand them for the full setup instructions. The line/ring legend opens below the preview when needed.
+
 Requires Node 22 or newer. Extract this ZIP, run `node server.mjs` in this folder, then open http://localhost:8788. No npm install is needed to run it.
 
 Choose **Use PC camera** for fully local browser practice without a phone. The app measures capture modes and prioritizes actual frame rate. Recordings and analysis save in browser storage; export them from the practice log. Chrome/Edge are tested.

@@ -8,9 +8,11 @@ A practice tool for double staves: use the native Android app with its local PC 
 
 Generated LED demo through the native tracker and companion demo. These illustrate the interface, not real-practice accuracy.
 
-<img src="docs/screenshots/android-practice.png" alt="Android practice with beat timing and a level-four alignment streak" width="340">
+<img src="docs/screenshots/android-practice.png" alt="Android full-screen practice with beat timing and a level-four alignment streak" width="340">
 
 ![Desktop practice view with alignment guidance, zoom, and camera controls](docs/screenshots/web-practice.png)
+
+![Full-screen practice keeps large alignment and timing feedback, recording, and an exit button visible](docs/screenshots/web-fullscreen.png)
 
 ![Sustained circle alignment earns a level-four streak with brighter tip rings and particles](docs/screenshots/web-streak.png)
 
@@ -32,6 +34,12 @@ Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/re
 6. **Record practice** saves a silent MP4 to `Movies/Klobflow` and per-frame analysis privately in the app. **Sessions** plays the video or exports the JSONL measurements. The overlay is live and is **not burned into the MP4**.
 
 Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fails. CameraX treats frame rate as a target, not a guarantee. Analysis consumes the latest available frame without a fixed 30 fps cap. The PC preview continuously streams matching JPEG frames and analysis at the available analysis rate, with a measured preview-fps readout and no 10 fps polling cap. A higher video frame rate does not eliminate motion blur. Camera hardware, exposure, and processing load affect the actual rates.
+
+## Practice view and setup
+
+**Auto-fit** and **Background · 5s** sit beside the preview. On Android, **Setup** opens LED colors, background controls, Match staff length, and Reset guide layout. In the browser, **LED colors & lights** takes you directly to those detection controls; fitting sits near the top of the guide panel. Mode tutorials show the first step initially, with the remaining steps available on demand. **What do the lines and rings mean?** opens the overlay legend.
+
+Choose **Full screen** for a focused practice view. Both versions keep tracking, alignment, timing, streaks, recording, and **Exit full screen** available. Android arranges the preview beside the feedback in landscape. Exiting returns to the settings without restarting capture. On the desktop, select **Large** text for viewing from across the room.
 
 ## Ignoring lights in the room
 
@@ -82,7 +90,7 @@ Tracking and alignment have separate, steady status panels. **PRECISION PAUSED**
 
 The lime line connects the two estimated ends of **staff A**; purple identifies **staff B**. Those line colors identify the props, not the quality of alignment. Checked tip rings mark tips within tolerance. Dashed staff outlines mean uncertain or blurred geometry, so precision is paused. Blue numbered rings are beat targets, with the marked endpoint used for timing. Connected trails show recent motion, with only slightly brighter marks at actual detections.
 
-Normal coaching changes use a slow fade and a minimum reading time. Uncertain measurements still pause immediately; presentation smoothing does not change recorded scores. Error values average the last five seconds of valid observations. These are local geometric corrections, not automatic trick instruction. The desktop interface uses larger normal and helper text, with an additional text-size option and a full-screen practice view.
+Normal coaching changes use a slow fade and a minimum reading time. Clear ends immediately restore rings and scores once the tracker confirms them, without waiting for the text fade. When a wide colored glow surrounds a visible shaft, the detector uses its bright connected sections to locate the two caps and rejects detached bright reflections. Hidden ends and broad smeared arcs still pause precision. Error values average the last five seconds of valid observations. These are local geometric corrections, not automatic trick instruction. The desktop interface uses larger normal and helper text, with an additional text-size option and a full-screen practice view.
 
 Both cameras are mirrored by default, including the streamed preview and recorded video. **Mirror camera** switches this off. **Zoom** controls the camera's actual zoom range, and **Widest** uses its hardware-reported minimum, which may be below 1×. Switching cameras resets to widest. Reopening the same camera preserves your chosen zoom. Auto-fit runs only when explicitly requested.
 

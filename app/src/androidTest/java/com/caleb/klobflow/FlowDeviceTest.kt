@@ -62,18 +62,39 @@ class FlowDeviceTest {
             assertNull(engine.ui.value.frame!!.staffs[1]);assertNull(engine.ui.value.frame!!.metrics.symmetry)
             assertTrue(engine.ui.value.frame!!.beat.enabled);assertEquals(1,engine.ui.value.frame!!.beat.targets.size)
             scenario.onActivity {engine.command(JSONObject().put("action","fit").put("sizeOnly",true))}
-            await(25000){engine.ui.value.frame?.fitStatus?.contains("matches the visible staff length")==true}
+            // The fit is computed on the analysis thread and applied on main; wait for the fitted frame.
+            await(25000){engine.ui.value.frame?.let {it.fitStatus.contains("matches the visible staff length") && kotlin.math.abs(it.guide.config.scale-.22)<.06}==true}
             assertEquals(.22,engine.config.scale,.06)
             scenario.onActivity {engine.command(JSONObject().put("action","syncBeat"))}
             await {engine.ui.value.frame!!.beat.hits.any {it!=null}}
             await(20000){engine.ui.value.frame!!.streak.level==4}
             assertNull("A cancelled camera callback must not report an error in the demo",engine.ui.value.error)
             val device=androidx.test.uiautomator.UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-            device.swipe(device.displayWidth/2,device.displayHeight*3/4,device.displayWidth/2,device.displayHeight*2/5,20)
-            Thread.sleep(500)
+            val focus=device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.text("Full screen")),5000)
+            assertNotNull("Practice should have a discoverable full-screen action",focus);focus.click()
+            assertTrue(device.wait(androidx.test.uiautomator.Until.hasObject(androidx.test.uiautomator.By.text("Exit full screen")),5000))
+            val preview=device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.desc("Practice camera preview")),5000)
+            assertNotNull(preview)
+            val bounds=preview.visibleBounds
+            assertTrue("The complete preview must fit on screen",bounds.top>=0 && bounds.bottom<device.displayHeight && bounds.width()>0 && bounds.height()>0)
+            Thread.sleep(4500)
             val screenshot=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
             java.io.File(context.getExternalFilesDir(null),"practice-streak.png").outputStream().use {screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
             screenshot.recycle()
+            try{
+                device.setOrientationLeft()
+                await {device.displayWidth>device.displayHeight}
+                val landscape=device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.desc("Practice camera preview")),5000)
+                assertNotNull("Landscape focus must retain the preview",landscape)
+                assertTrue(landscape.visibleBounds.width()>0 && landscape.visibleBounds.bottom<device.displayHeight)
+                val landscapeShot=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+                java.io.File(context.getExternalFilesDir(null),"practice-landscape.png").outputStream().use {landscapeShot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
+                landscapeShot.recycle()
+            }finally{device.setOrientationNatural();device.unfreezeRotation()}
+            val beforeExit=engine.ui.value.frame!!.time
+            device.findObject(androidx.test.uiautomator.By.text("Exit full screen")).click()
+            assertTrue(device.wait(androidx.test.uiautomator.Until.gone(androidx.test.uiautomator.By.text("Exit full screen")),5000))
+            await {engine.ui.value.frame!!.time>beforeExit}
             scenario.onActivity {engine.updateConfig(JSONObject().put("streakEffects",false))}
             await {engine.ui.value.frame!!.streak.state=="off"}
             assertEquals(0.0,engine.ui.value.frame!!.streak.seconds,0.0)
