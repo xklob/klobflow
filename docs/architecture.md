@@ -71,3 +71,13 @@ The browser's user-initiated `getDisplayMedia` receives a system/tab audio track
 For PC audio with Android camera tracking, `/api/clock` samples the phone monotonic clock. The browser picks the lowest round trip of three samples and refreshes every 20 seconds. Rhythm messages include converted beat origin, confidence, and sample age. The Android engine expires PC tempo after two seconds. Unsynchronized or invalid rhythm messages are rejected. Camera frames and authoritative Android beat measurements remain timestamped by the phone.
 
 Fitting revisions prevent queued automatic fit updates from overwriting later manual guide/camera edits.
+
+## Fixed background and LED colors
+
+BackgroundFilter is the same model in Kotlin and the browser worker. A manual command starts a five-second countdown, then averages at least four RGB frames over at least 400 ms. Analysis is masked while capturing; preview frames are unaffected. The fixed baseline removes pixels within 32 levels per RGB channel. Captured bright pixels also tolerate intensity changes when normalized RGB remains close; newly bright foreground over a dark baseline is retained. It never adapts after capture, preserving stationary foreground staves. It is RAM-only and cleared when the camera's pixel coordinate system changes or capture restarts. Explicit browser exposure changes clear it too. Physical camera movement and major lighting changes require manual recapture.
+
+The optional staffColors list selects one or several LED hues. Empty means unrestricted rainbow tracking. A linear-time integral image admits neutral LED cores only near matching colored pixels; explicit white selection accepts neutral light directly. This filter runs before both sharp and blurred LED candidate extraction. Color changes reset tracking association; colors are not a promise of staff identity. Background/color filtering cannot recover details identical to the baseline or hidden by clipping/occlusion.
+
+RollingErrors retains five seconds of valid observed deviation, angle, and symmetry samples. The current raw validity always gates display. Frame.averagedMetrics carries these readouts separately from raw frame.metrics; raw metrics still drive recordings, streaks, and timing. Target/detector/camera changes reset the average.
+
+Startup fitting is disabled, including for restored legacy autoFit:true settings. Only an explicit fit command starts collection. Reset guide layout patches the five layout fields while retaining unrelated settings. Camera startup retries bounded compatible modes for transient source failures and releases capture tracks before asynchronous recording finalization.

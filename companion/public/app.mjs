@@ -3,11 +3,58 @@ import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
 import {SystemAudio} from "./system-audio.mjs";
 import {length} from "./core.mjs";
-import {AlignmentFeedback} from './feedback.mjs';
+import {AlignmentFeedback,StableText,direction,capturingBackground} from './feedback.mjs';
+import {staffColorNames} from './staff-colors.mjs';
 import {FlowStreak,streakText} from './streak.mjs';
 const fallbackStreak=new FlowStreak(),reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 const alignmentFeedback=new AlignmentFeedback();let displayedFeedback={tips:[],state:'paused'};
 const $ = (id) => document.getElementById(id);
+// Legacy phone packets and older exports have no averagedMetrics. Average them here when the
+// shared helper is available; otherwise show the latest sample and label it honestly.
+let RollingErrors=null,legacyRolling=null;const legacyAverages=new WeakMap();
+const rollingReady=import('./rolling-errors.mjs').then(m=>{RollingErrors=m.RollingErrors||null;}).catch(()=>{});
+function averagedFor(f){return f.averagedMetrics&&typeof f.averagedMetrics==='object'?f.averagedMetrics:legacyAverages.get(f)||null;}
+function averageLegacy(f,rolling){
+  if(f.averagedMetrics||!f.metrics||!RollingErrors)return rolling;
+  try{rolling??=new RollingErrors();const out=rolling.update(f.time,f.metrics,f.config);if(out&&typeof out==='object')legacyAverages.set(f,out);}catch{}
+  return rolling;
+}
+// Text size for viewing from across the room. Canvas labels scale with it; the canvas itself is never zoomed.
+const uiSizes={compact:.85,comfortable:1,large:1.2};
+function applyUiSize(size){
+  if(!(size in uiSizes))size='comfortable';
+  document.documentElement.dataset.uiSize=size;$('ui-size').value=size;
+  try{localStorage.setItem('klobflow.uiSize',size);}catch{}
+}
+// Fades a status box: the old text fades out, then the new text fades in, so two paragraphs never overlap.
+// StableText decides when a change may show; urgent changes (for example losing tracking) replace it at once.
+class FadeBox {
+  constructor(id,{hold=2600,urgent=()=>false,fade=1400}={}){
+    this.root=$(id);this.live=this.root.querySelector('.fade-live');
+    this.stable=new StableText(hold);this.urgent=urgent;this.fade=fade;this.displayed=null;this.token=0;
+  }
+  reset(){this.stable.reset();}
+  // The content currently on screen (a held change may still be fading out).
+  get shown(){return this.displayed;}
+  show(content,{immediate=false}={}){
+    const now=performance.now(),previous=this.stable.shown;
+    const change=immediate?this.stable.force(now,content):this.stable.update(now,content,!!previous&&this.urgent(previous,content));
+    if(!change)return false;
+    const token=++this.token,half=change.first||change.urgent||reducedMotion.matches?0:this.fade/2;
+    for(const a of this.live.getAnimations())a.cancel();
+    const apply=()=>{this.root.style.setProperty('--fade',`${half}ms`);if(content.tone)this.root.dataset.tone=content.tone;content.render();this.displayed=content;};
+    if(!half){apply();return true;}
+    const out=this.live.animate([{opacity:1},{opacity:0}],{duration:half,easing:'ease-in',fill:'forwards'});
+    out.onfinish=()=>{if(token!==this.token)return;apply();out.cancel();this.live.animate([{opacity:0},{opacity:1}],{duration:half,easing:'ease-out'});};
+    return true;
+  }
+}
+const inactive=state=>state==='paused'||state==='idle';
+const trackingBox=new FadeBox('tracking-box',{urgent:(shown,next)=>shown.tone==='ok'&&next.tone!=='ok'||next.snapshot!==shown.snapshot});
+// Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
+const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.mode!==next.mode||shown.cues!==next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
+const timingBox=new FadeBox('beat-feedback',{urgent:(shown,next)=>shown.paused!==next.paused||Math.abs(shown.bpm-next.bpm)>3});
+const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||['off','free'].includes(next.state)});
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
   chart = $("chart"),
@@ -39,6 +86,13 @@ async function updateDeviceList() {
   $("local-camera-select").replaceChildren(...cameras.map((d,i) => Object.assign(document.createElement("option"), { value: d.deviceId, textContent: d.label || `Camera ${i+1}` })));
   $("local-camera-select").value = localCamera.deviceId || cameras[0]?.deviceId || "";
 }
+// A failed camera start stays visible (stage and Tracking box) until the next attempt or source change.
+let cameraError = "";
+function showCameraError(text) {
+  cameraError = text || "";
+  $("empty-error").hidden = !cameraError; $("empty-error").textContent = "The PC camera did not start. The Tracking box says what to try.";
+  if (!current) setCoaching(null);
+}
 async function startLocal(recheck = false) {
   if (localStarting) return;
   if (localCamera.recording || localCamera.finalizing) { message("Stop recording before changing camera settings."); return; }
@@ -46,13 +100,17 @@ async function startLocal(recheck = false) {
   try {
     if (paired) await api("/api/disconnect", {});
     stopStream(); paired = false; demo = false; replay = null; localMode = true;
-    resetView(); updateSourceControls(); syncConfig(localCamera.config);
+    resetView(); showCameraError(""); updateSourceControls(); syncConfig(localCamera.config);
     await localCamera.start({deviceId: $("local-camera-select").value || undefined, target: $("capture-target").value, reuse: !recheck && !!localCamera.profile});
     await updateDeviceList();
     updateCameraDetails();
     try { localStorage.setItem("klobflow.lastMode", "local"); } catch {}
     connected(false); loadSessions();
-  } catch (e) { message(e.message); }
+  } catch (e) {
+    showCameraError(e.message); message(e.message);
+    // An unplugged or renamed webcam must be selectable again without reloading the page.
+    try { await updateDeviceList(); } catch {}
+  }
   finally { localStarting = false; updateSourceControls(); }
 }
 function updateSourceControls() {
@@ -103,7 +161,57 @@ function showTutorial(force=false){
 }
 $('show-tutorial').onclick=()=>showTutorial(true);
 $('dismiss-tutorial').onclick=()=>{try{localStorage.setItem('klobflow.tutorial.'+config.mode,'1');}catch{}$('mode-tutorial').hidden=true;};
-for(const [id,sizeOnly] of [['fit-guide',false],['fit-size',true]])$(id).onclick=async()=>{try{await api('/api/control',{action:'fit',sizeOnly});}catch(e){message(e.message);}};
+try{applyUiSize(localStorage.getItem('klobflow.uiSize')||'comfortable');}catch{applyUiSize('comfortable');}
+$('ui-size').onchange=()=>applyUiSize($('ui-size').value);
+// Overlay labels are sized in screen pixels, so track how large the canvas is displayed.
+let viewBox={width:0,height:0},hudBox=null;
+// Canvas labels avoid the streak box drawn over the stage (measured after layout, not every frame).
+function measureHud(){const e=$('streak-hud');hudBox=e.hidden?null:{x:e.offsetLeft-canvas.offsetLeft,y:e.offsetTop-canvas.offsetTop,w:e.offsetWidth,h:e.offsetHeight};}
+new ResizeObserver(([entry])=>{viewBox=entry.contentRect;measureHud();if(replay&&current)render(current,lastImage);}).observe(canvas);
+new ResizeObserver(measureHud).observe($('streak-hud'));
+new ResizeObserver(([entry])=>{chartBox=entry.contentRect;rootPx=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;drawChart();}).observe(chart);
+const setText=(id,text)=>{const e=$(id);if(e.textContent!==text)e.textContent=text;};
+// Keep the whole preview on screen: the stage gets the height left below the toolbar and status boxes.
+function fitStage(){
+  if(document.fullscreenElement)return;
+  const stage=$('stage'),top=stage.getBoundingClientRect().top+scrollY;
+  stage.style.setProperty('--stage-max-h',`${Math.round(Math.max(innerHeight*.45,innerHeight-top-12))}px`);
+}
+function setPracticing(on){if(document.body.classList.contains('practicing')!==on){document.body.classList.toggle('practicing',on);fitStage();}}
+addEventListener('resize',fitStage);document.addEventListener('fullscreenchange',fitStage);
+const layoutWatch=new ResizeObserver(()=>fitStage());for(const e of [document.querySelector('header'),document.querySelector('.stage-toolbar'),document.querySelector('.status-row')])layoutWatch.observe(e);
+// LED colors: an empty list means any color, including rainbow patterns.
+const colorNames=colors=>colors.map(c=>c[0].toUpperCase()+c.slice(1)).join(' + ');
+for(const chip of document.querySelectorAll('#staff-colors .chip'))chip.onclick=()=>{
+  const color=chip.dataset.color,selected=new Set(config.staffColors||[]);
+  if(!color)selected.clear();else if(selected.has(color))selected.delete(color);else selected.add(color);
+  patch({staffColors:staffColorNames.filter(n=>selected.has(n))});
+};
+function detectionSummary(c,state='off'){
+  const colors=c.staffColors||[],led=c.led===false?'LED detection off (edge mode)':colors.length?`Detecting ${colorNames(colors)} LEDs only`:'Detecting LEDs of any color';
+  return `${led} · ${state==='ready'?'background snapshot on':state==='countdown'||state==='capturing'?'capturing background':'no background snapshot'}`;
+}
+// Background snapshot: a steady countdown overlay the user can read from across the room.
+async function backgroundCommand(mode){try{await api('/api/control',{action:'background',mode});trail=[];}catch(e){message(e.message);}}
+$('background-capture').onclick=()=>backgroundCommand('capture');
+$('background-cancel').onclick=()=>backgroundCommand('cancel');
+$('background-clear').onclick=()=>backgroundCommand('clear');
+let backgroundShown={state:'off',readyAt:0};
+function showBackground(f){
+  const state=f.background?.state||'off',remaining=f.background?.remainingMs||0,snapshot=state==='countdown'||state==='capturing',now=performance.now();
+  if(state==='ready'&&(backgroundShown.state==='countdown'||backgroundShown.state==='capturing'))backgroundShown.readyAt=now;
+  backgroundShown.state=state;
+  const overlay=!replay&&(snapshot||state==='ready'&&now-backgroundShown.readyAt<2200);
+  $('background-overlay').hidden=!overlay;
+  if(overlay){
+    const [title,count,note]=state==='countdown'?['MOVE STAVES OUT OF VIEW',String(Math.max(1,Math.ceil(remaining/1000))),'Keep the camera still. The video stays live.']:state==='capturing'?['CAPTURING BACKGROUND','…','Keep your staves out of view a moment longer.']:['BACKGROUND SAVED','✓','Bring your staves back into view.'];
+    setText('background-overlay-title',title);setText('background-count',count);setText('background-overlay-note',note);
+  }
+  setText('background-status',f.source==='demo'||replay?'Needs a live PC camera or phone.':state==='countdown'?`Countdown ${Math.max(1,Math.ceil(remaining/1000))}: move your staves out of view and keep the camera still.`:state==='capturing'?'Capturing. Keep your staves out of view a moment longer.':state==='ready'?'On. Lights that were in the snapshot are ignored. Recapture after moving the camera or changing the lighting.':'Off. Every bright light in view can be mistaken for a staff.');
+  setText('background-capture',state==='ready'?'Recapture background':'Capture background');
+}
+$('reset-guide').onclick=()=>patch(Object.fromEntries(['cx','cy','scale','rotation','circleSeparation'].map(k=>[k,defaults[k]])));
+for(const [id,sizeOnly] of [['fit-guide',false],['fit-size',true]])$(id).onclick=async()=>{try{await api('/api/control',{action:'fit',sizeOnly,zoom:!sizeOnly});}catch(e){message(e.message);}};
 $('sync-beat').onclick=async()=>{try{await api('/api/control',{action:'syncBeat'});}catch(e){message(e.message);}};
 let taps=[];
 $('tap-tempo').onclick=async()=>{systemAudio.stop();const now=performance.now();if(taps.length&&now-taps.at(-1)>2000)taps=[];taps.push(now);taps=taps.slice(-6);if(taps.length>1){const bpm=Math.max(30,Math.min(240,Math.round(60000*(taps.length-1)/(now-taps[0]))));await patch({bpm,tempoEnabled:true,tempoSource:"manual"});if(!demo)$('sync-beat').click();}else message('Keep tapping the beat to set tempo.');};
@@ -194,6 +302,7 @@ function enableControls() {
   $("sync-beat").disabled=!available||!!replay||config.tempoSource!=="manual";
   $("tap-tempo").disabled=!(available||demo)||!!replay;
   $("calibrate").disabled = !available || !!replay || !current;
+  $("reset-guide").disabled=!(available||demo)||!!replay;
   $("clear-calibration").disabled = !available || !!replay || !config.planeCorners?.length;
   $("zoom-wide").disabled = !available || !!replay || !current?.cameraReady;
   $("reset").disabled = !available || !!replay;
@@ -205,6 +314,12 @@ function enableControls() {
     current?.source === "demo" ||
     !current?.cameraReady ||
     current?.finalizing;
+  // Background snapshots need live camera frames; never the demo or a replay.
+  const live=available&&!replay&&!!current?.cameraReady&&current.source!=="demo",bg=current?.background?.state||"off",snapshot=bg==="countdown"||bg==="capturing";
+  $("background-capture").hidden=snapshot;$("background-capture").disabled=!live;
+  $("background-cancel").hidden=!snapshot;$("background-cancel").disabled=!live;
+  $("background-clear").hidden=bg!=="ready";$("background-clear").disabled=!live;
+  for(const chip of document.querySelectorAll("#staff-colors .chip"))chip.disabled=!(available||demo)||!!replay||config.led===false;
 }
 function syncConfig(c) {
   const text = JSON.stringify(c);
@@ -224,6 +339,11 @@ function syncConfig(c) {
       b.classList.toggle("active", b.dataset.mode === config.mode),
     );
   $("calibration-info").textContent = config.planeCorners?.length ? "Perspective correction active. Measurements use the calibrated plane. Keep all tips inside it. Recalibrate after moving the camera." : "Mark a rectangle in your movement plane, clockwise from top left. Use width ÷ height = 1 for a square. Zoom, mirror, camera, or rotation changes clear calibration.";
+  const colors=config.staffColors||[];
+  for(const chip of document.querySelectorAll("#staff-colors .chip"))chip.setAttribute("aria-pressed",String(chip.dataset.color?colors.includes(chip.dataset.color):!colors.length));
+  setText("color-summary",config.led===false?"Not used while LED detection is off":colors.length?`Only ${colorNames(colors)}`:"All colors");
+  setText("color-help",config.led===false?"Color choice applies only to LED detection. Turn on LED detection to use it.":"Match your staff's current LED setting. Choose one or more colors to ignore other lights; pick two for differently colored staves. White can still match sunlight.");
+  enableControls();
   if(tutorialMode!==config.mode)showTutorial(false);
   document.querySelector('.key.b').hidden=config.staffCount===1;
   $("symmetry").closest("article").hidden=config.staffCount===1;
@@ -345,6 +465,7 @@ $("pair-form").onsubmit = async (e) => {
     trail = [];
     history = [];
     lastTime = null;
+    showCameraError("");
     connected(true);
     message("");
     await loadSessions();
@@ -355,9 +476,9 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
-  fallbackStreak.reset();$('streak-hud').hidden=true;
-  alignmentFeedback.reset();displayedFeedback={tips:[],state:'paused'};
-  $("beat-feedback").hidden=true;
+  fallbackStreak.reset();$('streak-hud').hidden=true;streakBox.reset();
+  alignmentFeedback.reset();displayedFeedback={tips:[],state:'paused'};legacyRolling=null;cueMemory.clear();
+  $("beat-feedback").hidden=true;timingBox.reset();setPracticing(false);$("background-overlay").hidden=true;backgroundShown={state:'off',readyAt:0};
   current = null;
   lastTime = null;
   lastImage = null;
@@ -383,6 +504,7 @@ $("demo-start").onclick = async () => {
   demo = true;
   replay = null;
   lastTime = null;
+  showCameraError("");
   connected(false);
   syncConfig(config);
   message(
@@ -392,7 +514,7 @@ $("demo-start").onclick = async () => {
 $("fullscreen").onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else
-    $("stage")
+    $("practice-view")
       .requestFullscreen()
       .catch((e) => message(e.message));
 };
@@ -473,6 +595,7 @@ canvas.addEventListener("click", async (e) => {
 function drawEmpty() {
   canvas.width = 960;
   canvas.height = 720;
+  $("stage").style.removeProperty("--stage-aspect");
   ctx.fillStyle = "#090e09";
   ctx.fillRect(0, 0, 960, 720);
   ctx.strokeStyle = "#263621";
@@ -491,13 +614,19 @@ function drawEmpty() {
   }
 }
 function render(frame, image) {
-  if (canvas.width !== frame.width) canvas.width = frame.width;
-  if (canvas.height !== frame.height) canvas.height = frame.height;
+  if (canvas.width !== frame.width || canvas.height !== frame.height) {
+    canvas.width = frame.width; canvas.height = frame.height;
+    // Match the stage to the camera so a 16:9 webcam is not letterboxed inside a 4:3 box.
+    $("stage").style.setProperty("--stage-aspect", String(frame.width / frame.height));
+  }
   const w = canvas.width,
     h = canvas.height,
     u = Math.min(w, h),
     g = frame.guide,
     c = frame.config;
+  // Overlay marks are sized in screen pixels: k converts them to canvas pixels at the displayed size.
+  const shownScale=viewBox.width&&viewBox.height?Math.min(viewBox.width/w,viewBox.height/h):1;
+  const k=(uiSizes[document.documentElement.dataset.uiSize]||1)*(viewBox.width&&viewBox.width<560?.78:1)/Math.max(.05,shownScale);
   ctx.clearRect(0, 0, w, h);
   if (image) ctx.drawImage(image, 0, 0, w, h);
   else if (!localMode || replay) {
@@ -523,44 +652,55 @@ function render(frame, image) {
     ctx.stroke();
   };
   if (c.showGuide) {
-    ctx.setLineDash([6, 7]);
-    for (const s of g.lines) line(s.a, s.b, "#e9f1e266", 1.4);
-    for (const circle of g.circles) {
-      ctx.strokeStyle = "#e9f1e266";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.arc(
-        circle.center[0] * u,
-        circle.center[1] * u,
-        circle.radius * u,
-        0,
-        Math.PI * 2,
-      );
-      ctx.stroke();
-    }
-    for (const path of g.paths || []) for (let i = 1; i < path.length; i++) line(path[i - 1], path[i], "#e9f1e266", 1.5);
-    ctx.setLineDash([]);
+    ctx.beginPath();
+    for (const s of g.lines) { ctx.moveTo(s.a[0] * u, s.a[1] * u); ctx.lineTo(s.b[0] * u, s.b[1] * u); }
+    for (const circle of g.circles) { ctx.moveTo((circle.center[0] + circle.radius) * u, circle.center[1] * u); ctx.arc(circle.center[0] * u, circle.center[1] * u, circle.radius * u, 0, Math.PI * 2); }
+    for (const path of g.paths || []) path.forEach((p, i) => i ? ctx.lineTo(p[0] * u, p[1] * u) : ctx.moveTo(p[0] * u, p[1] * u));
+    // A dark casing keeps the white dashed guide readable over bright LEDs and daylight, not only in dark rooms.
+    ctx.lineJoin = "round"; ctx.strokeStyle = "#0000008c"; ctx.lineWidth = 4 * k; ctx.stroke();
+    ctx.setLineDash([7 * k, 6 * k]); ctx.strokeStyle = "#f4f8eeb8"; ctx.lineWidth = 1.6 * k; ctx.stroke(); ctx.setLineDash([]);
     for (const p of g.vertices) {
-      ctx.fillStyle = "#c6edaa";
-      ctx.beginPath();
-      ctx.arc(p[0] * u, p[1] * u, 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = "#000000b0"; ctx.beginPath(); ctx.arc(p[0] * u, p[1] * u, 4.6 * k, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#eef5e6"; ctx.beginPath(); ctx.arc(p[0] * u, p[1] * u, 2.8 * k, 0, Math.PI * 2); ctx.fill();
     }
   }
-  if (c.trails)
-    trail.forEach((f, i) =>
-      f.staffs.forEach((s, n) => {
-        if (!s || s.occluded || (s.confidence < 0.55&&!s.blurred)) return;
-        ctx.globalAlpha = Math.min(1, ((i + 1) / trail.length) * 1.35)*(s.blurred?.55:1);
-        ctx.fillStyle = n ? "#b5a3ff" : "#b6f36b";
-        for (const p of [s.a, s.b]) {
-          ctx.beginPath();
-          ctx.arc(p[0] * u, p[1] * u, 4.3*(1+(c.streakEffects!==false?(frame.streak?.energy||0)*.8:0)), 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }),
-    );
+  if(c.trails){
+    const width=4*Math.max(.5,Math.min(2,u/480))*(1+(c.streakEffects!==false?(frame.streak?.energy||0)*.35:0));
+    const visible=s=>s&&!s.occluded&&(s.confidence>=.55||s.blurred),fade=t=>Math.max(0,Math.min(1,1-(frame.time-t)/4200));
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+    trail.forEach((f,index)=>f.staffs.forEach((s,n)=>{
+      if(!visible(s))return;
+      const color=n?'#b5a3ff':'#b6f36b',previous=trail[index-1],old=previous?.staffs[n],dt=f.time-(previous?.time??f.time);
+      if(visible(old)&&dt>0&&dt<=150&&Math.max(Math.hypot(old.a[0]-s.a[0],old.a[1]-s.a[1]),Math.hypot(old.b[0]-s.b[0],old.b[1]-s.b[1]))<=Math.min(length(old),length(s))*.6){
+        ctx.globalAlpha=.72*fade(previous.time)*((old.blurred||s.blurred)?.55:1);
+        line(old.a,s.a,color,width);line(old.b,s.b,color,width);
+      }
+      // Detection marks sit within the stroke, with only a small brightness lift.
+      if(!s.blurred&&s.confidence>=.55){ctx.globalAlpha=fade(f.time)*.14;ctx.fillStyle=color;
+        for(const p of [s.a,s.b]){ctx.beginPath();ctx.arc(p[0]*u,p[1]*u,width*.48,0,Math.PI*2);ctx.fill();}
+      }
+    }));
+    ctx.restore();
+  }
   ctx.globalAlpha = 1;
+  const at=p=>[p[0]*u,p[1]*u],placed=[];
+  if(hudBox&&!$('streak-hud').hidden){const s=Math.max(.05,shownScale),ox=(viewBox.width-w*s)/2,oy=(viewBox.height-h*s)/2;placed.push({x:(hudBox.x-ox)/s,y:(hudBox.y-oy)/s,w:hudBox.w/s,h:hudBox.h/s});}
+  const ring=(x,y,r,color,width)=>{ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.lineWidth=width+3.5*k;ctx.strokeStyle='#000000c0';ctx.stroke();ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke();};
+  // Labels sit on dark plates and never overlap: each tries its candidate positions in order.
+  const tag=(text,{fill='#0b0f0bf2',ink='#fff',stroke=null,size=15,alpha=1,candidates,force=false})=>{
+    const fs=size*k;ctx.font=`700 ${fs}px system-ui, sans-serif`;
+    const pw=ctx.measureText(text).width+fs*.9,ph=fs*1.5;
+    for(const [index,candidate] of candidates.entries()){
+      const [cx,cy]=candidate(pw,ph),r={x:Math.max(1,Math.min(w-pw-1,cx-pw/2)),y:Math.max(1,Math.min(h-ph-1,cy-ph/2)),w:pw,h:ph};
+      if(placed.some(o=>r.x<o.x+o.w&&o.x<r.x+r.w&&r.y<o.y+o.h&&o.y<r.y+r.h)&&!(force&&index===candidates.length-1))continue;
+      placed.push(r);ctx.globalAlpha=alpha;ctx.fillStyle=fill;ctx.beginPath();ctx.roundRect(r.x,r.y,r.w,r.h,ph*.3);ctx.fill();
+      if(stroke){ctx.lineWidth=1.6*k;ctx.strokeStyle=stroke;ctx.stroke();}
+      ctx.fillStyle=ink;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,r.x+r.w/2,r.y+r.h/2+fs*.05);
+      ctx.textAlign='start';ctx.textBaseline='alphabetic';ctx.globalAlpha=1;return r;
+    }
+    return null;
+  };
+  const beside=(x,y,ux,uy,r)=>(pw,ph)=>{const reach=r+5*k+Math.abs(ux)*pw/2+Math.abs(uy)*ph/2;return [x+ux*reach,y+uy*reach];};
   frame.staffs.forEach((s, n) => {
     if (!s) return;
     const color = n ? "#b5a3ff" : "#b6f36b";
@@ -586,83 +726,115 @@ function render(frame, image) {
         for(let k=0;k<particles;k++){const a=phase+k*Math.PI*2/particles;ctx.beginPath();ctx.arc(x+Math.cos(a)*(radius+9*unit),y+Math.sin(a)*(radius+9*unit),(1.2+power)*unit,0,Math.PI*2);ctx.fill();}
         ctx.restore();
       }
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(p[0] * u, p[1] * u, 6, 0, Math.PI * 2);
-      ctx.stroke();
+      // Estimated end: identity color over a dark outline so it survives bright LEDs.
+      ring(p[0]*u,p[1]*u,6*k,color,1.8*k);
     }
-    ctx.fillStyle = color;
-    ctx.font = "12px system-ui";
-    ctx.fillText(
-      `Staff ${n ? "B" : "A"}${s.occluded ? " · hidden tip" : s.blurred ? " · blur" : ""}`,
-      s.a[0] * u + 10,
-      s.a[1] * u - 10,
-    );
   });
   ctx.globalAlpha = 1;
-  if (c.showFeedback !== false) for (const cue of displayedFeedback.tips || []) {
-    const color = cue.onTarget ? "#b6f36b" : "#ffb45e";
-    const a = cue.tip, b = cue.target;
-    ctx.strokeStyle = color; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(a[0] * u, a[1] * u, 10, 0, Math.PI * 2); ctx.stroke();
-    if (!cue.onTarget) {
-      line(a, b, "#000b", 6); line(a, b, color, 3);
-      const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      for (const d of [-0.5, 0.5]) line(b, [b[0] - Math.cos(angle + d) * 12 / u, b[1] - Math.sin(angle + d) * 12 / u], color, 3);
-      ctx.strokeStyle = '#000';ctx.lineWidth=5;ctx.beginPath();ctx.arc(b[0]*u,b[1]*u,6,0,Math.PI*2);ctx.stroke();
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(b[0] * u, b[1] * u, 6, 0, Math.PI * 2); ctx.stroke();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(b[0]*u,b[1]*u,2,0,Math.PI*2);ctx.fill();
-    }
-    const dx=b[0]-a[0],dy=b[1]-a[1],direction=Math.abs(dx)>Math.abs(dy)?dx>0?'→':'←':dy>0?'↓':'↑';
-    const label=cue.onTarget?'ON GUIDE':`MOVE ${direction}`,font=Math.max(8,Math.min(16,u*.033));ctx.font=`bold ${font}px system-ui`;
-    const labelWidth=ctx.measureText(label).width+10,x=Math.max(2,Math.min(w-labelWidth-2,a[0]*u+9)),y=Math.max(font+6,Math.min(h-4,a[1]*u-10));
-    ctx.fillStyle='#101510ee';ctx.fillRect(x,y-font-4,labelWidth,font+8);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(x,y-font-4,labelWidth,font+8);ctx.fillStyle=color;ctx.fillText(label,x+5,y);
-  }
+  // A letter at each staff's middle names the line; lime and purple identify staves, not scores.
+  frame.staffs.forEach((s,n)=>{
+    if(!s||n>=(c.staffCount||2))return;
+    const x=(s.a[0]+s.b[0])/2*u,y=(s.a[1]+s.b[1])/2*u,note=s.occluded?' · HIDDEN':s.blurred?' · BLUR':s.confidence<.55?' · UNSURE':'';
+    tag(`${'AB'[n]}${note}`,{fill:n?'#b5a3ff':'#b6f36b',ink:'#10130f',stroke:'#10130f',size:15,alpha:s.occluded?.65:1,force:true,candidates:[()=>[x,y],(pw,ph)=>[x,y-ph*1.2],(pw,ph)=>[x,y+ph*1.2]]});
+  });
   if(frame.beat?.enabled){
-    ctx.globalAlpha=1;ctx.font='bold 12px system-ui';
-    frame.beat.targets.forEach((targets,i)=>targets.forEach((p,j)=>{ctx.strokeStyle=i?'#b5a3ff':'#6dd8ff';ctx.lineWidth=frame.beat.phase<.18?4:2;ctx.beginPath();ctx.arc(p[0]*u,p[1]*u,frame.beat.phase<.18?10:7,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#fff';ctx.fillText(String(j+1),p[0]*u+10,p[1]*u-9);}));
-    frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.a[0]*u,s.a[1]*u,3,0,Math.PI*2);ctx.fill();}});
+    const on=frame.beat.phase<.18,grow=on&&!reducedMotion.matches;
+    ctx.font=`700 ${14*k}px system-ui, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+    frame.beat.targets.forEach((targets,i)=>targets.forEach((p,j)=>{
+      const [x,y]=at(p),r=(grow?10:8)*k;ring(x,y,r,i?'#b5a3ff':'#6dd8ff',(on?3.4:2.4)*k);
+      const nx=x+r+7*k,ny=y-r-4*k;ctx.lineWidth=3.5*k;ctx.strokeStyle='#000';ctx.strokeText(String(j+1),nx,ny);ctx.fillStyle='#fff';ctx.fillText(String(j+1),nx,ny);
+    }));
+    ctx.textAlign='start';ctx.textBaseline='alphabetic';
+    frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){const [x,y]=at(s.a);ctx.fillStyle='#000';ctx.beginPath();ctx.arc(x,y,4.6*k,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,3*k,0,Math.PI*2);ctx.fill();}});
   }
-  for (const p of picks) {
-    ctx.strokeStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(p[0] * w, p[1] * h, 8, 0, Math.PI * 2);
-    ctx.stroke();
-  }
+  // Correction cues: amber ring = the tip to move, arrow = which way, white bullseye = where it belongs.
+  const cues=c.showFeedback!==false?displayedFeedback.tips||[]:[],labels=[];
+  if(!cues.length)cueMemory.clear();
+  cues.forEach((cue,i)=>{
+    const [tx,ty]=at(cue.tip),[gx,gy]=at(cue.target),dx=gx-tx,dy=gy-ty,dist=Math.hypot(dx,dy);
+    // Inside tolerance but not yet confirmed: a plain white ring, never an amber "move" cue.
+    if(!cue.onTarget&&cue.error<=c.tolerance){ring(tx,ty,15*k,'#ffffff',3*k);cueMemory.delete(i);return;}
+    if(cue.onTarget){
+      ring(tx,ty,15*k,'#ffffff',3*k);
+      const bx=tx+12*k,by=ty-12*k;ctx.fillStyle='#0b0f0b';ctx.beginPath();ctx.arc(bx,by,7.5*k,0,Math.PI*2);ctx.fill();ctx.lineWidth=1.6*k;ctx.strokeStyle='#fff';ctx.stroke();
+      ctx.lineWidth=2.3*k;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(bx-3.4*k,by+.2*k);ctx.lineTo(bx-.9*k,by+2.8*k);ctx.lineTo(bx+3.6*k,by-2.6*k);ctx.stroke();ctx.lineCap='butt';
+      cueMemory.delete(i);return;
+    }
+    const tipR=14*k,targetR=17*k,ux=dist?dx/dist:0,uy=dist?dy/dist:-1;
+    ring(gx,gy,targetR,'#ffffff',3.2*k);ctx.fillStyle='#000000c0';ctx.beginPath();ctx.arc(gx,gy,5*k,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(gx,gy,3*k,0,Math.PI*2);ctx.fill();
+    if(dist>tipR+targetR+8*k){
+      const sx=tx+ux*(tipR+2*k),sy=ty+uy*(tipR+2*k),ex=gx-ux*(targetR+3*k),ey=gy-uy*(targetR+3*k),head=Math.min(15*k,Math.hypot(ex-sx,ey-sy)*.65);
+      const shaft=()=>{ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex-ux*head*.7,ey-uy*head*.7);ctx.stroke();};
+      ctx.lineCap='round';ctx.strokeStyle='#000000c0';ctx.lineWidth=9.5*k;shaft();ctx.strokeStyle='#ffb45e';ctx.lineWidth=5*k;shaft();ctx.lineCap='butt';
+      ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-ux*head-uy*head*.62,ey-uy*head+ux*head*.62);ctx.lineTo(ex-ux*head+uy*head*.62,ey-uy*head-ux*head*.62);ctx.closePath();
+      ctx.lineJoin='round';ctx.lineWidth=3.5*k;ctx.strokeStyle='#000000c0';ctx.stroke();ctx.fillStyle='#ffb45e';ctx.fill();
+    }
+    ring(tx,ty,tipR,'#ffb45e',3.6*k);
+    // Labels must never hide the rings they explain, even when clamped at the canvas edge.
+    for(const [x,y,r] of [[tx,ty,tipR],[gx,gy,targetR]])placed.push({x:x-r-2*k,y:y-r-2*k,w:2*r+4*k,h:2*r+4*k});
+    const d=direction(dx,dy,cueMemory.get(i)??-1);cueMemory.set(i,d.sector);
+    labels.push({tip:`TIP ${d.glyph} ${d.word}`,tx,ty,gx,gy,ux,uy,tipR,targetR});
+  });
+  // Instructions first, then TARGET names, so crowded scenes keep the most useful words.
+  for(const l of labels)tag(l.tip,{stroke:'#ffb45e',ink:'#ffd29e',size:16,candidates:[beside(l.tx,l.ty,-l.ux,-l.uy,l.tipR),beside(l.tx,l.ty,-l.uy,l.ux,l.tipR),beside(l.tx,l.ty,l.uy,-l.ux,l.tipR)]});
+  for(const l of labels)tag('TARGET',{stroke:'#ffffff',size:13,candidates:[beside(l.gx,l.gy,l.ux,l.uy,l.targetR),beside(l.gx,l.gy,-l.uy,l.ux,l.targetR),beside(l.gx,l.gy,l.uy,-l.ux,l.targetR)]});
+  for (const p of picks) ring(p[0]*w,p[1]*h,9*k,'#ffffff',2.5*k);
 }
+const cueMemory=new Map();let sizeReading=null;
 function showBeat(f){
- const beat=f.beat;
+ const beat=f.beat,immediate=!!replay,paused=!beat?.enabled&&f.config.tempoEnabled&&f.config.tempoSource!=='manual',visible=!!beat?.enabled||paused;
  $('beat-legend').hidden=!f.config.tempoEnabled;
- if(!beat?.enabled){
-  const paused=f.config.tempoEnabled&&f.config.tempoSource!=='manual';$('beat-feedback').hidden=!paused;
-  if(paused){$('beat-feedback').classList.remove('pulse');$('beat-pulse').textContent='Beat timing paused';$('beat-hits').textContent=f.audio?.status?.includes('Following')?'Waiting for fresh audio timing':f.audio?.status||'Connect system audio or choose manual BPM.';}
+ if($('beat-feedback').hidden===visible){$('beat-feedback').hidden=!visible;timingBox.reset();}
+ // Only this small dot pulses on the beat; the box text changes slowly.
+ $('beat-dot').classList.toggle('on',!!beat?.enabled&&beat.phase<.18);
+ if(!visible)return;
+ if(paused){
+  const why=f.audio?.status?.includes('Following')?'Waiting for fresh audio timing.':f.audio?.status||'Connect system audio or choose manual BPM.';
+  timingBox.show({key:`paused|${why}`,paused:true,bpm:0,tone:'wait',render(){$('beat-pulse').textContent='Beat timing paused';$('beat-hits').replaceChildren(Object.assign(document.createElement('div'),{textContent:why}));}},{immediate});
   return;
  }
- $('beat-feedback').hidden=false;
- $('beat-feedback').classList.toggle('pulse',beat.phase<.18);$('beat-pulse').textContent=`${Math.round(beat.bpm)} BPM · ${beat.phase<.18?'BEAT':'next pulse…'}`;
- $('beat-hits').replaceChildren(...beat.hits.map((hit,i)=>{const row=document.createElement('div');if(!hit){row.textContent=`${i?'B':'A'} · waiting for a visible tip to pass a point`;return row;}const early=hit.offsetMs<0,timing=Math.abs(hit.offsetMs)<=75?'On beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${early?'early':'late'}`,precise=hit.error<=f.config.tolerance;row.textContent=`${i?'B':'A'} · point ${hit.point}: ${timing} · ${hit.error.toFixed(1)}% from point ${precise?'✓':'→ adjust position'}`;row.className=precise&&Math.abs(hit.offsetMs)<=75?'good':'';return row;}));
+ const bpm=Math.round(beat.bpm),rows=beat.hits.map((hit,i)=>{
+  if(!hit)return {text:`${'AB'[i]} · waiting for a tip to pass a point`,good:false};
+  const onBeat=Math.abs(hit.offsetMs)<=75,precise=hit.error<=f.config.tolerance,timing=onBeat?'on beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${hit.offsetMs<0?'early':'late'}`;
+  return {text:`${'AB'[i]} · point ${hit.point}: ${timing} · ${hit.error.toFixed(1)}% from point${precise?' ✓':''}`,good:onBeat&&precise};
+ });
+ timingBox.show({key:`${bpm}|${rows.map(r=>r.text).join('|')}`,paused:false,bpm,tone:'timing',render(){$('beat-pulse').textContent=`${bpm} BPM`;$('beat-hits').replaceChildren(...rows.map(r=>Object.assign(document.createElement('div'),{textContent:r.text,className:r.good?'good':''})));}},{immediate});
 }
-function setCoaching(f) {
-  const feedback=displayedFeedback;
-  $("coaching").classList.toggle("aligned",feedback.state==='aligned');
-  $("coaching").classList.toggle("adjust",feedback.state==='adjust');
-  $("coaching-title").textContent=feedback.title;
-  $("coaching-detail").textContent=feedback.detail;
+function setCoaching(f,reason='idle') {
+  const immediate=!!replay;
+  if(!f){
+    const stalled=reason==='stalled';
+    if(cameraError&&!stalled)trackingBox.show({key:`error|${cameraError}`,tone:'warn',render(){$('tracking-title').textContent='CAMERA DID NOT START';$('tracking-detail').textContent=cameraError;}},{immediate:true});
+    else trackingBox.show({key:`idle|${reason}`,tone:'idle',render(){$('tracking-title').textContent=stalled?'NO FRESH FRAMES':'NO CAMERA YET';$('tracking-detail').textContent=stalled?'The camera stream paused. Scores pause until frames return.':'Connect your phone, use your PC camera, or explore the demo.';}},{immediate:!stalled});
+    coachingBox.show({key:'idle',state:'idle',mode:config.mode,cues:false,tone:'idle',render(){$('coaching-title').textContent='WAITING';$('coaching-detail').textContent='Alignment feedback appears when your staves are tracked.';}},{immediate:!stalled});
+    return;
+  }
+  const feedback=displayedFeedback,t=feedback.tracking;
+  trackingBox.show({key:`${t.key}|${t.detail}`,tone:t.tone,snapshot:capturingBackground(f),render(){$('tracking-title').textContent=t.title;$('tracking-detail').textContent=t.detail;}},{immediate});
+  const tone=feedback.state==='aligned'||feedback.state==='settling'?'ok':feedback.state==='adjust'?'warn':feedback.state==='free'?'idle':'wait';
+  coachingBox.show({key:`${feedback.state}|${feedback.title}|${feedback.detail}`,state:feedback.state,mode:f.config.mode,cues:!!feedback.cues,tone,render(){$('coaching-title').textContent=feedback.title;$('coaching-detail').textContent=feedback.detail;}},{immediate});
 }
-
-function setMetrics(metrics) {
+// Alignment errors show 5-second averages of clear samples. Any current uncertainty pauses them at once,
+// and live scores return only after tracking has stayed clear (the same rule as the coaching boxes).
+function scoreView(f){
+  const raw=f.metrics||{},averaged=averagedFor(f),source=averaged||raw,hold=!replay&&!displayedFeedback.tracking?.confirmed;
+  const pick=key=>raw[key]==null||hold?null:source[key]??null;
+  return {deviation:pick('deviation'),angle:pick('angle'),symmetry:pick('symmetry'),steadiness:raw.steadiness==null||hold?null:raw.steadiness,coverage:raw.coverage,averaged:!!averaged};
+}
+function setMetrics(f) {
+  const shown=f?scoreView(f):null,tolerance=f?.config.tolerance??config.tolerance;
   for (const [key, suffix] of [
     ["deviation", "%"],
     ["angle", "°"],
     ["symmetry", "%"],
     ["steadiness", "%"],
   ]) {
-    const value = metrics?.[key];
+    const value = shown?.[key];
     $(key).style.color =
       (key === "deviation" || key === "symmetry") &&
       typeof value === "number" &&
-      value > config.tolerance
-        ? "#edc293"
+      value > tolerance
+        ? "#f2c48f"
         : "";
     $(key).replaceChildren(
       document.createTextNode(
@@ -671,74 +843,52 @@ function setMetrics(metrics) {
       Object.assign(document.createElement("small"), { textContent: suffix }),
     );
   }
-  if (metrics)
+  const basis=shown&&!shown.averaged?'Latest sample':'5-second average';
+  for(const e of document.querySelectorAll('[data-basis]'))if(e.textContent!==basis)e.textContent=basis;
+  if (shown && Number.isFinite(shown.coverage))
     $("coverage").textContent =
-      `Tracking coverage: ${Math.round(metrics.coverage)}% · recent 1.2s`;
+      `Tracking coverage: ${Math.round(shown.coverage)}% · recent 1.2s`;
   else $("coverage").textContent = "Tracking coverage: —";
 }
+let chartBox={width:0,height:0},rootPx=20;
+function chartValue(f){const raw=f.metrics?.deviation;if(raw==null)return null;const averaged=averagedFor(f);return averaged?averaged.deviation??null:raw;}
 function drawChart() {
-  const w = chart.width,
-    h = chart.height;
-  chartCtx.clearRect(0, 0, w, h);
-  chartCtx.strokeStyle = "#34402d";
-  chartCtx.lineWidth = 1;
-  for (let y = 25; y < h; y += 40) {
-    chartCtx.beginPath();
-    chartCtx.moveTo(28, y);
-    chartCtx.lineTo(w, y);
-    chartCtx.stroke();
-  }
-  const max = Math.max(
-    10,
-    config.tolerance * 2,
-    ...history.map((f) => f.metrics?.deviation ?? 0),
-  );
-  const targetY = h - 4 - (config.tolerance / max) * (h - 20);
-  chartCtx.fillStyle = "#b6f36b0d";
-  chartCtx.fillRect(28, targetY, w - 28, h - targetY);
-  chartCtx.strokeStyle = "#b6f36b66";
-  chartCtx.setLineDash([4, 5]);
-  chartCtx.beginPath();
-  chartCtx.moveTo(28, targetY);
-  chartCtx.lineTo(w, targetY);
+  const dpr=devicePixelRatio||1,w=chartBox.width||1000,h=chartBox.height||140;
+  if(chart.width!==Math.round(w*dpr)||chart.height!==Math.round(h*dpr)){chart.width=Math.round(w*dpr);chart.height=Math.round(h*dpr);}
+  chartCtx.setTransform(dpr,0,0,dpr,0,0);chartCtx.clearRect(0,0,w,h);
+  const fs=Math.max(11,rootPx*.78),left=fs*2.7,top=fs*.7,bottom=h-fs*.6,tolerance=config.tolerance;
+  const values=history.map(chartValue),max=Math.max(10,tolerance*2,...values.map(v=>v??0)),y=v=>bottom-(v/max)*(bottom-top);
+  chartCtx.strokeStyle="#34402d";chartCtx.lineWidth=1;
+  for(const v of [max/3,max*2/3,max]){chartCtx.beginPath();chartCtx.moveTo(left,y(v));chartCtx.lineTo(w,y(v));chartCtx.stroke();}
+  const targetY=y(tolerance);
+  chartCtx.fillStyle="#b6f36b12";chartCtx.fillRect(left,targetY,w-left,bottom-targetY);
+  chartCtx.strokeStyle="#b6f36b88";chartCtx.setLineDash([5,6]);chartCtx.beginPath();chartCtx.moveTo(left,targetY);chartCtx.lineTo(w,targetY);chartCtx.stroke();chartCtx.setLineDash([]);
+  chartCtx.font=`${fs}px system-ui, sans-serif`;chartCtx.fillStyle="#c9dcb5";chartCtx.textAlign="right";
+  chartCtx.fillText(`Target ${tolerance}%`,w-4,Math.max(fs,targetY-fs*.35));
+  chartCtx.fillStyle="#c3ccb9";chartCtx.fillText(`${Math.ceil(max)}%`,left-fs*.4,top+fs*.35);chartCtx.fillText("0",left-fs*.4,bottom);chartCtx.textAlign="start";
+  const first=history[0]?.time??0,last=history.at(-1)?.time??1,span=Math.max(1000,last-first);
+  chartCtx.strokeStyle="#b6f36b";chartCtx.lineWidth=2.5;chartCtx.lineJoin="round";chartCtx.beginPath();
+  let pen=false;
+  history.forEach((f,i)=>{
+    const value=values[i];if(value==null){pen=false;return;}
+    const x=left+((f.time-first)/span)*(w-left-2);
+    if(pen)chartCtx.lineTo(x,y(value));else chartCtx.moveTo(x,y(value));pen=true;
+  });
   chartCtx.stroke();
-  chartCtx.setLineDash([]);
-  chartCtx.fillStyle = "#a3bd8c";
-  chartCtx.font = "11px system-ui";
-  chartCtx.fillText(
-    `Target ${config.tolerance}%`,
-    w - 85,
-    Math.max(12, targetY - 5),
-  );
-  chartCtx.fillStyle = "#919d85";
-  chartCtx.font = "11px system-ui";
-  chartCtx.fillText(`${Math.ceil(max)}%`, 0, 13);
-  chartCtx.fillText("0", 10, h - 3);
-  const first = history[0]?.time ?? 0,
-    last = history.at(-1)?.time ?? 1,
-    span = Math.max(1000, last - first);
-  chartCtx.strokeStyle = "#b6f36b";
-  chartCtx.lineWidth = 2;
-  chartCtx.beginPath();
-  let pen = false;
-  for (const f of history) {
-    const value = f.metrics?.deviation;
-    if (value == null) {
-      pen = false;
-      continue;
-    }
-    const x = 28 + ((f.time - first) / span) * (w - 30),
-      y = h - 4 - (value / max) * (h - 20);
-    if (pen) chartCtx.lineTo(x, y);
-    else chartCtx.moveTo(x, y);
-    pen = true;
-  }
-  chartCtx.stroke();
+  const basis=history.length&&!history.some(f=>averagedFor(f))?'latest sample':'5-second average';
+  if($('chart-basis').textContent!==basis)$('chart-basis').textContent=basis;
 }
 function acceptFrame(f, image = null) {
   if(!f.streak)f={...f,streak:fallbackStreak.update(f)};
-  const flow=f.streak;$('streak-hud').hidden=f.config.streakEffects===false;
-  $('streak-title').textContent=streakText(flow);$('streak-hud').dataset.state=flow.state;
+  if(!replay){if(current&&(f.time<current.time||f.source!==current.source))legacyRolling=null;legacyRolling=averageLegacy(f,legacyRolling);}
+  // During a background snapshot the capture instruction is the only prompt on the stage.
+  const flow=f.streak,hud=$('streak-hud');hud.hidden=f.config.streakEffects===false||capturingBackground(f);
+  // The streak state label is held like the status boxes; the counter ticks live within the shown state.
+  if(hud.hidden)streakBox.reset();
+  else{
+    streakBox.show({key:flow.state,state:flow.state,render(){$('streak-title').textContent=streakText(flow);hud.dataset.state=flow.state;}},{immediate:!!replay});
+    if(streakBox.shown?.state===flow.state)$('streak-title').textContent=streakText(flow);
+  }
   $('streak-power').style.width=`${flow.progress*100}%`;$('streak-power').parentElement.setAttribute('aria-valuenow',Math.min(10,flow.seconds).toFixed(1));
   $('streak-detail').textContent=flow.state==='free'?'Choose a guide to earn alignment streaks.':`Best ${flow.bestSeconds.toFixed(1)}s · more glow at 2 / 5 / 10s`;
   displayedFeedback=alignmentFeedback.update(f);
@@ -756,18 +906,17 @@ function acceptFrame(f, image = null) {
       ? "DEMO · GENERATED MOTION"
       : localMode ? "LIVE FROM YOUR PC CAMERA" : "LIVE FROM YOUR PHONE";
   $("live-dot").style.background = f.source === "demo" ? "#b5a3ff" : "#b6f36b";
-  const count=f.config.staffCount||2;
-  const good = f.staffs.filter((s) => s && s.confidence >= 0.55).length;
-  $("tracking-label").textContent =
-    good === count
+  const count=f.config.staffCount||2,shown=scoreView(f);
+  const good = f.staffs.slice(0,count).filter((s) => s && s.confidence >= 0.55).length;
+  $("tracking-label").textContent = capturingBackground(f) ? "Background snapshot · keep staves out of view"
+    : displayedFeedback.tracking.confirmed
       ? (count===1?"One staff tracked":"Both staves tracked") +
-        (f.metrics.deviation == null
+        (shown.deviation == null
           ? ""
-          : f.metrics.deviation <= config.tolerance
+          : shown.deviation <= f.config.tolerance
             ? " · within target"
             : " · outside target")
-      : `${good} / ${count} staves visible · scores paused`;
-  if(displayedFeedback.state==='paused')$('tracking-label').textContent='Precision paused · waiting for clear tips';
+      : good === count ? "Precision paused · waiting for clear tips" : `${good} / ${count} staves visible · scores paused`;
   if(localMode&&!replay)updateCameraDetails(f);
   $("camera-info").textContent = replay
     ? `Sample at ${(f.elapsedMs / 1000).toFixed(2)}s`
@@ -778,7 +927,10 @@ function acceptFrame(f, image = null) {
     : f.recording
       ? `■ Stop · ${Math.floor(f.elapsedMs / 1000)}s`
       : "● Record practice";
-  trail.push(f);
+  const previousTrail=trail.at(-1);
+  // New detection filters or a new background snapshot invalidate old (possibly false) trails.
+  if(previousTrail&&(f.time<previousTrail.time||f.source!==previousTrail.source||f.width!==previousTrail.width||f.height!==previousTrail.height||['facing','mirror','zoom','staffCount','led'].some(k=>f.config[k]!==previousTrail.config[k])||String(f.config.staffColors||[])!==String(previousTrail.config.staffColors||[])||(f.background?.state||'off')!==(previousTrail.background?.state||'off')))trail=[];
+  if(trail.at(-1)?.time!==f.time)trail.push(f);
   trail = trail.filter((t) => f.time - t.time < 4200).slice(-512);
   render(f, image);
   if (f.zoom && document.activeElement !== $("zoom")) {
@@ -786,13 +938,23 @@ function acceptFrame(f, image = null) {
     $("zoom").disabled = !f.cameraReady || f.zoom.min === f.zoom.max || !!replay;
     document.querySelector('output[for="zoom"]').textContent = `${f.zoom.ratio.toFixed(2)}×`;
   }
-  $('fit-status').textContent=f.fitStatus||'Use Fit center & size, or match the guide width to your staff length.';
+  const fitText=f.fitStatus||(f.source==='demo'?'Auto-fit and Match staff length need a live camera. In the demo, use the sliders or Reset guide layout.':'Get into position, then press Auto-fit and spin normally for two seconds with your full staves in view.');
+  if($('fit-status').textContent!==fitText)$('fit-status').textContent=fitText;
+  // Keep the last size reading briefly so this helper does not flicker while tips blur.
   const visible=f.staffs.filter(s=>s&&s.confidence>=.7&&!s.occluded);const staffLength=visible.length?visible.reduce((n,s)=>n+length(s),0)/visible.length:0;
-  $('size-helper').textContent=staffLength&&!f.guide.calibrated?`Guide width / staff length: ${(f.guide.span/staffLength).toFixed(2)}×. Match staff length sets this to 1×; adjust Size for your pattern.`:'Size help waits for a fully visible staff; perspective-corrected size is fitted in the selected plane.';
+  if(staffLength&&!f.guide.calibrated)sizeReading={text:`Guide width / staff length: ${(f.guide.span/staffLength).toFixed(2)}×. Match staff length sets this to 1×; adjust Size for your pattern.`,time:f.time};
+  else if(f.guide.calibrated||!sizeReading||f.time-sizeReading.time>2500||f.time<sizeReading.time)sizeReading={text:f.guide.calibrated?'With angle calibration, size is fitted in the calibrated plane.':'Size help appears when a full staff is clearly visible.',time:-Infinity};
+  if($('size-helper').textContent!==sizeReading.text)$('size-helper').textContent=sizeReading.text;
+  // Explain the detector minimum in pixels of this camera image (the PC camera reports its full resolution).
+  const dims=localMode&&!replay&&localCamera.settings?.width?[localCamera.settings.width,localCamera.settings.height]:[f.width,f.height],edge=Math.min(...dims),minLength=f.config.minLength??config.minLength;
+  setText('min-length-help',`The staff's apparent end-to-end length in the camera image, as a percent of the image's shorter edge. Shorter lights are ignored. Here ${Math.round(minLength*100)}% of the ${edge}-pixel edge is ${Math.round(edge*minLength)} pixels; on 1920 × 1080 video, 22% is 238 pixels. This is not the guide size or the staff's real length.`);
+  setText('detect-summary',detectionSummary(f.config,f.background?.state));
+  setPracticing(true);
+  showBackground(f);
   updateAudioStatus(f);
   showBeat(f);
   setCoaching(f);
-  setMetrics(f.metrics);
+  setMetrics(f);
   if (!replay) {
     history.push(f);
     history = history.filter((t) => f.time - t.time < 30000).slice(-900);
@@ -827,10 +989,10 @@ async function loadSessions() {
       });
       review.onclick = async () => {
         try {
-          if (localMode) { loadAnalysis(await (await localCamera.session(s.id)).analysis.text()); return; }
+          if (localMode) { await loadAnalysis(await (await localCamera.session(s.id)).analysis.text()); return; }
           const r = await fetch(`/api/session?id=${encodeURIComponent(s.id)}`);
           if (!r.ok) throw new Error("Cannot load analysis");
-          loadAnalysis(await r.text());
+          await loadAnalysis(await r.text());
         } catch (e) {
           message(e.message);
         }
@@ -858,7 +1020,7 @@ async function loadSessions() {
   }
 }
 $("refresh-sessions").onclick = loadSessions;
-function loadAnalysis(text) {
+async function loadAnalysis(text) {
   if (text.length > 30_000_000)
     throw new Error("Analysis export is too large (30 MB limit).");
   const rows = text
@@ -887,6 +1049,9 @@ function loadAnalysis(text) {
     )
       throw new Error("Invalid analysis frame.");
   }
+  // Older exports have raw samples only; average them in order so scrubbing shows consistent values.
+  await rollingReady;
+  let rolling=null;for(const f of frames)rolling=averageLegacy(f,rolling);
   stopStream();
   replay = frames;
   updateSourceControls();
@@ -917,7 +1082,7 @@ $("import-analysis").onchange = async (e) => {
     if (!file) return;
     if (file.size > 30_000_000)
       throw new Error("Choose an export under 30 MB.");
-    loadAnalysis(await file.text());
+    await loadAnalysis(await file.text());
   } catch (err) {
     message(err.message);
   }
@@ -929,6 +1094,7 @@ $("return-live").onclick = () => {
   updateSourceControls();
   trail = [];
   history = [];
+  legacyRolling = null;
   lastTime = null;
   $("replay-control").hidden = true;
   $("return-live").hidden = true;
@@ -976,7 +1142,7 @@ async function receiveStream() {
     }
   } catch (e) {
     if (!controller.signal.aborted) {
-      setMetrics(null); setCoaching(null);
+      setMetrics(null); setCoaching(null, "stalled");
       $("tracking-label").textContent = "Reconnecting · reopen Klobflow on your phone";
       $("source-label").textContent = "CAMERA PAUSED";
       $("record").disabled = true; message(e.message);
@@ -990,7 +1156,7 @@ function loop() {
   if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
   if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
   if ((paired || (localMode && localCamera.active)) && !replay && !seeding && !calibrating && Date.now() - lastArrival > 2000) {
-    setMetrics(null); setCoaching(null); $("record").disabled = true;
+    setMetrics(null); setCoaching(null, "stalled"); $("record").disabled = true;
     $("tracking-label").textContent = "Waiting for fresh camera frames…";
   }
   if (localMode && !replay) canvas.style.opacity = Date.now() - lastArrival > 200 ? "0" : "1";

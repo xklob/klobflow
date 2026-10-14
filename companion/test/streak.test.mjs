@@ -31,3 +31,7 @@ test('free flow, disabled effects and target adjustments cannot carry credit',()
 test('suspension cannot add time and backward replay resets history',()=>{
  const coach=new FlowStreak();build(coach);const resumed=update(coach,2000);assert.equal(resumed.seconds,0);assert.equal(resumed.bestSeconds,1);const seek=update(coach,0);assert.equal(seek.seconds,0);assert.equal(seek.bestSeconds,0);
 });
+test('changing the LED filter cannot preserve credit from a previous false match',()=>{
+ const coach=new FlowStreak();build(coach);const result=update(coach,1020,[staff(),null],guide({...config,staffColors:['pink']}));
+ assert.equal(result.seconds,0);assert.equal(result.bestSeconds,0);
+});

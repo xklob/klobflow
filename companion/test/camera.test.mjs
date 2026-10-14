@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {applyCameraProfile,applyTrackSettings,setExposure} from '../public/camera.mjs';
+import {applyCameraProfile,applyTrackSettings,setExposure,openCamera,cameraError} from '../public/camera.mjs';
+test('a busy camera retries compatible modes without changing the selected device',async()=>{
+ const calls=[],delays=[],stream={getTracks:()=>[]};
+ const mediaDevices={getUserMedia:async c=>{calls.push(c);if(calls.length<3)throw new DOMException('Could not start video source','NotReadableError');return stream;}};
+ assert.equal(await openCamera({deviceId:'webcam',mediaDevices,wait:async ms=>delays.push(ms)}),stream);
+ assert.equal(calls.length,3);assert.deepEqual(delays,[300,800]);assert.ok(calls.every(c=>c.video.deviceId.exact==='webcam'&&c.audio===false));assert.equal(calls[1].video.frameRate.ideal,30);
+});
+test('permission denial does not retry, permanent busy errors explain recovery, and canceled streams close',async()=>{
+ let attempts=0;const denied=new DOMException('denied','NotAllowedError');
+ await assert.rejects(openCamera({mediaDevices:{getUserMedia:async()=>{attempts++;throw denied;}},wait:async()=>{}}),e=>e===denied);assert.equal(attempts,1);
+ const busy=new DOMException('Could not start video source','NotReadableError');
+ await assert.rejects(openCamera({mediaDevices:{getUserMedia:async()=>{throw busy;}},wait:async()=>{}}),e=>e===busy);assert.match(cameraError(busy),/Close other camera apps or tabs/);
+ const controller=new AbortController();let stopped=false;
+ await assert.rejects(openCamera({signal:controller.signal,mediaDevices:{getUserMedia:async()=>{controller.abort();return {getTracks:()=>[{stop:()=>{stopped=true;}}]};}}}),e=>e.name==='AbortError');assert.ok(stopped);
+});
 test('1080p falls back from unsupported 60 fps to a required 30 fps mode',async()=>{
  const calls=[],track={applyConstraints:async c=>{calls.push(c);if(c.frameRate.min>30)throw new DOMException('unsupported','OverconstrainedError');}};
  const actual=await applyCameraProfile(track,{width:1920,height:1080,fps:60});

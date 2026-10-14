@@ -1,3 +1,15 @@
+# v0.6.1 validation
+
+Validated locally on 2026-10-14.
+
+- 54 JVM and 39 Node tests pass. New cases cover a fixed background baseline, exposure changes in static lights, a newly introduced staff held still, capture cancellation and view invalidation, selected LED hues with overexposed cores, and five-second display averages that immediately mask uncertain samples. Native/browser fixtures retain parity.
+- Fifteen browser flows pass. The real camera worker rejects a captured white slit while retaining a stationary pink staff, then rejects it with a blue filter. The live UI supports capture, cancellation, clearing, color combinations, and mirror invalidation without freezing the preview. Camera-start retries and persistent occupied-camera errors are covered. Legacy startup-fit settings migrate without changing layout; reset changes only the five guide fields.
+- Large-text desktop practice keeps the full preview visible with timing enabled. Fullscreen retains coaching and timing. Hidden correction cues immediately remove instructions referring to them. Slow transitions never superimpose old and new paragraphs. Screenshots use generated imagery only.
+- Four Android emulator integration checks pass, covering background capture with continuing frames, sharing, lifecycle and zoom recovery, recording and decoded video, one-staff fitting/streaks, and playback audio. The PC-tempo handoff assertion waits for a frame using the new clock instead of assuming it renders within 300 ms.
+- Android lint and debug builds pass. Publication builds and verifies the signed release APK, certificate continuity, alignment, and matching companion archive.
+
+The fixed baseline needs a stationary camera and staves out of view during capture. Identical light overlapping a captured bright region can be suppressed. These checks establish controlled behavior, not ground-truth accuracy or latency for a physical room and staff setup.
+
 # v0.6.0 validation
 
 Validated locally on 2026-10-14.

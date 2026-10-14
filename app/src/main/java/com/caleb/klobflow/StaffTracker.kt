@@ -7,8 +7,9 @@ class StaffDetector {
     private val angles=180
     private val cosines=DoubleArray(angles){cos(it*PI/angles)}
     private val sines=DoubleArray(angles){sin(it*PI/angles)}
-    fun detect(argb: IntArray,w: Int,h: Int,c: Config,hints:List<Segment> = emptyList()): List<Segment> {
-        require(argb.size==w*h && w>0 && h>0)
+    fun detect(pixels: IntArray,w: Int,h: Int,c: Config,hints:List<Segment> = emptyList()): List<Segment> {
+        require(pixels.size==w*h && w>0 && h>0)
+        val argb=if(c.led)filterStaffColors(pixels,w,h,c.staffColors)else pixels
         if(c.led){
             val lights=ledRegions(argb,w,h,c,hints)
             val recovered=if(lights.second && lights.first.all {s->hints.isEmpty() || hints.any {s.length>it.length*.85}})lights.first

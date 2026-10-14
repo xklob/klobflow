@@ -57,6 +57,11 @@ class StreakTest {
         val resumed=coach.update(2000,listOf(s,null),g);assertEquals(0.0,resumed.seconds,0.0);assertEquals(1.0,resumed.bestSeconds,0.0)
         val seek=coach.update(0,listOf(s,null),g);assertEquals(0.0,seek.seconds,0.0);assertEquals(0.0,seek.bestSeconds,0.0)
     }
+    @Test fun changingLedFilterClearsCreditFromPreviousDetections(){
+        val coach=FlowStreak();build(coach)
+        val result=coach.update(1020,listOf(staff(),null),guide(config.copy(staffColors=listOf("pink"))))
+        assertEquals(0.0,result.seconds,0.0);assertEquals(0.0,result.bestSeconds,0.0)
+    }
     @Test fun nativeStreakOracleMatchesBrowserFixture(){
         val coach=FlowStreak();val g=guide();val s=staff(g)
         val steps=JSONArray()

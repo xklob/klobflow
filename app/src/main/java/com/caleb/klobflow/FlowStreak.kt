@@ -20,7 +20,7 @@ class FlowStreak {
     fun reset(clearBest:Boolean=true){time=null;key="";ms=0;if(clearBest)best=0;energy=0.0;previousGood=false;uncertainSince=null}
     fun update(t:Long,staffs:List<Segment?>,g:Guide):StreakFrame {
         val c=g.config
-        val nextKey=listOf(c.mode,c.staffCount,c.tolerance,c.cx,c.cy,c.scale,c.rotation,c.cubeDepth,c.circleSeparation,c.planeCorners,c.planeAspect,c.calibrationRotation,c.calibrationImageAspect,c.diagonals,c.facing,c.mirror,c.zoom,c.streakEffects).toString()
+        val nextKey=listOf(c.mode,c.staffCount,c.tolerance,c.cx,c.cy,c.scale,c.rotation,c.cubeDepth,c.circleSeparation,c.planeCorners,c.planeAspect,c.calibrationRotation,c.calibrationImageAspect,c.diagonals,c.facing,c.mirror,c.zoom,c.streakEffects,c.staffColors,c.led,c.threshold,c.minLength).toString()
         if(nextKey!=key||time?.let {t<it}==true)reset()
         else if(time?.let {t-it>250}==true)reset(false)
         val dt=time?.let {(t-it).coerceAtLeast(0)}?:0;time=t;key=nextKey

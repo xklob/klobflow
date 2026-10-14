@@ -1,12 +1,13 @@
 // Browser counterpart of Geometry.kt / Perspective.kt / StaffTracker.kt.
 // Shared fixture tests compare this implementation with the native engine.
+import {filterStaffColors,staffColorNames} from './staff-colors.mjs';
 export const defaults = {
-  mode: "grid", led: true, threshold: 175, minLength: .22, cx: .5, cy: .5,
+  mode: "grid", led: true, staffColors: [], threshold: 175, minLength: .22, cx: .5, cy: .5,
   scale: .32, rotation: 0, cubeDepth: .4, circleSeparation: 1, tolerance: 4,
   streakEffects: true, diagonals: true, trails: true, showGuide: true, showFeedback: true, symmetry: true,
   facing: "front", fps: 60, timing: "tog-same", ratio: "1:1", zoom: 0, mirror: true,
   tempoSource: "manual", audioRate: 1, audioOffsetMs: 0,
-  staffCount: 2, autoFit: true, tempoEnabled: false, bpm: 120, beatPoints: 4,
+  staffCount: 2, autoFit: false, tempoEnabled: false, bpm: 120, beatPoints: 4,
   planeCorners: [], planeAspect: 1, calibrationRotation: 0, calibrationImageAspect: 0,
 };
 export const add = (a,b) => [a[0]+b[0],a[1]+b[1]];
@@ -40,7 +41,9 @@ export function validateCorners(points) {
   if(area/2<.04) throw Error("Choose a larger practice plane");
 }
 export function patchConfig(previous,patch,{restore=false}={}) {
-  const c={...previous,...patch};
+  const c={...previous,...patch,autoFit:false}; // Legacy startup fitting is now manual only.
+  if(!Array.isArray(c.staffColors)||c.staffColors.length>staffColorNames.length||c.staffColors.some(color=>!staffColorNames.includes(color)))throw Error('Choose valid staff colors');
+  c.staffColors=[...new Set(c.staffColors)];
   const ranges={audioOffsetMs:[-500,500],bpm:[30,240],threshold:[60,250],minLength:[.1,.8],cx:[.1,.9],cy:[.1,.9],scale:[.1,.48],rotation:[-90,90],cubeDepth:[.1,.9],circleSeparation:[0,1.8],tolerance:[1,15],zoom:[0,100],planeAspect:[.25,4],calibrationRotation:[0,3],calibrationImageAspect:[0,4]};
   for(const [key,[lo,hi]] of Object.entries(ranges)) if(!Number.isFinite(c[key])||c[key]<lo||c[key]>hi) throw Error(`${key} must be between ${lo} and ${hi}`);
   for(const [key,choices] of Object.entries({tempoSource:["manual","phone","pc"],audioRate:[.5,1,2],staffCount:[1,2],beatPoints:[2,4,8],mode:["grid","circles","cube","free"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
@@ -140,6 +143,7 @@ export class StaffDetector {
   constructor(){this.cosines=Array.from({length:180},(_,i)=>Math.cos(i*Math.PI/180));this.sines=Array.from({length:180},(_,i)=>Math.sin(i*Math.PI/180));}
   detect(argb,w,h,c,hints=[]){
     if(argb.length!==w*h||w<1||h<1)throw Error("Invalid camera pixels");
+    if(c.led)argb=filterStaffColors(argb,w,h,c.staffColors);
     if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return recovered;}
     const short=Math.min(w,h),mask=new Uint8Array(w*h),value=i=>{const p=argb[i];return Math.max((p>>>16)&255,(p>>>8)&255,p&255);};
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){

@@ -93,6 +93,7 @@ test("code-free connection, phone controls, session downloads and disconnect", a
   assert.deepEqual(controls, [{ action: "config", config: { mode: "cube" } }]);
   assert.deepEqual(await (await fetch(url+"/api/clock")).json(),{time:123456});
   for(const action of ["fit","syncBeat","audioStart","audioStop"]){assert.equal((await post(url+"/api/control",{action})).status,200);assert.equal(controls.at(-1).action,action);}
+  for(const mode of ["capture","cancel","clear"]){const command={action:"background",mode};assert.equal((await post(url+"/api/control",command)).status,200);assert.deepEqual(controls.at(-1),command);}
   const tempo={action:"audioTempo",bpm:120,origin:123400,confidence:.9,ageMs:25,running:true};
   assert.equal((await post(url+"/api/control",tempo)).status,200);assert.deepEqual(controls.at(-1),tempo);
   assert.equal(

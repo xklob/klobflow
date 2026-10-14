@@ -1671,7 +1671,7 @@
     "mode": "circles",
     "symmetry": true,
     "planeAspect": 1,
-    "autoFit": true,
+    "autoFit": false,
     "tempoSource": "manual",
     "bpm": 120,
     "circleSeparation": 1,
@@ -1687,6 +1687,7 @@
     "showFeedback": true,
     "cx": 0.5,
     "cy": 0.5,
+    "staffColors": [],
     "diagonals": true,
     "tempoEnabled": true,
     "ratio": "1:1"

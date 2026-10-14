@@ -16,3 +16,11 @@ test('tip labels use tolerance hysteresis and never call an off-target tip align
  assert.ok(coach.update(frame(3433,4.1)).tips.every(t=>!t.onTarget));
  for(let i=0;i<40;i++)assert.ok(coach.update(frame(3500+i*33,i%2?3.9:4.1)).tips.every(t=>!t.onTarget));
 });
+test('all-green tips never receive instructions for absent correction arrows during settling',()=>{
+ const coach=new AlignmentFeedback();coach.update(frame(0));const confirming=coach.update(frame(650));
+ assert.doesNotMatch(confirming.title,/OFF GUIDE|MOVE ORANGE/i);
+ const settling=coach.update(frame(1000));assert.ok(settling.tips.every(t=>t.onTarget));
+ assert.doesNotMatch(settling.title,/OFF GUIDE|MOVE ORANGE/i);assert.doesNotMatch(settling.detail,/amber|orange|white TARGET|along.*arrow/i);
+ const hidden=new AlignmentFeedback();for(const time of [0,650,1000])hidden.update({...frame(time,12),config:{...defaults,staffCount:1,showFeedback:false}});
+ const v=hidden.update({...frame(1200,12),config:{...defaults,staffCount:1,showFeedback:false}});assert.doesNotMatch(v.detail,/along.*arrow|into.*TARGET ring/i);
+});

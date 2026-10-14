@@ -1,5 +1,5 @@
 import {defaults,patchConfig} from "./core.mjs";
-import {optimizeCamera,applyCameraProfile,applyTrackSettings,setExposure} from "./camera.mjs";
+import {optimizeCamera,applyCameraProfile,applyTrackSettings,setExposure,openCamera,cameraError} from "./camera.mjs";
 import {saveSession,listSessions,getSession} from "./sessions.mjs";
 
 export class BrowserCamera {
@@ -27,7 +27,7 @@ export class BrowserCamera {
     if(!navigator.mediaDevices?.getUserMedia)throw Error("Camera access requires localhost or HTTPS and a browser that supports local cameras.");
     let stream;
     try{
-      stream=await navigator.mediaDevices.getUserMedia({audio:false,video:deviceId?{deviceId:{exact:deviceId},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:60}}:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:60}}});
+      stream=await openCamera({deviceId,signal:controller.signal,onProgress:this.onStatus});
       if(generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return;}
       this.stream=stream;this.track=stream.getVideoTracks()[0];this.video.srcObject=stream;await this.video.play();
       const actualId=this.track.getSettings().deviceId;
@@ -43,7 +43,6 @@ export class BrowserCamera {
       if(generation!==this.generation)return;
       this.settings=this.track.getSettings();
       if(this.config.planeCorners.length&&Math.abs(this.settings.width/this.settings.height-this.config.calibrationImageAspect)>.03)this.config={...this.config,planeCorners:[]};
-      if(this.config.autoFit&&!this.config.planeCorners.length)this.config={...this.config,zoom:0};
       await this.applyZoom();
       this.video.style.transform=this.config.mirror?"scaleX(-1)":"none";
       this.worker=new Worker(new URL("./tracker-worker.mjs",import.meta.url),{type:"module"});
@@ -67,8 +66,10 @@ export class BrowserCamera {
       this.status=`${this.settings.width} × ${this.settings.height} · PC camera`;
       this.onStatus(this.status);this.remember();this.schedule(generation);
     }catch(e){
+      const superseded=generation!==this.generation;
       stream?.getTracks().forEach(t=>t.stop());if(generation===this.generation)await this.stop();
-      throw Error(e.name==="NotAllowedError"?"Allow camera access in your browser, then start the PC camera again.":e.name==="NotFoundError"?"No webcam found. Connect a camera and try again.":e.message);
+      if(superseded&&controller.signal.aborted&&e.name==='AbortError')return;
+      throw Error(cameraError(e));
     }
   }
   request(type,data={}){
@@ -108,7 +109,7 @@ export class BrowserCamera {
   }
   async exposure(choice){
     if(!this.track)throw Error('Start the PC camera first.');
-    this.settings=await setExposure(this.track,choice);this.exposureChoice=choice;this.cameraSamples=[];
+    this.settings=await setExposure(this.track,choice);this.exposureChoice=choice;this.cameraSamples=[];if(this.worker){++this.configRevision;await this.request('background',{mode:'clear'});}
   }
   audioTempo(audio){this.worker?.postMessage({type:"audio",audio});}
   async command(command){
@@ -125,7 +126,8 @@ export class BrowserCamera {
       if(!this.lastFrame)throw Error("Wait for camera frames");
       return this.command({action:"config",config:{planeCorners:command.points,planeAspect:command.aspect,calibrationImageAspect:this.lastFrame.width/this.lastFrame.height}});
     }
-    if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly,revision:++this.configRevision});
+    if(command.action==="background"){++this.configRevision;await this.request("background",{mode:command.mode||"capture",time:performance.now()});}
+    else if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly,revision:++this.configRevision});
     else if(command.action==="syncBeat")await this.request("syncBeat",{time:performance.now()});
     else if(command.action==="seed")await this.request("seed",{points:command.points,time:performance.now()});
     else if(command.action==="reset")this.worker.postMessage({type:"reset"});
@@ -172,6 +174,8 @@ export class BrowserCamera {
     if(this.callback!==undefined){this.video.cancelVideoFrameCallback?.(this.callback);cancelAnimationFrame(this.callback);}
     this.worker?.terminate();this.worker=null;this.busy=false;
     for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(Error("Camera stopped"));}this.pending.clear();
-    await this.stopRecording();this.stream?.getTracks().forEach(t=>t.stop());this.stream=null;this.track=null;this.video.srcObject=null;
+    // Release the physical source immediately, before asynchronous recording finalization.
+    this.stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});this.stream=null;this.track=null;this.video.pause();this.video.srcObject=null;
+    await this.stopRecording();
   }
 }

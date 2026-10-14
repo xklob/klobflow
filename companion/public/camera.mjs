@@ -1,3 +1,29 @@
+export async function openCamera({deviceId,signal,onProgress=()=>{},mediaDevices=navigator.mediaDevices,wait=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}) {
+  const modes=[{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:60}},{width:{ideal:640},height:{ideal:480},frameRate:{ideal:30}},{}];
+  let last;
+  for(let attempt=0;attempt<modes.length;attempt++){
+    if(signal?.aborted)throw new DOMException('Camera setup canceled','AbortError');
+    if(attempt){onProgress('Camera is still opening. Retrying a compatible capture mode…');await wait(attempt===1?300:800);}
+    if(signal?.aborted)throw new DOMException('Camera setup canceled','AbortError');
+    try{
+      const stream=await mediaDevices.getUserMedia({audio:false,video:{...modes[attempt],...(deviceId?{deviceId:{exact:deviceId}}:{})}});
+      if(signal?.aborted){stream.getTracks().forEach(t=>t.stop());throw new DOMException('Camera setup canceled','AbortError');}
+      return stream;
+    }catch(e){
+      last=e;
+      if(!['NotReadableError','TrackStartError','AbortError','OverconstrainedError'].includes(e.name)||signal?.aborted)throw e;
+    }
+  }
+  throw last;
+}
+
+export function cameraError(error){
+  if(error.name==='NotAllowedError')return 'Allow camera access in your browser, then start the PC camera again.';
+  if(error.name==='NotFoundError'||error.name==='OverconstrainedError')return 'This camera is unavailable. Reconnect it or choose another camera, then try again.';
+  if(['NotReadableError','TrackStartError'].includes(error.name))return 'The webcam could not start after three attempts. Close other camera apps or tabs, reconnect its USB cable if needed, then click Use PC camera again.';
+  return error.message;
+}
+
 export function cameraProfiles(capabilities = {}, target = "auto") {
   const fps = target === "auto" ? Math.max(30, Math.min(120, capabilities.frameRate?.max || 60)) : Number(target);
   return [[1280,720],[640,480],[1920,1080],[320,240]].map(([width,height]) => ({width,height,fps}));

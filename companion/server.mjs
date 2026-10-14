@@ -126,7 +126,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           paired: !!pairing,
           address: pairing?.address,
           transport: pairing?.transport,
-          version: "0.6.0",
+          version: "0.6.1",
         });
       if (url.pathname === "/api/pair" && req.method === "POST") {
         const input = await readJson(req);
@@ -159,7 +159,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
       if (url.pathname === "/api/control" && req.method === "POST") {
         const body = await readJson(req);
         if (
-          !["config", "reset", "seed", "calibrate", "record", "stop", "fit", "syncBeat", "audioStart", "audioStop", "audioTempo"].includes(body.action)
+          !["config", "reset", "seed", "calibrate", "record", "stop", "fit", "syncBeat", "audioStart", "audioStop", "audioTempo", "background"].includes(body.action)
         )
           throw new Error("Unknown control.");
         return json(
@@ -211,6 +211,9 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         "/core.mjs": ["core.mjs", "text/javascript"],
         "/feedback.mjs": ["feedback.mjs", "text/javascript"],
         "/streak.mjs": ["streak.mjs", "text/javascript"],
+        "/rolling-errors.mjs": ["rolling-errors.mjs", "text/javascript"],
+        "/background.mjs": ["background.mjs", "text/javascript"],
+        "/staff-colors.mjs": ["staff-colors.mjs", "text/javascript"],
         "/practice.mjs": ["practice.mjs", "text/javascript"],
         "/system-audio.mjs": ["system-audio.mjs", "text/javascript"],
         "/tempo-core.mjs": ["tempo-core.mjs", "text/javascript"],

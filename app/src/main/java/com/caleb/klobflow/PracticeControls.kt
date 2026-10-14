@@ -1,18 +1,33 @@
 package com.caleb.klobflow
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.os.SystemClock
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.*
 
@@ -23,29 +38,32 @@ import kotlin.math.*
     val guide=guides.getJSONObject(mode);val steps=guide.getJSONArray("steps")
     var dismissed by remember(mode){mutableStateOf(prefs.getBoolean(mode,false))}
     var expanded by remember(mode){mutableStateOf(false)}
-    if(!dismissed)Surface(color=Color(0xff223126),modifier=Modifier.fillMaxWidth().padding(bottom=8.dp)) {
-        Column(Modifier.padding(10.dp)){
-            Text(guide.getString("title"),color=Lime)
-            Text(steps.getString(0),fontSize=12.sp)
+    if(!dismissed)Surface(color=Color(0xff223126),shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth().padding(bottom=8.dp)) {
+        Column(Modifier.padding(12.dp)){
+            Text(guide.getString("title"),color=Lime,fontSize=17.sp,fontWeight=FontWeight.SemiBold)
+            Text(steps.getString(0),fontSize=15.sp,lineHeight=20.sp,color=Ink,modifier=Modifier.padding(top=4.dp))
             Row {TextButton(onClick={expanded=true}){Text("Setup tutorial")};TextButton(onClick={dismissed=true;prefs.edit().putBoolean(mode,true).apply()}){Text("Got it")}}
         }
     } else TextButton(onClick={expanded=true}){Text("Show mode tutorial")}
-    if(expanded)AlertDialog(onDismissRequest={expanded=false},title={Text(guide.getString("title"))},text={Column(Modifier.verticalScroll(rememberScrollState())){repeat(steps.length()){Text("${it+1}. ${steps.getString(it)}",Modifier.padding(bottom=12.dp))}}},confirmButton={TextButton(onClick={expanded=false;dismissed=true;prefs.edit().putBoolean(mode,true).apply()}){Text("Got it")}})
+    if(expanded)AlertDialog(onDismissRequest={expanded=false},title={Text(guide.getString("title"))},text={Column(Modifier.verticalScroll(rememberScrollState())){repeat(steps.length()){Text("${it+1}. ${steps.getString(it)}",fontSize=16.sp,lineHeight=22.sp,modifier=Modifier.padding(bottom=12.dp))}}},confirmButton={TextButton(onClick={expanded=false;dismissed=true;prefs.edit().putBoolean(mode,true).apply()}){Text("Got it")}})
 }
 @Composable fun FitControls(ui:FlowUi,engine:FlowEngine) {
-    Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){
-        TextButton(enabled=ui.frame!=null,onClick={engine.command(JSONObject().put("action","fit"))}){Text("Fit center & size")}
-        TextButton(enabled=ui.frame!=null,onClick={engine.command(JSONObject().put("action","fit").put("sizeOnly",true))}){Text("Match staff length")}
+    Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.padding(top=8.dp)){
+        OutlinedButton(enabled=ui.frame!=null,onClick={engine.command(JSONObject().put("action","fit").put("zoom",true))}){Text("Auto-fit")}
+        OutlinedButton(enabled=ui.frame!=null,onClick={engine.command(JSONObject().put("action","fit").put("sizeOnly",true))}){Text("Match staff length")}
     }
-    Text(ui.frame?.fitStatus.orEmpty(),fontSize=12.sp,color=Lavender)
+    // Resets only the guide's placement; camera, tempo, staff count and calibration stay as they are.
+    TextButton(onClick={val defaults=Config();engine.updateConfig(JSONObject().put("cx",defaults.cx).put("cy",defaults.cy).put("scale",defaults.scale).put("rotation",defaults.rotation).put("circleSeparation",defaults.circleSeparation))}){Text("Reset guide layout")}
+    Text(ui.frame?.fitStatus?.takeIf {it.isNotEmpty()} ?: "Get into position, then press Auto-fit and spin normally for two seconds with your full staves in view. Match staff length changes size only.",fontSize=15.sp,lineHeight=20.sp,color=Ink)
+    Text("Reset guide layout recenters the guide and restores its default size, rotation and circle separation.",fontSize=14.sp,lineHeight=19.sp,color=Muted,modifier=Modifier.padding(top=4.dp))
     val lengths=ui.frame?.let {f->f.staffs.take(ui.config.staffCount).mapNotNull {s->s?.takeIf {it.confidence>=.7 && !it.occluded}?.let(f.guide::rectify)?.length}}.orEmpty()
-    if(lengths.isNotEmpty())Text("Guide width / staff length: %.2f×. Match staff length sets 1×; adjust Size for your pattern.".format(ui.config.scale*2/lengths.average()),fontSize=11.sp,modifier=Modifier.padding(bottom=8.dp))
+    if(lengths.isNotEmpty())Text("Guide width / staff length: %.2f×. Match staff length sets 1×; adjust Size for your pattern.".format(ui.config.scale*2/lengths.average()),fontSize=14.sp,lineHeight=19.sp,color=Muted,modifier=Modifier.padding(top=4.dp,bottom=8.dp))
 }
 @Composable fun BeatSettings(ui:FlowUi,engine:FlowEngine) {
     AudioControls(ui,engine)
     var bpm by remember(ui.config.bpm){mutableStateOf(ui.config.bpm.roundToInt().toString())}
     var taps by remember {mutableStateOf(emptyList<Long>())}
-    Row {Text("Beat practice",Modifier.weight(1f));Switch(ui.config.tempoEnabled,onCheckedChange={engine.updateConfig(JSONObject().put("tempoEnabled",it))})}
+    Row(verticalAlignment=Alignment.CenterVertically) {Text("Beat practice",Modifier.weight(1f),fontSize=16.sp);Switch(ui.config.tempoEnabled,onCheckedChange={engine.updateConfig(JSONObject().put("tempoEnabled",it))})}
     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
         OutlinedTextField(value=bpm,onValueChange={bpm=it.filter(Char::isDigit).take(3)},label={Text("BPM (30–240)")},singleLine=true,modifier=Modifier.weight(1f))
         Button(enabled=bpm.toIntOrNull() in 30..240,onClick={engine.updateConfig(JSONObject().put("bpm",bpm.toInt()).put("tempoEnabled",true).put("tempoSource","manual"))}){Text("Set")}
@@ -55,42 +73,126 @@ import kotlin.math.*
         TextButton(enabled=ui.config.tempoSource=="manual",onClick={engine.command(JSONObject().put("action","syncBeat"))}){Text("Start beat now")}
         TextButton(onClick={val now=SystemClock.elapsedRealtime();taps=if(taps.isEmpty() || now-taps.last()>2000)listOf(now)else (taps+now).takeLast(6);if(taps.size>1){val tempo=(60000.0*(taps.size-1)/(now-taps.first())).roundToInt().coerceIn(30,240);engine.updateConfig(JSONObject().put("bpm",tempo).put("tempoEnabled",true).put("tempoSource","manual"));engine.command(JSONObject().put("action","syncBeat"))}}){Text("Tap tempo")}
     }
-    Text("Pass numbered points on the pulse. A filled tip marks the measured end. Timing and distance are separate. Start beat now aligns the pulse to your first beat.",fontSize=12.sp)
+    Text("Pass the numbered points on the pulse. The Timing box shows milliseconds early or late and the distance from the point separately. Start beat now aligns the pulse to your first beat.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
 }
+/** Timing box: the text holds and fades slowly; only the small dot pulses on the beat. */
 @Composable fun BeatFeedback(ui:FlowUi) {
-    val beat=ui.frame?.beat ?: return
-    if(!beat.enabled){
-        if(ui.config.tempoEnabled && ui.config.tempoSource!="manual")Surface(color=Color(0xff1b3039),modifier=Modifier.fillMaxWidth().padding(vertical=8.dp)){
-            Column(Modifier.padding(12.dp)){Text("Beat timing paused",color=Lavender);Text(if(ui.frame!!.audio.status.contains("Following"))"Waiting for fresh audio timing"else ui.frame!!.audio.status,fontSize=12.sp)}
+    val f=ui.frame ?: return
+    val beat=f.beat
+    val paused=!beat.enabled && ui.config.tempoEnabled && ui.config.tempoSource!="manual"
+    if(!beat.enabled && !paused)return
+    val next=if(paused)BoxText("wait","Beat timing paused",if(f.audio.status.contains("Following"))"Waiting for fresh audio timing." else f.audio.status)
+    else BoxText("timing","${beat.bpm.roundToInt()} BPM",beat.hits.mapIndexed {i,hit->
+        val name=if(i==0)"A" else "B"
+        if(hit==null)"$name · waiting for a tip to pass a point" else {
+            val timing=if(abs(hit.offsetMs)<=75)"on beat" else "${abs(hit.offsetMs).roundToInt()} ms ${if(hit.offsetMs<0)"early" else "late"}"
+            "$name · point ${hit.point}: $timing · ${"%.1f".format(hit.error)}% from point${if(hit.error<=ui.config.tolerance)" ✓" else ""}"
         }
-        return
-    }
-    Surface(color=if(beat.phase<.18)Color(0xff24566b)else Color(0xff1b3039),modifier=Modifier.fillMaxWidth().padding(vertical=8.dp)){
-        Column(Modifier.padding(12.dp)){
-            Text("${beat.bpm.roundToInt()} BPM · ${if(beat.phase<.18)"BEAT"else"next pulse…"}",color=Color(0xff6dd8ff))
-            beat.hits.forEachIndexed {i,hit->
-                val text=if(hit==null)"${if(i==0)"A"else"B"} · waiting for a visible tip to pass a point" else {
-                    val timing=if(abs(hit.offsetMs)<=75)"On beat" else "${abs(hit.offsetMs).roundToInt()} ms ${if(hit.offsetMs<0)"early"else"late"}"
-                    "${if(i==0)"A"else"B"} · point ${hit.point}: $timing · %.1f%% from point".format(hit.error)
-                }
-                Text(text,fontSize=12.sp,color=if(hit!=null && abs(hit.offsetMs)<=75 && hit.error<=ui.config.tolerance)Lime else Color.White)
-            }
-        }
-    }
+    }.joinToString("\n"),beat.bpm)
+    val pulse=beat.enabled && beat.phase<.18
+    val (text,urgentChange)=rememberHeldText(next){a,b->(a.tone=="wait")!=(b.tone=="wait")||abs(a.number-b.number)>3}
+    StatusBox("Timing",text,urgentChange,Modifier.padding(bottom=8.dp)){BeatDot(pulse)}
+}
+@Composable private fun BeatDot(pulse:Boolean) {
+    val motion=ValueAnimator.areAnimatorsEnabled()
+    val grow by animateFloatAsState(if(pulse && motion)1.6f else 1f,tween(if(motion)110 else 0),label="beatDot")
+    Box(Modifier.size(11.dp).scale(grow).background(if(pulse)Cyan else Color(0xff2a4f5d),CircleShape))
 }
 
 @Composable fun AudioControls(ui:FlowUi,engine:FlowEngine) {
     val phone by PhoneAudio.state.collectAsStateWithLifecycle()
     val state=if(ui.config.tempoSource=="phone")phone else ui.frame?.audio ?: AudioTempo()
-    Text("Tempo source",color=Lime,modifier=Modifier.padding(top=12.dp))
+    Text("Tempo source",color=Lime,fontSize=16.sp,modifier=Modifier.padding(top=12.dp))
     Row {
         TextButton(onClick={engine.command(JSONObject().put("action","audioStart"))}){Text(if(phone.running)"Use phone audio"else"Connect system audio")}
         TextButton(onClick={engine.command(JSONObject().put("action","audioStop"))}){Text("Use manual / stop")}
     }
-    Text(if(ui.config.tempoSource=="manual")"Manual BPM"else if(state.usable(SystemClock.elapsedRealtime().toDouble()))"${if(ui.config.tempoSource=="phone")"Phone"else"PC"} audio · ${(state.bpm!!*ui.config.audioRate).roundToInt()} BPM · ${(state.confidence*100).roundToInt()}% confidence"else if(state.status.contains("Following"))"Waiting for fresh audio timing"else state.status,fontSize=12.sp,color=Lavender)
+    Text(if(ui.config.tempoSource=="manual")"Manual BPM"else if(state.usable(SystemClock.elapsedRealtime().toDouble()))"${if(ui.config.tempoSource=="phone")"Phone"else"PC"} audio · ${(state.bpm!!*ui.config.audioRate).roundToInt()} BPM · ${(state.confidence*100).roundToInt()}% confidence"else if(state.status.contains("Following"))"Waiting for fresh audio timing"else state.status,fontSize=15.sp,color=Ink)
     Row {listOf(.5 to "Half",1.0 to "Detected",2.0 to "Double").forEach {(rate,label)->FilterChip(selected=ui.config.audioRate==rate,onClick={engine.updateConfig(JSONObject().put("audioRate",rate))},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
     var offset by remember(ui.config.audioOffsetMs){mutableFloatStateOf(ui.config.audioOffsetMs.toFloat())}
-    Text("Audio offset: ${offset.toInt()} ms (positive = later)",fontSize=12.sp)
+    Text("Audio offset: ${offset.toInt()} ms (positive = later)",fontSize=15.sp)
     Slider(value=offset,onValueChange={offset=it},onValueChangeFinished={engine.updateConfig(JSONObject().put("audioOffsetMs",offset.toDouble()))},valueRange=-500f..500f)
-    Text("Approve Android's sharing prompt. The source app must allow playback capture. To follow PC music, choose Use PC system audio in the companion. Silence or uncertain tempo pauses beat feedback. Audio stays local and is not recorded.",fontSize=12.sp)
+    Text("Approve Android's sharing prompt. The source app must allow playback capture. To follow PC music, choose Use PC system audio in the companion. Silence or uncertain tempo pauses beat feedback. Audio stays local and is not recorded.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
+}
+
+fun toneColor(tone:String)=when(tone){"ok"->Mint;"warn"->Amber;"wait"->Slate;"timing"->Cyan;else->Color(0xff9aa591)}
+private fun toneFill(tone:String)=when(tone){"ok"->Color(0xff13241c);"warn"->Color(0xff2a2014);"wait"->Color(0xff1a1f26);"timing"->Color(0xff12252d);else->Color(0xff171c16)}
+@Composable fun ToneDot(tone:String){Box(Modifier.size(10.dp).background(toneColor(tone),CircleShape))}
+/** Holds each message long enough to read and returns the text to show plus whether that change is urgent.
+ *  Value-returning composables are never skipped, so a held change applies on the next frame after its hold. */
+@Composable fun rememberHeldText(next:BoxText,urgent:(BoxText,BoxText)->Boolean):Pair<BoxText,Boolean> {
+    val stable=remember {StableText<BoxText>()}
+    val text=stable.update(SystemClock.uptimeMillis(),next,urgent)
+    return text to stable.urgent
+}
+/** A fixed status box. The old text fades out before the new text fades in, so two paragraphs never
+ *  overlap. Urgent changes (for example tracking loss) replace it at once. */
+@Composable fun StatusBox(label:String,text:BoxText,urgentChange:Boolean,modifier:Modifier=Modifier,head:@Composable (String)->Unit={ToneDot(it)}) {
+    val motion=ValueAnimator.areAnimatorsEnabled()
+    var shown by remember {mutableStateOf(text)}
+    val fade=remember {Animatable(1f)}
+    LaunchedEffect(text){
+        if(text==shown)return@LaunchedEffect
+        if(!motion || urgentChange){fade.snapTo(1f);shown=text;return@LaunchedEffect}
+        fade.animateTo(0f,tween(650));shown=text;fade.animateTo(1f,tween(750))
+    }
+    val tone=toneColor(shown.tone)
+    val fill by animateColorAsState(toneFill(shown.tone),tween(if(motion)600 else 0),label="${label}Fill")
+    Surface(color=fill,shape=RoundedCornerShape(12.dp),border=BorderStroke(1.5.dp,tone.copy(alpha=.7f)),modifier=modifier.fillMaxWidth()){
+        Column(Modifier.padding(horizontal=14.dp,vertical=10.dp)){
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){head(shown.tone);Text(label.uppercase(),color=Muted,fontSize=12.sp,letterSpacing=1.5.sp)}
+            // A minimum text height keeps the box (and the camera preview below it) from jumping between messages.
+            Column(Modifier.heightIn(min=86.dp).alpha(fade.value)){
+                Text(shown.title,color=tone,fontSize=21.sp,lineHeight=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=2.dp))
+                if(shown.detail.isNotEmpty())Text(shown.detail,color=Ink,fontSize=15.sp,lineHeight=20.sp,modifier=Modifier.padding(top=3.dp))
+            }
+        }
+    }
+}
+
+private val swatches=mapOf("red" to Color(0xffff4b4b),"orange" to Color(0xffff9a3c),"yellow" to Color(0xffffe14d),"green" to Color(0xff4be37a),"cyan" to Color(0xff3fe0f0),"blue" to Color(0xff4b7bff),"purple" to Color(0xffa35bff),"pink" to Color(0xffff5fc8),"white" to Color.White)
+private fun colorName(name:String)=name.replaceFirstChar {it.uppercase()}
+/** Conspicuous summary for diagnosing false detections. */
+fun detectionSummary(c:Config,background:String):String {
+    val colors=if(!c.led)"LED detection off (edge mode)" else if(c.staffColors.isEmpty())"Detecting LEDs of any color" else "Detecting ${c.staffColors.joinToString(" + ",transform=::colorName)} LEDs only"
+    return "$colors · "+when(background){"ready"->"background snapshot on";"countdown","capturing"->"capturing background";else->"no background snapshot"}
+}
+/** LED colors to detect. An empty list means any color, including rainbow patterns. */
+@Composable fun StaffColorPicker(ui:FlowUi,engine:FlowEngine,onError:(String)->Unit) {
+    val c=ui.config
+    fun choose(colors:List<String>){try{engine.updateConfig(JSONObject().put("staffColors",JSONArray(colors)))}catch(e:Exception){onError(e.message ?: "Could not change LED colors")}}
+    Text("LED colors to detect",fontSize=16.sp,modifier=Modifier.padding(top=14.dp))
+    Text(if(!c.led)"Not used while LED detection is off" else if(c.staffColors.isEmpty())"All colors" else "Only ${c.staffColors.joinToString(" + ",transform=::colorName)}",color=if(c.led)Lime else Muted,fontSize=18.sp,fontWeight=FontWeight.Bold)
+    FilterChip(selected=c.staffColors.isEmpty(),enabled=c.led,onClick={choose(emptyList())},label={Text("Any / rainbow")})
+    staffColorNames.chunked(3).forEach {row->
+        Row(horizontalArrangement=Arrangement.spacedBy(6.dp)){
+            row.forEach {name->
+                val selected=name in c.staffColors
+                FilterChip(selected=selected,enabled=c.led,onClick={choose(staffColorNames.filter {if(it==name)!selected else it in c.staffColors})},label={Text(colorName(name))},
+                    leadingIcon={Box(Modifier.size(14.dp).background(swatches.getValue(name),CircleShape).border(1.dp,Color.Black.copy(alpha=.6f),CircleShape))})
+            }
+        }
+    }
+    Text(if(c.led)"Match your staff's current LED setting. Choose one or more colors to ignore other lights; pick two for differently colored staves. White can still match sunlight." else "Color choice applies only to LED detection. Turn on LED staves to use it.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
+}
+/** Background snapshot: ignores lights that never move. The video stays live during the countdown. */
+@Composable fun BackgroundControls(ui:FlowUi,engine:FlowEngine,onError:(String)->Unit) {
+    val status=ui.frame?.background ?: BackgroundStatus()
+    val live=ui.cameraReady && !ui.demo
+    val capturing=status.state=="countdown" || status.state=="capturing"
+    fun send(mode:String){try{engine.command(JSONObject().put("action","background").put("mode",mode))}catch(e:Exception){onError(e.message ?: "Background snapshot failed")}}
+    Text("Background snapshot",fontSize=16.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.padding(top=10.dp))
+    Text(when{
+        !live->"Needs the live camera, not the demo."
+        status.state=="countdown"->"Countdown ${max(1L,(status.remainingMs+999)/1000)}: move your staves out of view and keep the phone still."
+        status.state=="capturing"->"Capturing. Keep your staves out of view a moment longer."
+        status.state=="ready"->"On. Lights that were in the snapshot are ignored. Recapture after moving the phone or changing the lighting."
+        else->"Off. Every bright light in view can be mistaken for a staff."
+    },fontSize=15.sp,lineHeight=20.sp,color=Ink)
+    Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){
+        if(capturing)OutlinedButton(enabled=live,onClick={send("cancel")}){Text("Cancel capture")}
+        else OutlinedButton(enabled=live,onClick={send("capture")}){Text(if(status.state=="ready")"Recapture background" else "Capture background")}
+        if(status.state=="ready")TextButton(enabled=live,onClick={send("clear")}){Text("Clear background")}
+    }
+    Text("Ignore lights that never move, like a window or lamp. After you press Capture, move your staves out of view for 5 seconds and keep the phone still.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
 }

@@ -45,7 +45,12 @@ class AudioDeviceTest {
                     engine.updateConfig(JSONObject().put("tempoSource","pc"))
                     engine.command(JSONObject().put("action","audioTempo").put("running",true).put("bpm",98.0).put("confidence",.95).put("origin",SystemClock.elapsedRealtime().toDouble()).put("ageMs",25))
                 }
-                Thread.sleep(300);assertEquals(98.0,engine.ui.value.frame!!.beat.bpm,1e-8)
+                // Wait for a frame produced with the new clock, not an arbitrary rendering delay.
+                val pcDeadline=SystemClock.elapsedRealtime()+1500
+                while(engine.ui.value.frame?.let {it.guide.config.tempoSource=="pc" && it.beat.enabled && abs(it.beat.bpm-98.0)<1e-8}!=true && SystemClock.elapsedRealtime()<pcDeadline)Thread.sleep(25)
+                assertEquals("pc",engine.ui.value.frame!!.guide.config.tempoSource)
+                assertTrue("Fresh PC tempo must enable timing",engine.ui.value.frame!!.beat.enabled)
+                assertEquals(98.0,engine.ui.value.frame!!.beat.bpm,1e-8)
                 Thread.sleep(2200);assertFalse("Stale PC audio must pause the beat",engine.ui.value.frame!!.beat.enabled)
                 scenario.onActivity {engine.command(JSONObject().put("action","audioStop"))}
             }finally {observing.set(false);observer.join(1000);java.io.File(context.getExternalFilesDir(null),"audio-cadence.json").writeText(org.json.JSONArray(observations.map {it.json()}).toString());track.release();context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))}

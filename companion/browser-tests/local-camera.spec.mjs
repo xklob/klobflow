@@ -18,11 +18,16 @@ test.use({launchOptions:{executablePath:process.env.KLOBFLOW_BROWSER,args:['--us
 test.beforeEach(async({request})=>{await request.post('/api/disconnect',{data:{}});});
 test('PC camera tracks locally, stays live during selection, records and reopens',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>localStorage.setItem('klobflow.local.config',JSON.stringify({autoFit:true,cx:.42,cy:.61,scale:.37,rotation:17,circleSeparation:.9})));
  await page.goto('/');await page.locator('#local-open').click();
  await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
  await expect(page.locator('#tracking-label')).toContainText('Both staves tracked');
  await expect(page.locator('#camera-profile')).toContainText('fps measured');
  await expect(page.locator('#local-video')).toHaveCSS('transform','matrix(-1, 0, 0, 1, 0, 0)');
+ const started=await page.locator('#local-video').evaluate(v=>v.currentTime);
+ await expect.poll(()=>page.locator('#local-video').evaluate(v=>v.currentTime)).toBeGreaterThan(started+2.6);
+ for(const [key,value] of Object.entries({cx:.42,cy:.61,scale:.37,rotation:17,circleSeparation:.9}))await expect(page.locator(`[data-config="${key}"]`)).toHaveValue(String(value));
+ expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')).autoFit)).toBe(false);
  for(const button of ['#seed','#calibrate']){
   await page.locator(button).click();
   const before=await page.locator('#view').evaluate(c=>c.toDataURL());
@@ -44,7 +49,11 @@ test('PC camera tracks locally, stays live during selection, records and reopens
  await page.locator('#fit-size').click();await expect(page.locator('#fit-status')).toContainText('matches the visible staff length',{timeout:10000});
  await expect(page.locator('#size-helper')).toContainText(/1.0[0-5]×/);
  await page.locator('[data-config="tempoEnabled"]').check();await page.locator('#bpm').fill('105');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#beat-pulse')).toContainText('105 BPM');
- await page.screenshot({path:'../review/browser-camera.png',fullPage:true});
+ await page.locator('#reset-guide').click();
+ for(const [key,value] of Object.entries({cx:.5,cy:.5,scale:.32,rotation:0,circleSeparation:1}))await expect(page.locator(`[data-config="${key}"]`)).toHaveValue(String(value));
+ await expect(page.locator('#bpm')).toHaveValue('105');await expect(page.locator('#staff-count')).toHaveValue('1');await expect(page.locator('[data-config="mirror"]')).toBeChecked();
+ await page.setViewportSize({width:1920,height:1080});await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:'../review/browser-camera.png'});
  await page.locator('#local-open').click();await expect(page.locator('#empty-state')).toBeVisible();
  await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA');
  expect(errors).toEqual([]);
@@ -54,6 +63,44 @@ test('denied camera permission gives a recoverable message',async({page})=>{
  await page.goto('/');await page.locator('#local-open').click();
  await expect(page.locator('#message')).toContainText('Allow camera access');
  await expect(page.locator('#local-open')).toBeEnabled();await expect(page.locator('#record')).toBeDisabled();
+});
+test('color selection and background capture stay usable while the camera runs',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/');await expect(page.locator('#background-capture')).toBeDisabled();
+ await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ await page.locator('[data-color="red"]').click();await page.locator('[data-color="blue"]').click();
+ for(const color of ['red','blue'])await expect(page.locator(`[data-color="${color}"]`)).toHaveAttribute('aria-pressed','true');
+ await expect(page.locator('#color-summary')).toContainText(/red.*blue/i);
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')).staffColors)).toEqual(['red','blue']);
+ await page.locator('[data-color=""]').click();await expect(page.locator('#color-summary')).toHaveText('All colors');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')).staffColors)).toEqual([]);
+ await page.locator('[data-color="white"]').click();await expect(page.locator('#tracking-label')).toContainText('Both staves tracked');
+ await page.locator('#background-capture').click();await expect(page.locator('#background-overlay')).toBeVisible();
+ await expect(page.locator('#streak-hud')).toBeHidden();
+ await expect(page.locator('#background-overlay-title')).toContainText(/OUT OF VIEW/);
+ const before=await page.locator('#local-video').evaluate(v=>v.currentTime);
+ await expect.poll(()=>page.locator('#local-video').evaluate(v=>v.currentTime)).toBeGreaterThan(before+.6);
+ await page.locator('#background-cancel').click();await expect(page.locator('#background-overlay')).toBeHidden();
+ await page.locator('#background-capture').click();await expect(page.locator('#background-clear')).toBeVisible({timeout:10000});
+ await expect(page.locator('#background-overlay')).toBeHidden();
+ await page.locator('[data-config="mirror"]').uncheck();await expect(page.locator('#background-clear')).toBeHidden();
+ await page.locator('#background-capture').click();await expect(page.locator('#background-clear')).toBeVisible({timeout:10000});
+ await page.locator('#background-clear').click();await expect(page.locator('#background-clear')).toBeHidden();
+ await page.locator('#local-open').click();await expect(page.locator('#background-capture')).toBeDisabled();
+ expect(errors).toEqual([]);
+});
+test('a transient source-start failure retries, while an occupied webcam stays recoverable',async({page})=>{
+ await page.addInitScript(()=>{
+  const real=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);window.openAttempts=0;
+  navigator.mediaDevices.getUserMedia=async c=>{if(++window.openAttempts===1)throw new DOMException('Could not start video source','NotReadableError');return real(c);};
+ });
+ await page.goto('/');await page.locator('#local-open').click();
+ await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
+ expect(await page.evaluate(()=>window.openAttempts)).toBe(2);
+ await page.locator('#local-open').click();
+ await page.evaluate(()=>{window.openAttempts=0;navigator.mediaDevices.getUserMedia=async()=>{window.openAttempts++;throw new DOMException('Could not start video source','NotReadableError');};});
+ await page.locator('#local-open').click();await expect(page.locator('#message')).toContainText('Close other camera apps or tabs');
+ expect(await page.evaluate(()=>window.openAttempts)).toBe(3);await expect(page.locator('#local-open')).toBeEnabled();await expect(page.locator('#record')).toBeDisabled();
 });
 
 test('PC system-audio pipeline detects a beat, pauses on silence, and preserves manual tempo',async({page})=>{

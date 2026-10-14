@@ -28,6 +28,9 @@ class FlowDeviceTest {
             await(25000){engine.ui.value.cameraReady && engine.ui.value.frame?.source=="camera"}
             assertTrue(engine.config.mirror)
             await {kotlin.math.abs(engine.ui.value.zoomMin-engine.ui.value.zoomRatio)<0.01}
+            val chosenZoom=kotlin.math.min(engine.ui.value.zoomMax,engine.ui.value.zoomMin*1.4f).toDouble()
+            scenario.onActivity {engine.updateConfig(JSONObject().put("zoom",chosenZoom))}
+            await {kotlin.math.abs(engine.ui.value.zoomRatio-chosenZoom)<0.05}
             scenario.onActivity {engine.share(true)}
             repeat(3){
                 val before=engine.ui.value.frame!!.time
@@ -36,6 +39,8 @@ class FlowDeviceTest {
                 scenario.moveToState(Lifecycle.State.RESUMED)
                 await(25000){engine.ui.value.cameraReady && engine.ui.value.sharing && (engine.ui.value.frame?.time ?: 0)>before}
                 assertEquals("back",engine.config.facing)
+                assertEquals(chosenZoom,engine.config.zoom,0.001)
+                await {kotlin.math.abs(engine.ui.value.zoomRatio-chosenZoom)<0.05}
             }
             scenario.recreate();scenario.onActivity {engine=it.engine}
             await(25000){engine.ui.value.cameraReady && engine.ui.value.sharing && engine.ui.value.frame?.source=="camera"}
@@ -114,6 +119,14 @@ class FlowDeviceTest {
             assertEquals(400,request("/api/control",body="""{"action":"config","config":{"scale":-1}}""").first)
             scenario.onActivity {engine.share(false);engine.updateConfig(JSONObject().put("facing","back").put("fps",30));engine.bindCamera()}
             await(25000){engine.ui.value.cameraReady && engine.ui.value.frame?.source=="camera"}
+            val captureTime=engine.ui.value.frame!!.time
+            scenario.onActivity {engine.command(JSONObject().put("action","background").put("mode","capture"))}
+            await {engine.ui.value.frame?.background?.state=="countdown"}
+            await {engine.ui.value.frame!!.time>captureTime+1000}
+            assertEquals("countdown",engine.ui.value.frame!!.background.state)
+            await(12000){engine.ui.value.frame?.background?.state=="ready"}
+            scenario.onActivity {engine.command(JSONObject().put("action","background").put("mode","clear"))}
+            await {engine.ui.value.frame?.background?.state=="off"}
             scenario.onActivity {engine.startRecording()}
             await(20000){engine.ui.value.recording && engine.ui.value.elapsed>2500}
             scenario.onActivity {engine.stopRecording()}
