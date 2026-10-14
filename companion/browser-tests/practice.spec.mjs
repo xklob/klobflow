@@ -88,3 +88,19 @@ test('each mode tutorial dismisses independently and single-staff beat practice 
  await expect(page.locator('#beat-hits')).toContainText(/point [1-4]:/,{timeout:12000});
  await page.screenshot({path:'../review/practice-timing.png',fullPage:true});
 });
+
+test('alignment streak builds, resets, disables and respects free flow',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
+ await page.locator('[data-mode="circles"]').click();await page.locator('#staff-count').selectOption('1');
+ await page.locator('[data-config="scale"]').fill('0.23');await page.locator('[data-config="scale"]').dispatchEvent('change');
+ await expect(page.locator('#streak-title')).toContainText('LEVEL 4',{timeout:20000});
+ await expect(page.locator('#streak-power')).toHaveAttribute('style',/100%/);
+ await page.screenshot({path:'../review/web-streak.png',fullPage:true});
+ await page.locator('[data-config="scale"]').fill('0.4');await page.locator('[data-config="scale"]').dispatchEvent('change');
+ await expect(page.locator('#streak-title')).toContainText('BUILD YOUR STREAK');
+ await page.locator('[data-config="streakEffects"]').uncheck();await expect(page.locator('#streak-hud')).toBeHidden();
+ await page.locator('[data-config="streakEffects"]').check();await page.locator('[data-mode="free"]').click();
+ await expect(page.locator('#streak-title')).toContainText('without alignment streaks');
+ await expect(page.locator('#streak-power')).toHaveAttribute('style',/0%/);expect(errors).toEqual([]);
+});

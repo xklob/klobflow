@@ -8,9 +8,11 @@ A practice tool for double staves: use the native Android app with its local PC 
 
 Generated LED demo through the native tracker and companion demo. These illustrate the interface, not real-practice accuracy.
 
-<img src="docs/screenshots/android-practice.png" alt="Android practice view with explicit tip-alignment coaching and correction arrows" width="340">
+<img src="docs/screenshots/android-practice.png" alt="Android practice with beat timing and a level-four alignment streak" width="340">
 
 ![Desktop practice view with alignment guidance, zoom, and camera controls](docs/screenshots/web-practice.png)
+
+![Sustained circle alignment earns a level-four streak with brighter tip rings and particles](docs/screenshots/web-streak.png)
 
 ![Browser-only practice with a generated LED camera input and local recording](docs/screenshots/browser-camera.png)
 
@@ -93,6 +95,14 @@ Each of Grid, Circles, Cube, and Free has its own tutorial, dismissal state, and
 Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start beat now** aligns the visual pulse; **Tap tempo** sets it from your taps. Pass the numbered points on each pulse. The filled tip is the endpoint used for timing. Feedback reports milliseconds early/late and spatial error at the crossing separately. Within ±75 ms is labelled on-beat; the existing target tolerance controls the position indicator. A still or uncertain tip does not earn a timing hit. The most recent hit expires after two beats.
 
 Timing uses interpolated crossings in the measured practice plane. It does not infer musical phrasing or VTG patterns, and display/capture latency still matters. Identical staff ends can swap after occlusion, so use a fresh sync after ambiguous tracking. Browser and Android recordings include beat observations in JSONL alongside ordinary alignment scores.
+
+## Alignment streaks
+
+Keep **every tip** of the selected one or two staves within the guide tolerance to build a flow streak. Circles reward staying on the circumference, Grid rewards staying on its lines, and Cube rewards holding its projected vertices. The timer, power bar, and best streak show the result in both Android and browser practice.
+
+Tip halos and trails grow with sustained alignment. Levels increase after **2, 5, and 10 seconds**, adding orbiting particles and finally gold rings. Correction arrows and ON GUIDE labels remain visible above the effects. **Streak glow and particles** turns the extra effects off; the browser uses the label **Streak glow & particles**. Free flow keeps ordinary decorative trails without awarding alignment credit. Reduced-motion preferences stop the particles' orbit.
+
+An off-guide tip ends the streak immediately. Blur, hidden tips, and low-confidence tracking pause credit; uncertainty lasting over 350 ms ends the streak. A camera interruption also restarts the timer. Neither a missing observation nor an averaged error can earn time for an unseen or off-guide tip. Guide, camera, prop-count, and tolerance changes start a fresh attempt and best record. These effects do not alter precision or beat scores. Frame exports retain streak state for analysis replay; videos still contain the camera image without overlays.
 
 ## Automatic tempo from system audio
 

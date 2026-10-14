@@ -765,3 +765,10 @@ dialog .button-row {
 .timing-controls { margin: 18px 0; padding: 14px 0; border-block:1px solid #33402d; }
 .timing-controls label { display:block; margin:8px 0; }
 input[type=number] { background:#10160e; color:#eef3e7; border:1px solid #3a4833; border-radius:6px; padding:6px; max-width:100%; }
+.streak-hud { position:absolute; z-index:3; right:12px; bottom:12px; width:min(255px,65%); padding:10px 12px; border:1px solid #466849; border-radius:10px; background:#0b140fea; pointer-events:none; font-size:11px; line-height:1.5; }
+.streak-hud strong { color:#b6f36b; display:block; letter-spacing:.04em; }
+.streak-hud small { color:#b6c2b0; display:block; font-size:10px; }
+.streak-hud[data-state=paused] strong { color:#c4b3ff; }
+.streak-meter { height:5px; margin:7px 0; overflow:hidden; border-radius:5px; background:#28332a; }
+.streak-meter span { display:block; height:100%; width:0; background:linear-gradient(90deg,#b6f36b,#6dd8ff,#ffe48a); transition:width .15s linear; }
+@media (prefers-reduced-motion:reduce) { .streak-meter span { transition:none; } }

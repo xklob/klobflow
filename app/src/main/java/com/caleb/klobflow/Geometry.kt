@@ -40,10 +40,10 @@ data class Config(
     val timing: String="tog-same", val ratio: String="1:1", val zoom: Double=0.0, val mirror: Boolean=true,
     val planeCorners: List<P> = emptyList(), val planeAspect: Double=1.0,
     val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0,
-    val staffCount:Int=2, val autoFit:Boolean=true, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0
+    val staffCount:Int=2, val autoFit:Boolean=true, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true
 ) {
     fun json() = JSONObject().apply {
-        put("tempoSource",tempoSource);put("audioRate",audioRate);put("audioOffsetMs",audioOffsetMs)
+        put("streakEffects",streakEffects);put("tempoSource",tempoSource);put("audioRate",audioRate);put("audioOffsetMs",audioOffsetMs)
         put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
         put("mode",mode);put("led",led);put("threshold",threshold);put("minLength",minLength)
         put("cx",cx);put("cy",cy);put("scale",scale);put("rotation",rotation);put("cubeDepth",cubeDepth)
@@ -69,7 +69,7 @@ data class Config(
             (0 until a.length()).map {val p=a.getJSONArray(it);require(p.length()==2);P(p.getDouble(0),p.getDouble(1))}
         } else planeCorners
         validateCorners(corners)
-        return copy(tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt(),autoFit=flag("autoFit",autoFit),tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=choice("mode",mode,listOf("grid","circles","cube","free")),led=flag("led",led),
+        return copy(streakEffects=flag("streakEffects",streakEffects),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt(),autoFit=flag("autoFit",autoFit),tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=choice("mode",mode,listOf("grid","circles","cube","free")),led=flag("led",led),
             threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),

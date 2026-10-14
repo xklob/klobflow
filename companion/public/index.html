@@ -162,6 +162,8 @@
               >Tip trails</span
             ></label
           >
+          <label class="toggle"><input type="checkbox" data-config="streakEffects" checked><span>Streak glow &amp; particles</span></label>
+          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds. Blur pauses the streak; leaving the guide ends it.</p>
           <label class="toggle"
             ><input type="checkbox" data-config="symmetry" checked /><span
               >Mirror symmetry</span
@@ -191,6 +193,7 @@
           <div class="feedback-legend"><span><b class="on-guide">ON GUIDE</b> = aligned</span><span><b class="correction">MOVE →</b> = move that tip to the white bullseye</span><span>Dashed staff = blur; precision paused</span></div>
           <p id="beat-legend" class="small-note" hidden>Blue numbered rings are beat targets. The small white dot marks the staff tip used for timing.</p>
           <div id="stage">
+            <section id="streak-hud" class="streak-hud" aria-label="Alignment streak" hidden><strong id="streak-title"></strong><div class="streak-meter" role="progressbar" aria-label="Streak power" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><span id="streak-power"></span></div><small id="streak-detail"></small></section>
             <video id="local-video" autoplay muted playsinline hidden></video>
             <canvas
               id="view"

@@ -39,10 +39,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
-data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="",val audio:AudioTempo=AudioTempo()) {
+data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="",val audio:AudioTempo=AudioTempo(),val streak:StreakFrame=StreakFrame()) {
     fun json()=JSONObject().put("time",time).put("width",width).put("height",height)
         .put("staffs",JSONArray(staffs.map {it?.json() ?: JSONObject.NULL})).put("metrics",metrics.json())
-        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus).put("audio",audio.json())
+        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus).put("audio",audio.json()).put("streak",streak.json())
 }
 data class FlowUi(val config:Config=Config(),val bitmap:Bitmap?=null,val frame:Frame?=null,
     val status:String="Ready when you are",val cameraReady:Boolean=false,val demo:Boolean=false,
@@ -73,7 +73,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private val detector=StaffDetector();private val tracker=StaffTracker();private val scorer=Scorer()
     @Volatile private var pcAudio=AudioTempo()
     private var fitRevision=0
-    private val timingCoach=TimingCoach();private val fit=FitHelper()
+    private val streakCoach=FlowStreak();private val timingCoach=TimingCoach();private val fit=FitHelper()
     private val processing=Any();private val sessionLock=Any()
     private var lastTime=0L;private var fps=0.0
     @Volatile private var packet="{}"
@@ -161,7 +161,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             val audio=if(c.tempoSource=="phone")PhoneAudio.state.value else if(c.tempoSource=="pc")pcAudio else AudioTempo(status="Manual tempo")
             val ready=c.tempoSource=="manual" || audio.usable(now.toDouble())
             val beat=timingCoach.update(now,staffs,guide,if(c.tempoSource=="manual")c.bpm else (audio.bpm ?: c.bpm)*c.audioRate,if(c.tempoSource=="manual")null else audio.origin+c.audioOffsetMs,ready)
-            val frame=Frame(now,bitmap.width,bitmap.height,staffs,scorer.score(now,staffs,guide),guide,fps,source,beat,fit.status,audio)
+            val frame=Frame(now,bitmap.width,bitmap.height,staffs,scorer.score(now,staffs,guide),guide,fps,source,beat,fit.status,audio,streakCoach.update(now,staffs,guide))
             if(!active || streamGeneration!=generation)return
             val elapsed=if(recordingStarted>0)now-recordingStarted else 0L
             mutable.update {it.copy(bitmap=bitmap,frame=frame,elapsed=elapsed)}
@@ -219,7 +219,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         if(cameraChange && !demo && active)bindCamera()
         else if(zoomChange && !demo && active)applyZoom()
     }
-    fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();timingCoach.reset();lastTime=0;fps=0.0}}
+    fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();timingCoach.reset();streakCoach.reset();lastTime=0;fps=0.0}}
     fun seed(points:List<P>) {
         require(points.size==config.staffCount*2 && points.all {it.x.isFinite() && it.y.isFinite() && it.x in 0.0..1.0 && it.y in 0.0..1.0}){"Tap both endpoints of each selected staff."}
         val f=ui.value.frame ?: error("Wait for camera frames")
@@ -227,7 +227,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         val p=points.map {P(it.x*g.aspectX,it.y*g.aspectY)}
         val segments=(0 until config.staffCount).map {Segment(p[it*2],p[it*2+1])}
         require(segments.all {it.length>=0.08}){"Staff endpoints are too close together."}
-        synchronized(processing){tracker.seed(segments,SystemClock.elapsedRealtime());scorer.reset()}
+        synchronized(processing){tracker.seed(segments,SystemClock.elapsedRealtime());scorer.reset();streakCoach.reset()}
     }
     fun startRecording() {
         require(!demo && ui.value.cameraReady){"Open the camera to record a real practice session."}
@@ -269,10 +269,11 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     fun stopRecording(){recording?.let {mutable.update {s->s.copy(recording=false,finalizing=true)};it.stop()}}
     private fun applyZoom() {
         val c=camera ?: return
+        val zoomGeneration=generation
         val z=c.cameraInfo.zoomState.value ?: return
         val ratio=if(config.zoom==0.0)z.minZoomRatio else config.zoom.toFloat().coerceIn(z.minZoomRatio,z.maxZoomRatio)
         val request=c.cameraControl.setZoomRatio(ratio)
-        request.addListener({runCatching {request.get()}.onFailure {e->if(active && camera===c)mutable.update {it.copy(error="Could not change zoom: ${e.cause?.message ?: e.message}")}}},ContextCompat.getMainExecutor(context))
+        request.addListener({runCatching {request.get()}.onFailure {e->if(active && !demo && generation==zoomGeneration && camera===c)mutable.update {it.copy(error="Could not change zoom: ${e.cause?.message ?: e.message}")}}},ContextCompat.getMainExecutor(context))
     }
     fun share(enabled:Boolean) {
         if(enabled)startSharing() else stopSharing()

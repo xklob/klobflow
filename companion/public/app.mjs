@@ -4,6 +4,8 @@ import { BrowserCamera } from "./browser-camera.mjs";
 import {SystemAudio} from "./system-audio.mjs";
 import {length} from "./core.mjs";
 import {AlignmentFeedback} from './feedback.mjs';
+import {FlowStreak,streakText} from './streak.mjs';
+const fallbackStreak=new FlowStreak(),reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
 const alignmentFeedback=new AlignmentFeedback();let displayedFeedback={tips:[],state:'paused'};
 const $ = (id) => document.getElementById(id);
 const canvas = $("view"),
@@ -353,6 +355,7 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
+  fallbackStreak.reset();$('streak-hud').hidden=true;
   alignmentFeedback.reset();displayedFeedback={tips:[],state:'paused'};
   $("beat-feedback").hidden=true;
   current = null;
@@ -552,7 +555,7 @@ function render(frame, image) {
         ctx.fillStyle = n ? "#b5a3ff" : "#b6f36b";
         for (const p of [s.a, s.b]) {
           ctx.beginPath();
-          ctx.arc(p[0] * u, p[1] * u, 4.3, 0, Math.PI * 2);
+          ctx.arc(p[0] * u, p[1] * u, 4.3*(1+(c.streakEffects!==false?(frame.streak?.energy||0)*.8:0)), 0, Math.PI * 2);
           ctx.fill();
         }
       }),
@@ -571,6 +574,18 @@ function render(frame, image) {
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
     for (const p of [s.a, s.b]) {
+      const power=c.streakEffects!==false?(frame.streak?.energy||0):0;
+      if(power>.025&&!s.blurred&&!s.occluded&&s.confidence>=.55){
+        ctx.save();const unit=Math.max(.6,Math.min(1.5,u/480)),radius=(13+18*power)*unit,x=p[0]*u,y=p[1]*u;
+        ctx.globalAlpha=.12*power;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,radius*1.5,0,Math.PI*2);ctx.fill();
+        ctx.globalAlpha=.35+.55*power;ctx.strokeStyle=color;ctx.shadowColor=color;ctx.shadowBlur=18*power*unit;ctx.lineWidth=(1+2*power)*unit;
+        ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.stroke();
+        const phase=reducedMotion.matches?-Math.PI/2:frame.time/1800;
+        ctx.strokeStyle=frame.streak.level===4?'#ffe48a':'#6dd8ff';ctx.beginPath();ctx.arc(x,y,radius+5*unit,phase,phase+Math.PI*2*frame.streak.progress);ctx.stroke();
+        const particles=Math.floor(power*8);ctx.shadowBlur=0;ctx.fillStyle=color;
+        for(let k=0;k<particles;k++){const a=phase+k*Math.PI*2/particles;ctx.beginPath();ctx.arc(x+Math.cos(a)*(radius+9*unit),y+Math.sin(a)*(radius+9*unit),(1.2+power)*unit,0,Math.PI*2);ctx.fill();}
+        ctx.restore();
+      }
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -721,6 +736,11 @@ function drawChart() {
   chartCtx.stroke();
 }
 function acceptFrame(f, image = null) {
+  if(!f.streak)f={...f,streak:fallbackStreak.update(f)};
+  const flow=f.streak;$('streak-hud').hidden=f.config.streakEffects===false;
+  $('streak-title').textContent=streakText(flow);$('streak-hud').dataset.state=flow.state;
+  $('streak-power').style.width=`${flow.progress*100}%`;$('streak-power').parentElement.setAttribute('aria-valuenow',Math.min(10,flow.seconds).toFixed(1));
+  $('streak-detail').textContent=flow.state==='free'?'Choose a guide to earn alignment streaks.':`Best ${flow.bestSeconds.toFixed(1)}s · more glow at 2 / 5 / 10s`;
   displayedFeedback=alignmentFeedback.update(f);
   current = f;
   if (lastImage && lastImage !== image) lastImage.close?.();

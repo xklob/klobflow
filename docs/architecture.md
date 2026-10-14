@@ -1,5 +1,11 @@
 # Architecture
 
+## Alignment streaks (0.6.0)
+
+`FlowStreak.kt` and `streak.mjs` award elapsed monotonic time only between consecutive fully observed, confident, on-guide frames. Every selected tip must meet tolerance individually; RMS error cannot hide an off-guide endpoint. Geometry cues use the same rectified practice plane as ordinary measurements. Blurred, occluded, missing, or low-confidence observations pause credit, and uncertainty beyond 350 ms clears the active streak. Gaps over 250 ms clear the active timer without adding unobserved time. Guide/camera/prop-count/tolerance changes or backward time clear the attempt and best; explicit reacquisition resets the model.
+
+Levels advance at 2, 5, and 10 seconds. A smoothed, bounded energy value controls tip halos, trail size, progress rings, and at most eight orbiting particles per tip. These draw with the existing preview, without another animation timer. Motion preferences stop particle rotation. Free flow and disabled effects award no alignment time. Precision and beat scores are unchanged. The phone remains authoritative for companion streak state; local webcam practice computes it in the analysis worker. JSONL frames include the state for replay, with a browser fallback for older files. Native/browser fixture comparisons and frame-rate-independent tests guard parity.
+
 ## Motion and readable feedback (0.5.1)
 
 The native/browser LED detector fits bright connected regions and pairs luminous ends across a dark grip, without selecting a straight edge through a branched window. It handles connected light spill and uses a bounded Hough fallback for crossings or unlit props. Near recent motion-predicted staves, a background-adaptive dim-light mask also joins luminous halves belonging to the same prior staff and fits the observed light distribution. Shape, length, position, and angular gates reject broad blobs and unrelated regions. The fit uses brightness/chroma within each frame without assigning persistent color identities, so changing rainbow patterns are supported.

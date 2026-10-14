@@ -1,3 +1,14 @@
+# v0.6.0 validation
+
+Validated locally on 2026-10-14.
+
+- 47 JVM and 30 Node tests pass, including a shared native/browser streak oracle. Thirty- and sixty-fps observations earn identical elapsed time and level thresholds. Individual off-guide tips cannot hide inside an acceptable average error; uncertain and missing samples never earn time. Tests cover all scored guide modes, free flow, settings changes, effect disablement, camera gaps, and backward replay.
+- Eleven browser flows pass, including reaching level four, target changes resetting the streak, the effects toggle, free-flow behavior, and reduced motion. The generated 60 fps rainbow spin also passes through the real worker and recording path with exported blurred frames explicitly pausing the streak.
+- Four Android emulator integration checks pass, including a level-four streak through generated LED images, the native detector, guide fitting, and real preview. The toggle clears earned time; phone metadata contains the streak for the companion. Existing camera recovery, sharing, recording/decoding, timing, and audio checks pass. A cancelled zoom request cannot report an error after entering the demo.
+- Android lint and debug builds pass. Publication builds and verifies the signed release APK and companion archive. Updated README screenshots use generated practice rather than private footage.
+
+The effects are cosmetic feedback on the existing projected measurements. They do not increase detection accuracy, turn ambiguous tips into valid scores, or assess overall technique. Live physical-device frame rate and latency have not been benchmarked for the extra effects. The shared model and bounded drawing work run at the existing analysis/preview cadence.
+
 # v0.5.1 validation
 
 Validated locally on 2026-10-14, prioritizing 60 fps phones and capable webcams.

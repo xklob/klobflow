@@ -33,6 +33,8 @@ test('rainbow spins stay observed, blur is explained, and clear frames regain pr
  const rows=await page.evaluate(async()=>{const {listSessions}=await import('/sessions.mjs');return (await (await listSessions())[0].analysis.text()).trim().split('\n').slice(1).map(JSON.parse);});
  const blurred=rows.filter(f=>f.staffs[0]?.blurred&&!f.staffs[0].occluded);
  expect(blurred.length).toBeGreaterThan(15);expect(blurred.every(f=>f.metrics.deviation===null)).toBe(true);
+ expect(blurred.every(f=>f.streak.state==='paused')).toBe(true);
+ expect(rows.every(f=>Number.isFinite(f.streak.seconds))).toBe(true);
  expect(rows.some(f=>f.metrics.deviation!==null)).toBe(true);
  expect(rows.filter(f=>f.staffs[0]&&!f.staffs[0].occluded).length/rows.length).toBeGreaterThan(.9);
  await page.screenshot({path:'../review/rainbow-spin-browser.png'});expect(errors).toEqual([]);

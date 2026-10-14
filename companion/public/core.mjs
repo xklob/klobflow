@@ -3,7 +3,7 @@
 export const defaults = {
   mode: "grid", led: true, threshold: 175, minLength: .22, cx: .5, cy: .5,
   scale: .32, rotation: 0, cubeDepth: .4, circleSeparation: 1, tolerance: 4,
-  diagonals: true, trails: true, showGuide: true, showFeedback: true, symmetry: true,
+  streakEffects: true, diagonals: true, trails: true, showGuide: true, showFeedback: true, symmetry: true,
   facing: "front", fps: 60, timing: "tog-same", ratio: "1:1", zoom: 0, mirror: true,
   tempoSource: "manual", audioRate: 1, audioOffsetMs: 0,
   staffCount: 2, autoFit: true, tempoEnabled: false, bpm: 120, beatPoints: 4,
@@ -44,7 +44,7 @@ export function patchConfig(previous,patch,{restore=false}={}) {
   const ranges={audioOffsetMs:[-500,500],bpm:[30,240],threshold:[60,250],minLength:[.1,.8],cx:[.1,.9],cy:[.1,.9],scale:[.1,.48],rotation:[-90,90],cubeDepth:[.1,.9],circleSeparation:[0,1.8],tolerance:[1,15],zoom:[0,100],planeAspect:[.25,4],calibrationRotation:[0,3],calibrationImageAspect:[0,4]};
   for(const [key,[lo,hi]] of Object.entries(ranges)) if(!Number.isFinite(c[key])||c[key]<lo||c[key]>hi) throw Error(`${key} must be between ${lo} and ${hi}`);
   for(const [key,choices] of Object.entries({tempoSource:["manual","phone","pc"],audioRate:[.5,1,2],staffCount:[1,2],beatPoints:[2,4,8],mode:["grid","circles","cube","free"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
-  for(const key of ["autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
+  for(const key of ["streakEffects","autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
   if(!restore&&(c.facing!==previous.facing||c.zoom!==previous.zoom||c.mirror!==previous.mirror))c.planeCorners=[];
   if(!restore&&c.facing!==previous.facing)c.zoom=0;
   validateCorners(c.planeCorners);

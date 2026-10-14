@@ -61,6 +61,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -265,6 +266,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -535,6 +537,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -1378,6 +1381,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -2287,6 +2291,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -2539,6 +2544,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -2808,6 +2814,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,
@@ -2870,6 +2877,7 @@
       },
       "config": {
         "mirror": true,
+        "streakEffects": true,
         "cubeDepth": 0.4,
         "showGuide": true,
         "minLength": 0.22,

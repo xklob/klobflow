@@ -61,6 +61,17 @@ class FlowDeviceTest {
             assertEquals(.22,engine.config.scale,.06)
             scenario.onActivity {engine.command(JSONObject().put("action","syncBeat"))}
             await {engine.ui.value.frame!!.beat.hits.any {it!=null}}
+            await(20000){engine.ui.value.frame!!.streak.level==4}
+            assertNull("A cancelled camera callback must not report an error in the demo",engine.ui.value.error)
+            val device=androidx.test.uiautomator.UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            device.swipe(device.displayWidth/2,device.displayHeight*3/4,device.displayWidth/2,device.displayHeight*2/5,20)
+            Thread.sleep(500)
+            val screenshot=InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            java.io.File(context.getExternalFilesDir(null),"practice-streak.png").outputStream().use {screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
+            screenshot.recycle()
+            scenario.onActivity {engine.updateConfig(JSONObject().put("streakEffects",false))}
+            await {engine.ui.value.frame!!.streak.state=="off"}
+            assertEquals(0.0,engine.ui.value.frame!!.streak.seconds,0.0)
         }
     }
     @Test fun liveDetectorSharingControlAndRealCameraRecording() {
@@ -87,6 +98,7 @@ class FlowDeviceTest {
             }
             assertEquals(403,request("/api/live",true).first)
             val live=JSONObject(request("/api/live").second);assertEquals("demo",live.getString("source"));assertEquals(2,live.getInt("protocol"))
+            assertTrue(live.getJSONObject("streak").has("seconds"))
             val connection=URL("http://127.0.0.1:8787/api/stream").openConnection() as HttpURLConnection
             connection.readTimeout=5000
             DataInputStream(connection.inputStream).use {stream->

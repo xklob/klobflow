@@ -150,7 +150,7 @@ class MainActivity:ComponentActivity() {
                     ControlSlider("Brightness threshold",ui.config.threshold.toFloat(),60f..250f){patch("threshold",it.toInt())}
                     ControlSlider("Minimum staff length",(ui.config.minLength*100).toFloat(),10f..80f,"%"){patch("minLength",it/100.0)}
                     Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf(30,60).forEach {rate->FilterChip(selected=ui.config.fps==rate,onClick={patch("fps",rate)},label={Text("$rate fps target")})}}
-                    Text("60 fps is requested for recording. Camera hardware may choose a lower rate; analysis runs independently at up to 30 fps.",color=Muted,fontSize=12.sp)
+                    Text("Recording requests the selected frame rate. Analysis follows the latest available frames; hardware and processing determine the actual rate.",color=Muted,fontSize=12.sp)
                     Label("BEAT TIMING")
                     BeatSettings(ui,engine)
                     Label("GUIDE CALIBRATION")
@@ -167,6 +167,8 @@ class MainActivity:ComponentActivity() {
                     Toggle("Show guide",ui.config.showGuide){patch("showGuide",it)}
                     Toggle("Diagonal grid lines",ui.config.diagonals){patch("diagonals",it)}
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
+                    Toggle("Streak glow and particles",ui.config.streakEffects){patch("streakEffects",it)}
+                    Text("Keep every tip on the guide. Glow builds at 2, 5 and 10 seconds. Blur pauses the streak; leaving the guide ends it.",color=Muted,fontSize=12.sp)
                     if(ui.config.staffCount==2)Toggle("Mirror-symmetry measurement",ui.config.symmetry){patch("symmetry",it)}
                     OutlinedButton(onClick={run{engine.updateConfig(Config().json().put("facing",ui.config.facing).put("fps",ui.config.fps))}}){Text("Reset practice settings")}
                 }
@@ -234,7 +236,18 @@ class MainActivity:ComponentActivity() {
                 g.circlePaths.forEach {path->path.zipWithNext().forEach {(a,b)->drawLine(Color.White.copy(alpha=0.4f),p(a),p(b),1.5f)}}
                 if(ui.config.mode in listOf("grid","cube"))g.displayVertices.forEach {drawCircle(Lime.copy(alpha=0.65f),3f,p(it))}
             }
-            if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && !s.occluded && (s.confidence>=0.55 || s.blurred))listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=(1.5f*(index+1)/trails.size).coerceAtMost(1f)*(if(s.blurred).55f else 1f)),3.5f,p(it))}}}
+            val power=if(ui.config.streakEffects)f.streak.energy.toFloat()else 0f
+            if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && !s.occluded && (s.confidence>=0.55 || s.blurred))listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=(1.5f*(index+1)/trails.size).coerceAtMost(1f)*(if(s.blurred).55f else 1f)),3.5f*(1+power*.8f),p(it))}}}
+            if(power>.025f)f.staffs.forEachIndexed {i,s->if(s!=null&&!s.blurred&&!s.occluded&&s.confidence>=.55)listOf(s.a,s.b).forEach {tip->
+                val pos=p(tip);val color=if(i==0)Lime else Lavender;val scale=(unit/480).coerceIn(.6f,1.5f);val radius=(13+18*power)*scale
+                drawCircle(color.copy(alpha=.12f*power),radius*1.5f,pos)
+                drawCircle(color.copy(alpha=.35f+.55f*power),radius,pos,style=Stroke((1+2*power)*scale))
+                val phase=if(android.animation.ValueAnimator.areAnimatorsEnabled())(f.time/1800.0).toFloat()else(-PI/2).toFloat()
+                val outer=radius+5*scale
+                drawArc(if(f.streak.level==4)Color(0xffffe48a)else Color(0xff6dd8ff),Math.toDegrees(phase.toDouble()).toFloat(),(360*f.streak.progress).toFloat(),false,Offset(pos.x-outer,pos.y-outer),androidx.compose.ui.geometry.Size(outer*2,outer*2),style=Stroke((1+2*power)*scale))
+                val particles=(power*8).toInt()
+                repeat(particles){k->val a=phase+k*2*PI/particles;drawCircle(color,(1.2f+power)*scale,Offset(pos.x+cos(a).toFloat()*(radius+9*scale),pos.y+sin(a).toFloat()*(radius+9*scale)))}
+            }}
             f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.occluded).35f else if(s.blurred).75f else if(s.confidence>=0.55)1f else .35f);drawLine(col,p(s.a),p(s.b),4f,pathEffect=if(s.blurred&&!s.occluded)PathEffect.dashPathEffect(floatArrayOf(8f,5f))else null);drawCircle(col,6f,p(s.a),style=Stroke(2f));drawCircle(col,6f,p(s.b),style=Stroke(2f))}}
             if(ui.config.showFeedback)feedback?.tips?.forEach {cue->
                 val from=p(cue.tip);val to=p(cue.target);val col=if(cue.onTarget)Lime else Color(0xffffb45e)
@@ -264,6 +277,15 @@ class MainActivity:ComponentActivity() {
         if(ui.demo)Text("SYNTHETIC DEMO",Modifier.align(Alignment.TopStart).padding(12.dp).background(Background).padding(6.dp),color=Lavender,fontSize=11.sp)
         if(calibrating)Text("Tap "+listOf("top left","top right","bottom right","bottom left")[picks.size],Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime)
         if(identifying)Text("Tap ${if(picks.size<2)"staff A" else "staff B"}, end ${picks.size%2+1}",Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime)
+    }
+    if(ui.config.streakEffects&&!identifying&&!calibrating)ui.frame?.streak?.let {flow->
+        Surface(color=Color(0xee0b140f),shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth().padding(top=6.dp)){
+            Column(Modifier.padding(9.dp)){
+                Text(flow.label,color=if(flow.state=="paused")Lavender else Lime,fontSize=12.sp,fontWeight=FontWeight.Bold)
+                LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Lime,trackColor=Color(0xff28332a))
+                Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · levels at 2 / 5 / 10s".format(flow.bestSeconds),color=Muted,fontSize=10.sp)
+            }
+        }
     }
     Text("Lime / purple = staves · white = guide\nGreen rings = on target · orange arrows = move tips toward targets",color=Muted,fontSize=11.sp,modifier=Modifier.padding(top=8.dp))
     Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
