@@ -11,12 +11,12 @@ data class P(val x: Double, val y: Double) {
     fun distance(o: P) = hypot(x-o.x,y-o.y)
     fun json() = JSONArray(listOf(x,y))
 }
-data class Segment(val a: P, val b: P, val confidence: Double = 1.0) {
+data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false) {
     val center get() = (a+b)*0.5
     val length get() = a.distance(b)
     val angle get() = atan2(b.y-a.y,b.x-a.x)
     fun reversed() = copy(a=b,b=a)
-    fun json() = JSONObject().put("a",a.json()).put("b",b.json()).put("confidence",confidence)
+    fun json() = JSONObject().put("a",a.json()).put("b",b.json()).put("confidence",confidence).put("occluded",occluded)
 }
 fun angleDifference(a: Double,b: Double): Double = abs(atan2(sin(2*(a-b)),cos(2*(a-b))))/2
 fun nearestOnSegment(p: P,s: Segment): P {
@@ -50,7 +50,7 @@ data class Config(
         put("planeCorners",JSONArray(planeCorners.map {it.json()}));put("planeAspect",planeAspect)
         put("calibrationRotation",calibrationRotation);put("calibrationImageAspect",calibrationImageAspect)
     }
-    fun patch(j: JSONObject): Config {
+    fun patch(j: JSONObject,restore:Boolean=false): Config {
         fun num(k: String,v: Double,lo: Double,hi: Double): Double {
             val n=if(j.has(k)) j.getDouble(k) else v
             require(n.isFinite() && n in lo..hi) { "$k must be between $lo and $hi" };return n
@@ -60,7 +60,7 @@ data class Config(
         val nextFacing=choice("facing",facing,listOf("front","back"))
         val nextZoom=num("zoom",zoom,0.0,100.0)
         val nextMirror=flag("mirror",mirror)
-        val corners=if(nextFacing!=facing || nextZoom!=zoom || nextMirror!=mirror)emptyList() else if(j.has("planeCorners")) {
+        val corners=if(!restore && (nextFacing!=facing || nextZoom!=zoom || nextMirror!=mirror))emptyList() else if(j.has("planeCorners")) {
             val a=j.getJSONArray("planeCorners")
             require(a.length()==0 || a.length()==4){"Choose four calibration corners"}
             (0 until a.length()).map {val p=a.getJSONArray(it);require(p.length()==2);P(p.getDouble(0),p.getDouble(1))}
@@ -72,7 +72,7 @@ data class Config(
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),
             circleSeparation=num("circleSeparation",circleSeparation,0.0,1.8),tolerance=num("tolerance",tolerance,1.0,15.0),
             diagonals=flag("diagonals",diagonals),trails=flag("trails",trails),showGuide=flag("showGuide",showGuide),symmetry=flag("symmetry",symmetry),showFeedback=flag("showFeedback",showFeedback),
-            facing=nextFacing,mirror=nextMirror,zoom=if(nextFacing!=facing)0.0 else nextZoom,planeCorners=corners,
+            facing=nextFacing,mirror=nextMirror,zoom=if(!restore && nextFacing!=facing)0.0 else nextZoom,planeCorners=corners,
             planeAspect=num("planeAspect",planeAspect,0.25,4.0),calibrationRotation=num("calibrationRotation",calibrationRotation.toDouble(),0.0,3.0).toInt(),
             calibrationImageAspect=num("calibrationImageAspect",calibrationImageAspect,0.0,4.0),fps=num("fps",fps.toDouble(),30.0,60.0).toInt().also {require(it==30 || it==60)},
             timing=choice("timing",timing,listOf("tog-same","split-same","tog-opp","split-opp")),ratio=choice("ratio",ratio,listOf("1:1","1:3","1:5")))

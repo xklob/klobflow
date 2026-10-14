@@ -1,6 +1,6 @@
 # Klobflow
 
-A native Android practice tool for double staves, with a local PC companion. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, or a projected cube, and inspect your practice in real time.
+A practice tool for double staves: use the native Android app with its local PC companion, or practice entirely in your browser with a PC webcam. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, or a projected cube, and inspect your practice in real time.
 
 **Experimental markerless tracking.** Camera recording and the full analysis pipeline are tested on an Android emulator and generated LED images. Accuracy with real LED staves, motion blur, occlusion, and Pixel 60 fps capture still needs physical practice validation. This is a measurement aid, not a universal technique grade.
 
@@ -11,6 +11,8 @@ Generated LED demo through the native tracker and companion demo. These illustra
 <img src="docs/screenshots/android-practice.png" alt="Android practice view with explicit tip-alignment coaching and correction arrows" width="340">
 
 ![Desktop practice view with alignment guidance, zoom, and camera controls](docs/screenshots/web-practice.png)
+
+![Browser-only practice with a generated LED camera input and local recording](docs/screenshots/browser-camera.png)
 
 ## Install
 
@@ -24,10 +26,18 @@ Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/re
 2. Turn on the LED staves. The default detector looks for bright, narrow shapes without markers. Adjust brightness threshold and minimum staff length in **Adjust**. A contrasting background helps.
 3. Choose **Grid**, **Circles**, **Cube**, or **Free**. Calibrate position, size, rotation, circle separation, and cube projection depth to your practice area. The guide stays fixed in the image; it does not automatically follow your body.
 4. Automatic detection starts with the strongest elongated shapes. If it chooses incorrectly, hold still and use **Identify staves** to tap both ends of staff A, then both ends of staff B. **Reacquire** clears tracking history.
-5. Start slowly. Stave outlines show tracking; low confidence pauses the scores. Trails show recent tip motion.
+5. Start slowly. Stave outlines show tracking; low confidence pauses the scores. Brighter trails show the last 4.2 seconds of tip motion. A brief hidden tip keeps its staff association for up to 1.5 seconds and is explicitly labelled; precision scores pause until visible endpoints are confirmed again.
 6. **Record practice** saves a silent MP4 to `Movies/Klobflow` and per-frame analysis privately in the app. **Sessions** plays the video or exports the JSONL measurements. The overlay is live and is **not burned into the MP4**.
 
 Camera capture requests 1080p at 60 fps, with 720p/30 fps fallback if binding fails. CameraX treats frame rate as a target, not a guarantee. Analysis/display run independently at up to approximately 30 fps; The PC preview continuously streams matching JPEG frames and analysis at the available analysis rate, with a measured preview-fps readout and no 10 fps polling cap. A higher video frame rate does not eliminate motion blur. Camera hardware, exposure, and processing load affect the actual rates.
+
+## Browser-only practice
+
+Open **http://localhost:8788** after starting the companion, then choose **Use PC camera**. No phone is needed. Camera capture, LED detection, tracking, perspective correction, scoring, guides, and recording all run locally in the browser. Chrome and Edge are the primary tested browsers.
+
+The first start measures available 720p, 480p, 1080p, and 240p modes, requesting up to the camera's advertised 120 fps. It chooses the fastest measured delivery rate, preferring more detail when rates differ by no more than 5%. A 720p60 mode therefore wins over 1080p30. Choose another camera or **Recheck fastest mode** after lighting or USB changes. The browser's live video remains independent of the analysis worker so analysis cannot queue old preview frames.
+
+Browser sessions save mirrored, silent video plus JSONL analysis to this browser's local storage. Play or export them in the practice log. The browser chooses an available WebM/MP4 encoder; Android uses MP4. Export recordings to retain them if browser storage is cleared. The tab saves recording and releases the camera when hidden, then reacquires it when visible. Reopening the page can resume camera access if permission was already granted. Zoom is available only when the webcam/browser exposes a real zoom control.
 
 ## PC companion
 
@@ -42,7 +52,7 @@ Open **http://localhost:8788**. On the phone, enable **PC sharing** and keep Klo
 
 On Caleb's WSL machine, `./scripts/start-companion.sh` starts the local service if necessary. Windows can access the same localhost URL. The initial setup runs it as a user service without enabling startup at boot.
 
-The phone performs all real camera processing, detection, tracking, and scoring. The PC relays the preview and controls, draws the phone's geometry, shows a 30-second error chart, and can review/export saved analysis. No video is sent to an external service. Sharing is explicit, pauses while the app is in the background, and automatically resumes when you reopen it. The camera also resumes automatically. While sharing is enabled, anyone on the LAN can access the preview and controls; use a trusted network. No pairing code is used.
+When connected to Android, the phone performs camera processing, detection, tracking, and scoring. The PC relays the preview and controls, draws the phone's geometry, shows a 30-second error chart, and can review/export saved analysis. No video is sent to an external service. Sharing is explicit, pauses while the app is in the background, and automatically resumes when you reopen it. The camera also resumes automatically. While sharing is enabled, anyone on the LAN can access the preview and controls; use a trusted network. No pairing code is used.
 
 ### USB cable
 
@@ -78,7 +88,7 @@ Tracking coordinates use square-pixel image geometry, normalized by the shorter 
 | Speed variation | Coefficient of variation of mean absolute angular speed over the last 1.2 seconds. Requires enough continuously tracked motion; stalls and transitions can increase it. |
 | Tracking coverage | Fraction of recent analyzed frames with two sufficiently confident staff detections. |
 
-Lower error means closer adherence to the selected reference. **Tolerance** sets the visual target band for the error history; it does not change measured error. Missing/ambiguous detections produce null scores, not perfect scores. Partial staves and rapid movement can produce inaccurate endpoints even when the detector is confident. Confidence is a geometric heuristic, not a calibrated probability.
+Lower error means closer adherence to the selected reference. **Tolerance** sets the visual target band for the error history; it does not change measured error. Missing/ambiguous detections produce null scores, not perfect scores. Shortened detections are treated as possible occlusion against the last full staff. This is a heuristic: rapid motion, foreshortening, or a hidden tip before initial acquisition can still cause inaccurate endpoints. Confidence is a geometric heuristic, not a calibrated probability.
 
 A single RGB camera does not recover dependable depth. The cube is a projected reference. The app does not measure out-of-plane movement, automatically classify tricks, or infer hand/arm positions. Identical ends are undirected axes; prop identities and end identities may swap after occlusion. VTG timing/direction and ratio selections are session annotations, not inferred phase or flower classification.
 

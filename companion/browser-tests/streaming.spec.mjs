@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import http from "node:http";
 import { demoFrame, defaults } from "../public/demo.mjs";
 
+test.beforeEach(async ({request}) => {await request.post("/api/disconnect",{data:{}});});
+
 test("continuous preview, reconnect, zoom, and four-corner calibration controls", async ({ page }) => {
   const errors = []; page.on("pageerror", e => errors.push(e.message));
   await page.setViewportSize({ width: 1600, height: 1200 });
@@ -52,6 +54,12 @@ test("continuous preview, reconnect, zoom, and four-corner calibration controls"
     await expect(page.locator("#source-label")).toHaveText("CAMERA PAUSED");
     await expect.poll(() => streams, { timeout: 10000 }).toBeGreaterThan(1);
     await expect(page.locator("#source-label")).toHaveText("LIVE FROM YOUR PHONE");
+    for (const control of ["#seed", "#calibrate"]) {
+      await page.locator(control).click();
+      const before = await page.locator("#view").evaluate(c => c.toDataURL());
+      await expect.poll(() => page.locator("#view").evaluate(c => c.toDataURL())).not.toBe(before);
+      await page.locator(control).click();
+    }
     await page.locator("#calibrate").click();
     await page.locator("#view").scrollIntoViewIfNeeded();
     const box = await page.locator("#view").boundingBox();

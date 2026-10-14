@@ -184,7 +184,7 @@ class MainActivity:ComponentActivity() {
     var planeAspect by remember {mutableStateOf("1.0")}
     var picks by remember {mutableStateOf(emptyList<P>())}
     val trails=remember {mutableStateListOf<Pair<Long,List<Segment?>>>()}
-    LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>1400 || trails.size>45))trails.removeAt(0)}}
+    LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>4200 || trails.size>135))trails.removeAt(0)}}
     val aspect=ui.bitmap?.let {it.width.toFloat()/it.height} ?: (4f/3f)
     Box(Modifier.fillMaxWidth().aspectRatio(aspect).background(Color(0xff080b08),RoundedCornerShape(16.dp))
         .pointerInput(identifying,calibrating,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
@@ -203,7 +203,7 @@ class MainActivity:ComponentActivity() {
                 g.circlePaths.forEach {path->path.zipWithNext().forEach {(a,b)->drawLine(Color.White.copy(alpha=0.4f),p(a),p(b),1.5f)}}
                 if(ui.config.mode in listOf("grid","cube"))g.displayVertices.forEach {drawCircle(Lime.copy(alpha=0.65f),3f,p(it))}
             }
-            if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && s.confidence>=0.55)listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=0.5f*(index+1)/trails.size),2f,p(it))}}}
+            if(ui.config.trails)trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(s!=null && s.confidence>=0.55)listOf(s.a,s.b).forEach {drawCircle((if(i==0)Lime else Lavender).copy(alpha=(1.5f*(index+1)/trails.size).coerceAtMost(1f)),3.5f,p(it))}}}
             f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.confidence>=0.55)1f else 0.35f);drawLine(col,p(s.a),p(s.b),4f);drawCircle(col,6f,p(s.a),style=Stroke(2f));drawCircle(col,6f,p(s.b),style=Stroke(2f))}}
             if(ui.config.showFeedback)g.cues(f.staffs).forEach {cue->
                 val from=p(cue.tip);val to=p(cue.target);val col=if(cue.onTarget)Lime else Color(0xffffb45e)
@@ -243,8 +243,9 @@ class MainActivity:ComponentActivity() {
     val cues=f?.guide?.cues(f.staffs).orEmpty()
     val good=f?.staffs?.count {it!=null && it.confidence>=0.55} ?: 0
     val aligned=cues.size==4 && cues.all {it.onTarget}
-    val title=when {good<2->"Keep both staves visible";ui.config.mode=="free"->"Free flow · no alignment target";cues.isEmpty()->"Move inside the calibrated plane";aligned->"✓ Tips on guide";else->"Adjust highlighted tips"}
-    val detail=when {good<2->"$good / 2 staves tracked. Alignment cues pause until both are clear.";ui.config.mode=="free"->"Choose Grid, Circles, or Cube for alignment cues.";cues.isEmpty()->"Keep all four tips inside your calibration rectangle.";aligned->"All four tips are within the ${ui.config.tolerance.toInt()}% target. Keep tracing the guide.";else->"${cues.count {!it.onTarget}} / 4 tips outside target. Follow orange arrows toward white rings."}
+    val hidden=f?.staffs?.any {it?.occluded==true}==true
+    val title=when {hidden->"Tip hidden · keeping staff identity";good<2->"Keep both staves visible";ui.config.mode=="free"->"Free flow · no alignment target";cues.isEmpty()->"Move inside the calibrated plane";aligned->"✓ Tips on guide";else->"Adjust highlighted tips"}
+    val detail=when {hidden->"Continue your movement. Precision scores wait for visible tips; tracking reconnects when the tip returns.";good<2->"$good / 2 staves tracked. Alignment cues pause until both are clear.";ui.config.mode=="free"->"Choose Grid, Circles, or Cube for alignment cues.";cues.isEmpty()->"Keep all four tips inside your calibration rectangle.";aligned->"All four tips are within the ${ui.config.tolerance.toInt()}% target. Keep tracing the guide.";else->"${cues.count {!it.onTarget}} / 4 tips outside target. Follow orange arrows toward white rings."}
     Surface(color=if(aligned)Color(0xff263e1d)else if(cues.isNotEmpty())Color(0xff42301b)else Color(0xff242830),shape=RoundedCornerShape(12.dp),modifier=Modifier.fillMaxWidth().padding(bottom=10.dp)){
         Column(Modifier.padding(14.dp)){Text(title,fontSize=19.sp,fontWeight=FontWeight.SemiBold,color=if(aligned)Lime else if(cues.isNotEmpty())Color(0xffffbd77)else Lavender);Text(detail,fontSize=12.sp,modifier=Modifier.padding(top=4.dp))}
     }

@@ -52,7 +52,7 @@ data class FlowUi(val config:Config=Config(),val bitmap:Bitmap?=null,val frame:F
 
 class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoCloseable {
     private val preferences=context.getSharedPreferences("practice",Context.MODE_PRIVATE)
-    @Volatile var config=runCatching {Config().patch(JSONObject(preferences.getString("config","{}")!!))}.getOrDefault(Config());private set
+    @Volatile var config=runCatching {Config().patch(JSONObject(preferences.getString("config","{}")!!),restore=true)}.getOrDefault(Config());private set
     private val mutable=MutableStateFlow(FlowUi(config=config))
     val ui=mutable.asStateFlow()
     private val executor=Executors.newSingleThreadExecutor()

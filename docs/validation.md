@@ -1,3 +1,13 @@
+# v0.3.0 validation
+
+Validated locally on 2026-10-14.
+
+- 27 JVM tests and 10 Node tests pass. The native-generated fixture compares LED detection, tracker reacquisition/occlusion, perspective transforms, guide points, correction cues, and nonzero scores against the browser implementation.
+- Five browser flows pass: real browser camera capture using generated moving LED frames, measured capture-mode selection, worker tracking, live point selection, mirrored recording, IndexedDB save and decoded playback, camera restart, denied permission, phone streaming/reconnect, demo, and replay. This is controlled fake-camera input, not a real webcam performance benchmark.
+- Regression checks keep camera images updating during Identify staves and Calibrate viewing angle. The test suite now isolates its shared relay state, fixing the parallel-test interference seen in v0.2.0 GitHub CI.
+- JVM checks preserve calibration/zoom on restored settings. Hidden or shortened tips retain association for up to 1.5 seconds with explicitly low confidence, no precision score, and confirmed reacquisition. Trails last 4.2 seconds and use larger, brighter points.
+- Android lint/debug/release builds and emulator camera/recording/lifecycle integration are checked before publishing. Device and real LED practice accuracy remain subject to the limits below.
+
 # v0.2.0 validation
 
 Validated locally on 2026-10-14.

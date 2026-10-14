@@ -39,3 +39,9 @@ Each confident tip gets a nearest guide target and distance as a percentage of g
 ## Release identity
 
 Android application ID: `com.caleb.klobflow`. Debug builds add `.debug`. A stable external release keystore signs universal APKs; Android version codes increase monotonically. Klobstore consumes standard GitHub release APK assets and verifies installed package and signer state. Its v0.1.2 migration adds the new source once, retaining arbitrary user sources/preferences and respecting removal after migration.
+
+## Browser camera engine (0.3.0)
+
+`browser-camera.mjs` owns getUserMedia, capture-profile measurement, lifecycle, hardware zoom, and MediaRecorder/IndexedDB sessions. Native video preview is independent of a single-in-flight worker (`tracker-worker.mjs`) that analyzes mirrored 384-pixel images. `core.mjs` ports the deterministic native detector, tracker, geometry, homography, and scorer. Native-generated committed fixtures are checked by both JVM and Node tests, including nonzero perspective measurements and occlusion.
+
+Hidden tips retain association memory for 1.5 seconds, with confidence below the scoring threshold and an explicit occluded field. A shortened segment cannot supply a precise unseen endpoint. Three observations are required for reacquisition; identities can still be ambiguous after long or overlapping occlusion.

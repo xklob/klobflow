@@ -745,3 +745,10 @@ dialog .button-row {
 #calibrate, #clear-calibration { width: 100%; margin-top: 8px; }
 
 #seed-message, #stage-badge { pointer-events: none; }
+
+#local-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+#view { position: relative; }
+#session-video { display: block; width: 100%; max-height: 75vh; margin-top: 12px; }
+#video-dialog { max-width: min(94vw, 1100px); }
+#local-camera-settings { margin-bottom: 18px; }
+#empty-state .button-row, .header-right { flex-wrap: wrap; }

@@ -87,13 +87,13 @@ class StaffTracker {
     fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0)}
     fun seed(staffs: List<Segment>,t:Long){require(staffs.size==2);last=staffs;lastAt=longArrayOf(t,t);streak=intArrayOf(0,0)}
     fun update(candidates: List<Segment>,t:Long): List<Segment?> {
-        val prior=last.mapIndexed {i,s->s?.takeIf {t-lastAt[i]<700}}
+        val prior=last.mapIndexed {i,s->s?.takeIf {t-lastAt[i]<1500}}
         fun cost(i:Int,s:Segment):Double {
             val p=prior[i] ?: return 0.22-s.confidence*0.1
             val delta=(t-lastAt[i]).coerceAtLeast(1)/1000.0
             val center=p.center.distance(s.center)
             val angle=angleDifference(p.angle,s.angle)
-            if(center>0.16+delta*1.8 || angle>0.3+delta*8 || s.length/p.length !in 0.5..1.9)return 10.0
+            if(center>0.16+delta*1.8 || angle>0.3+delta*8 || s.length/p.length !in 0.25..1.9)return 10.0
             return center+angle*0.13+abs(ln(s.length/p.length))*0.10+(1-s.confidence)*0.15
         }
         val options=(-1 until candidates.size).toList()
@@ -108,14 +108,21 @@ class StaffTracker {
         val ambiguous=prior.all {it!=null} && best.first>=0 && best.second>=0 &&
             sorted.any {it.first==best.second && it.second==best.first && it.third-best.third<0.035}
         val selected=listOf(best.first,best.second).mapIndexed {i,index->
-            if(index<0){streak[i]=0;null}else {
+            if(index<0){val p=prior[i];val established=streak[i]>=3;streak[i]=0
+                if(p!=null && (established || p.occluded))p.copy(confidence=0.3,occluded=true) else null
+            }else {
                 var s=candidates[index];val p=prior[i]
                 if(p!=null && p.a.distance(s.b)+p.b.distance(s.a)<p.a.distance(s.a)+p.b.distance(s.b))s=s.reversed()
+                if(p!=null && s.length<p.length*0.72) {
+                    streak[i]=0
+                    s.copy(confidence=0.35,occluded=true)
+                } else {
                 streak[i]++
                 s.copy(confidence=if(ambiguous)min(0.4,s.confidence) else if(streak[i]<3)min(0.5,s.confidence) else s.confidence)
+                }
             }
         }
-        last=selected.mapIndexed {i,s->if(s!=null && !ambiguous){lastAt[i]=t;s}else prior[i]}
+        last=selected.mapIndexed {i,s->if(s!=null && !ambiguous && !s.occluded){lastAt[i]=t;s}else if(s?.occluded==true)prior[i]?.copy(occluded=true) else prior[i]}
         return selected
     }
 }

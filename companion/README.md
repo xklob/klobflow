@@ -2,7 +2,9 @@
 
 Requires Node 22 or newer. Extract this ZIP, run `node server.mjs` in this folder, then open http://localhost:8788. No npm install is needed to run it.
 
-Enable PC sharing in Klobflow on your phone. Choose **USB cable** or **Wi-Fi / LAN** in the connection dialog. There is no pairing code. Anyone on the same LAN can access an enabled phone share.
+Choose **Use PC camera** for fully local browser practice without a phone. The app measures capture modes and prioritizes actual frame rate. Recordings and analysis save in browser storage; export them from the practice log. Chrome/Edge are tested.
+
+For Android mode, enable PC sharing in Klobflow on your phone. Choose **USB cable** or **Wi-Fi / LAN** in the connection dialog. There is no pairing code. Anyone on the same LAN can access an enabled phone share.
 
 USB requires Android platform-tools (`adb`), a data-capable cable, USB debugging enabled in Android Developer options, and approval of this PC in Android's native prompt. Connect one USB Android device. `KLOBFLOW_ADB` can select an adb executable outside PATH. On WSL, the companion automatically uses Windows adb and a local binary pipe through Windows curl; it does not open a Windows network relay or change the firewall.
 

@@ -126,7 +126,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           paired: !!pairing,
           address: pairing?.address,
           transport: pairing?.transport,
-          version: "0.2.0",
+          version: "0.3.0",
         });
       if (url.pathname === "/api/pair" && req.method === "POST") {
         const input = await readJson(req);
@@ -139,7 +139,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           const response = await upstream("/api/live", "GET", undefined, candidate);
           const state = await response.json();
           if (state.protocol !== 2 || typeof state.version !== "string")
-            throw new Error("Update the phone to Klobflow 0.2.0 or newer.");
+            throw new Error("Update the phone to Klobflow 0.3.0 or newer.");
           if (generation !== pairGeneration) throw new Error("Connection was canceled.");
           stopStreams();
           await pairing?.close?.();
@@ -208,6 +208,12 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         "/style.css": ["style.css", "text/css"],
         "/demo.mjs": ["demo.mjs", "text/javascript"],
         "/stream.mjs": ["stream.mjs", "text/javascript"],
+        "/core.mjs": ["core.mjs", "text/javascript"],
+        "/camera.mjs": ["camera.mjs", "text/javascript"],
+        "/tracker-worker.mjs": ["tracker-worker.mjs", "text/javascript"],
+        "/browser-camera.mjs": ["browser-camera.mjs", "text/javascript"],
+        "/sessions.mjs": ["sessions.mjs", "text/javascript"],
+
       };
       if (req.method === "GET" && assets[url.pathname]) {
         const [file, mime] = assets[url.pathname];

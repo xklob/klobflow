@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+test.beforeEach(async ({request}) => {await request.post("/api/disconnect",{data:{}});});
+
 test("practice demo, guide controls, pairing errors and mobile layout", async ({
   page,
 }) => {

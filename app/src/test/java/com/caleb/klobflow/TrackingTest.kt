@@ -31,8 +31,8 @@ class TrackingTest {
     @Test fun trackerDoesNotInventMissingMeasurements(){
         val t=StaffTracker();repeat(4){t.update(listOf(a,b),1000L+it*33)}
         assertEquals(2,t.update(listOf(a,b),1150).filterNotNull().count {it.confidence>=.55})
-        assertTrue(t.update(emptyList(),1183).all {it==null})
-        assertTrue(t.update(emptyList(),2000).all {it==null})
+        assertTrue(t.update(emptyList(),1183).all {it!!.occluded && it.confidence<.55})
+        assertTrue(t.update(emptyList(),3000).all {it==null})
     }
     @Test fun initialAndReacquiredTrackingNeedsEvidence(){
         val t=StaffTracker();assertTrue(t.update(listOf(a,b),1000).all{it!!.confidence<.55})

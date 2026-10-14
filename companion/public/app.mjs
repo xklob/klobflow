@@ -1,5 +1,6 @@
 import { defaults, demoFrame } from "./demo.mjs";
 import { FrameDecoder } from "./stream.mjs";
+import { BrowserCamera } from "./browser-camera.mjs";
 const $ = (id) => document.getElementById(id);
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
@@ -7,6 +8,8 @@ const canvas = $("view"),
   chartCtx = chart.getContext("2d");
 let config = { ...defaults },
   paired = false,
+  localMode = false,
+  localStarting = false,
   demo = false,
   replay = null,
   current = null,
@@ -20,6 +23,60 @@ let config = { ...defaults },
 let streamController = null, nextStreamAt = 0, arrivals = [], previewFps = 0, lastConfigText = "";
 let trail = [],
   history = [];
+const localCamera = new BrowserCamera($("local-video"), {
+  onFrame: f => { if (localMode && !replay) { lastArrival = Date.now(); syncConfig(f.currentConfig); acceptFrame(f); } },
+  onStatus: text => { if (localMode) { message(text); enableControls(); } },
+  onSessions: () => { if (localMode) loadSessions(); },
+});
+async function updateDeviceList() {
+  const cameras = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+  $("local-camera-select").replaceChildren(...cameras.map((d,i) => Object.assign(document.createElement("option"), { value: d.deviceId, textContent: d.label || `Camera ${i+1}` })));
+  $("local-camera-select").value = localCamera.deviceId || cameras[0]?.deviceId || "";
+}
+async function startLocal(recheck = false) {
+  if (localStarting) return;
+  if (localCamera.recording || localCamera.finalizing) { message("Stop recording before changing camera settings."); return; }
+  localStarting = true;
+  try {
+    if (paired) await api("/api/disconnect", {});
+    stopStream(); paired = false; demo = false; replay = null; localMode = true;
+    resetView(); updateSourceControls(); syncConfig(localCamera.config);
+    await localCamera.start({deviceId: $("local-camera-select").value || undefined, target: $("capture-target").value, reuse: !recheck && !!localCamera.profile});
+    await updateDeviceList();
+    $("camera-profile").textContent = `Selected ${localCamera.settings.width} × ${localCamera.settings.height}, ${Math.round(localCamera.profile.measuredFps)} fps measured. ` + (localCamera.zoom.min === localCamera.zoom.max ? "This camera does not expose adjustable zoom." : "Widest supported zoom is the default.");
+    try { localStorage.setItem("klobflow.lastMode", "local"); } catch {}
+    connected(false); loadSessions();
+  } catch (e) { message(e.message); }
+  finally { localStarting = false; updateSourceControls(); }
+}
+function updateSourceControls() {
+  $("local-video").hidden = !localMode || !!replay;
+  $("local-camera-settings").hidden = !localMode;
+  $("phone-camera-setting").hidden = localMode;
+  $("phone-fps-setting").hidden = localMode;
+  $("local-open").disabled = localStarting;
+  $("local-stage").disabled = localStarting;
+  $("local-open").textContent = localMode && localCamera.active ? "Stop PC camera" : "Use PC camera";
+  $("optimize-camera").disabled = localStarting || localCamera.recording || localCamera.finalizing;
+  $("local-camera-select").disabled = localStarting || localCamera.recording || localCamera.finalizing;
+  $("capture-target").disabled = localStarting || localCamera.recording || localCamera.finalizing;
+  enableControls();
+}
+$("local-open").onclick = async () => {
+  if (localMode && localCamera.active) { localCamera.resumeOnVisible = false; await localCamera.stop(); resetView(); connected(false); updateSourceControls(); }
+  else startLocal();
+};
+$("local-stage").onclick = () => startLocal();
+$("local-camera-select").onchange = () => { localCamera.profile = null; startLocal(true); };
+$("capture-target").onchange = () => startLocal(true);
+$("optimize-camera").onclick = () => startLocal(true);
+let sessionVideoUrl = null;
+$("close-video").onclick = () => $("video-dialog").close();
+$("video-dialog").onclose = () => { $("session-video").pause(); $("session-video").removeAttribute("src"); if (sessionVideoUrl) URL.revokeObjectURL(sessionVideoUrl); sessionVideoUrl = null; };
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob), link = Object.assign(document.createElement("a"), { href: url, download: name });
+  link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
 const descriptions = {
   grid: "Trace clean lines through the grid. Error measures tip distance to the nearest guide line.",
   circles:
@@ -28,6 +85,7 @@ const descriptions = {
   free: "Move freely. Track staves and explore your trails without a grid-alignment score.",
 };
 async function api(route, body) {
+  if (localMode && route === "/api/control") return localCamera.command(body);
   const response = await fetch(
     route,
     body
@@ -52,7 +110,7 @@ function connected(value) {
   $("connection").replaceChildren(
     Object.assign(document.createElement("i"), {}),
     document.createTextNode(
-      value ? (transport === "usb" ? "USB CONNECTED" : "WI-FI CONNECTED") : demo ? "DEMO MODE" : "PHONE NOT CONNECTED",
+      value ? (transport === "usb" ? "USB CONNECTED" : "WI-FI CONNECTED") : localMode ? (localCamera.active ? "PC CAMERA" : "PC CAMERA STOPPED") : demo ? "DEMO MODE" : "PHONE NOT CONNECTED",
     ),
   );
   $("pair-open").textContent = value ? "Disconnect" : "Connect phone ↗";
@@ -60,16 +118,18 @@ function connected(value) {
   enableControls();
 }
 function enableControls() {
+  const available = paired || (localMode && localCamera.active);
   document
     .querySelectorAll("[data-config], [data-mode]")
-    .forEach((e) => (e.disabled = !(paired || demo) || !!replay));
-  $("calibrate").disabled = !paired || !!replay || !current;
-  $("clear-calibration").disabled = !paired || !!replay || !config.planeCorners?.length;
-  $("zoom-wide").disabled = !paired || !!replay || !current?.cameraReady;
-  $("reset").disabled = !paired || !!replay;
-  $("seed").disabled = !paired || !!replay;
+    .forEach((e) => (e.disabled = !(available || demo) || !!replay));
+  $("calibrate").disabled = !available || !!replay || !current;
+  $("clear-calibration").disabled = !available || !!replay || !config.planeCorners?.length;
+  $("zoom-wide").disabled = !available || !!replay || !current?.cameraReady;
+  $("reset").disabled = !available || !!replay;
+  $("seed").disabled = !available || !!replay;
+  $("optimize-camera").disabled = localStarting || localCamera.recording || localCamera.finalizing;
   $("record").disabled =
-    !paired ||
+    !available ||
     !!replay ||
     current?.source === "demo" ||
     !current?.cameraReady ||
@@ -198,6 +258,8 @@ $("pair-form").onsubmit = async (e) => {
     });
     transport = result.transport;
     stopStream();
+    await localCamera.stop(); localMode = false; updateSourceControls();
+    try { localStorage.setItem("klobflow.lastMode", "phone"); } catch {}
     $("pair-dialog").close();
     demo = false;
     replay = null;
@@ -233,7 +295,8 @@ function resetView() {
   drawEmpty();
   drawChart();
 }
-$("demo-start").onclick = () => {
+$("demo-start").onclick = async () => {
+  await localCamera.stop(); localMode = false; updateSourceControls();
   demo = true;
   replay = null;
   lastTime = null;
@@ -267,8 +330,8 @@ $("record").onclick = async () => {
     await api("/api/control", { action });
     message(
       action === "record"
-        ? "Recording on your phone. Video and analysis save locally."
-        : "Saving your practice on the phone.",
+        ? localMode ? "Recording in this browser. Video and analysis stay on this PC." : "Recording on your phone. Video and analysis save locally."
+        : localMode ? "Saving your practice in this browser." : "Saving your practice on the phone.",
     );
   } catch (e) {
     message(e.message);
@@ -352,10 +415,9 @@ function render(frame, image) {
     u = Math.min(w, h),
     g = frame.guide,
     c = frame.config;
-  ctx.fillStyle = "#0a100c";
-  ctx.fillRect(0, 0, w, h);
+  ctx.clearRect(0, 0, w, h);
   if (image) ctx.drawImage(image, 0, 0, w, h);
-  else {
+  else if (!localMode || replay) {
     const gradient = ctx.createRadialGradient(
       w / 2,
       h / 2,
@@ -406,11 +468,11 @@ function render(frame, image) {
     trail.forEach((f, i) =>
       f.staffs.forEach((s, n) => {
         if (!s || s.confidence < 0.55) return;
-        ctx.globalAlpha = ((i + 1) / trail.length) * 0.45;
+        ctx.globalAlpha = Math.min(1, ((i + 1) / trail.length) * 1.35);
         ctx.fillStyle = n ? "#b5a3ff" : "#b6f36b";
         for (const p of [s.a, s.b]) {
           ctx.beginPath();
-          ctx.arc(p[0] * u, p[1] * u, 2.5, 0, Math.PI * 2);
+          ctx.arc(p[0] * u, p[1] * u, 4.3, 0, Math.PI * 2);
           ctx.fill();
         }
       }),
@@ -436,7 +498,7 @@ function render(frame, image) {
     ctx.fillStyle = color;
     ctx.font = "12px system-ui";
     ctx.fillText(
-      `${n ? "B" : "A"}  ${Math.round(s.confidence * 100)}%`,
+      `${n ? "B" : "A"}  ${s.occluded ? "briefly hidden" : Math.round(s.confidence * 100) + "%"}`,
       s.a[0] * u + 10,
       s.a[1] * u - 10,
     );
@@ -466,8 +528,8 @@ function setCoaching(f) {
   const cues = f?.feedback || [], aligned = cues.length === 4 && cues.every(c => c.onTarget);
   const free = f?.config?.mode === "free";
   $("coaching").classList.toggle("aligned", aligned); $("coaching").classList.toggle("adjust", cues.length > 0 && !aligned);
-  $("coaching-title").textContent = good < 2 ? "Keep both staves visible" : free ? "Free flow · no alignment target" : !cues.length ? "Alignment cues paused" : aligned ? "✓ Tips on guide" : "Adjust highlighted tips";
-  $("coaching-detail").textContent = good < 2 ? `${good} / 2 staves tracked. Scores pause until both are clear.` : free ? "Choose Grid, Circles, or Cube for alignment cues." : !cues.length ? "Keep all four tips inside the calibrated plane. Saved older sessions may not include cues." : aligned ? `All four tips are within the ${f.config.tolerance}% target. Keep tracing the guide.` : `${cues.filter(c => !c.onTarget).length} / 4 tips outside target. Follow orange arrows toward white rings.`;
+  $("coaching-title").textContent = f?.staffs?.some(s => s?.occluded) ? "Tip hidden · keeping staff identity" : good < 2 ? "Keep both staves visible" : free ? "Free flow · no alignment target" : !cues.length ? "Alignment cues paused" : aligned ? "✓ Tips on guide" : "Adjust highlighted tips";
+  $("coaching-detail").textContent = f?.staffs?.some(s => s?.occluded) ? "Continue your movement. Tracking reconnects when the tip returns; precision scores wait for visible tips." : good < 2 ? `${good} / 2 staves tracked. Scores pause until both are clear.` : free ? "Choose Grid, Circles, or Cube for alignment cues." : !cues.length ? "Keep all four tips inside the calibrated plane. Saved older sessions may not include cues." : aligned ? `All four tips are within the ${f.config.tolerance}% target. Keep tracing the guide.` : `${cues.filter(c => !c.onTarget).length} / 4 tips outside target. Follow orange arrows toward white rings.`;
 }
 function setMetrics(metrics) {
   for (const [key, suffix] of [
@@ -555,7 +617,6 @@ function drawChart() {
   chartCtx.stroke();
 }
 function acceptFrame(f, image = null) {
-  if ((seeding || calibrating) && current) { image?.close?.(); return; }
   current = f;
   if (lastImage && lastImage !== image) lastImage.close?.();
   lastImage = image;
@@ -568,7 +629,7 @@ function acceptFrame(f, image = null) {
     ? "SESSION REVIEW"
     : f.source === "demo"
       ? "DEMO · GENERATED MOTION"
-      : "LIVE FROM YOUR PHONE";
+      : localMode ? "LIVE FROM YOUR PC CAMERA" : "LIVE FROM YOUR PHONE";
   $("live-dot").style.background = f.source === "demo" ? "#b5a3ff" : "#b6f36b";
   const good = f.staffs.filter((s) => s && s.confidence >= 0.55).length;
   $("tracking-label").textContent =
@@ -582,18 +643,16 @@ function acceptFrame(f, image = null) {
       : `${good} / 2 staves visible · scores paused`;
   $("camera-info").textContent = replay
     ? `Sample at ${(f.elapsedMs / 1000).toFixed(2)}s`
-    : `${f.status ?? "Phone camera"} · ${Math.round(f.analysisFps ?? 0)} analysis fps · ${Math.round(previewFps)} preview fps`;
+    : `${f.status ?? "Phone camera"} · ${Math.round(f.analysisFps ?? 0)} analysis fps` + (localMode ? ` · ${Math.round(f.cameraFps || 0)} camera fps` : f.source === "demo" ? "" : ` · ${Math.round(previewFps)} preview fps`);
   $("record").classList.toggle("recording", !!f.recording);
   $("record").textContent = f.finalizing
     ? "Saving…"
     : f.recording
       ? `■ Stop · ${Math.floor(f.elapsedMs / 1000)}s`
       : "● Record practice";
-  if (!seeding && !calibrating) {
-    trail.push(f);
-    trail = trail.filter((t) => f.time - t.time < 1400).slice(-45);
-    render(f, image);
-  }
+  trail.push(f);
+  trail = trail.filter((t) => f.time - t.time < 4200).slice(-135);
+  render(f, image);
   if (f.zoom && document.activeElement !== $("zoom")) {
     $("zoom").min = f.zoom.min; $("zoom").max = f.zoom.max; $("zoom").value = f.zoom.ratio;
     $("zoom").disabled = !f.cameraReady || f.zoom.min === f.zoom.max || !!replay;
@@ -609,9 +668,9 @@ function acceptFrame(f, image = null) {
   enableControls();
 }
 async function loadSessions() {
-  if (!paired) return;
+  if (!paired && !localMode) return;
   try {
-    const { sessions } = await api("/api/sessions");
+    const { sessions } = localMode ? { sessions: await localCamera.sessions() } : await api("/api/sessions");
     $("sessions").replaceChildren();
     if (!sessions.length)
       $("sessions").append(
@@ -635,6 +694,7 @@ async function loadSessions() {
       });
       review.onclick = async () => {
         try {
+          if (localMode) { loadAnalysis(await (await localCamera.session(s.id)).analysis.text()); return; }
           const r = await fetch(`/api/session?id=${encodeURIComponent(s.id)}`);
           if (!r.ok) throw new Error("Cannot load analysis");
           loadAnalysis(await r.text());
@@ -647,6 +707,16 @@ async function loadSessions() {
         textContent: "Export ↗",
         download: `${s.id}.jsonl`,
       });
+      if (localMode) {
+        download.removeAttribute("href"); download.setAttribute("role", "button"); download.tabIndex = 0;
+        download.onclick = async () => downloadBlob((await localCamera.session(s.id)).analysis, `${s.id}.jsonl`);
+        download.onkeydown = e => { if (e.key === "Enter") download.click(); };
+        const play = Object.assign(document.createElement("button"), { textContent: "Play video" });
+        play.onclick = async () => { const session = await localCamera.session(s.id); sessionVideoUrl = URL.createObjectURL(session.video); $("session-video").src = sessionVideoUrl; $("video-dialog").showModal(); $("session-video").play().catch(() => {}); };
+        const save = Object.assign(document.createElement("button"), { textContent: "Download video" });
+        save.onclick = async () => { const session = await localCamera.session(s.id); downloadBlob(session.video, `${s.id}.${session.mimeType.includes("mp4") ? "mp4" : "webm"}`); };
+        card.append(play, save);
+      }
       card.append(review, download);
       $("sessions").append(card);
     }
@@ -686,6 +756,7 @@ function loadAnalysis(text) {
   }
   stopStream();
   replay = frames;
+  updateSourceControls();
   history = frames;
   trail = [];
   $("scrubber").max = String(frames.length - 1);
@@ -695,13 +766,13 @@ function loadAnalysis(text) {
   $("chart-source").textContent = "RECORDED SESSION";
   showReplay(0);
   message(
-    "Showing saved analysis. The matching video is on the phone in Movies / Klobflow.",
+    localMode ? "Showing saved analysis. Use Play video in the practice log for the recording." : "Showing saved analysis. The matching video is on the phone in Movies / Klobflow.",
   );
   enableControls();
 }
 function showReplay(index) {
   const f = replay[index];
-  trail = replay.slice(Math.max(0, index - 35), index);
+  trail = replay.slice(Math.max(0, index - 135), index).filter(f => replay[index].time - f.time < 4200);
   syncConfig(f.config);
   acceptFrame(f);
   document.querySelector('output[for="scrubber"]').textContent =
@@ -722,6 +793,7 @@ $("import-analysis").onchange = async (e) => {
 $("scrubber").oninput = (e) => showReplay(Number(e.target.value));
 $("return-live").onclick = () => {
   replay = null;
+  updateSourceControls();
   trail = [];
   history = [];
   lastTime = null;
@@ -729,7 +801,7 @@ $("return-live").onclick = () => {
   $("return-live").hidden = true;
   $("chart-source").textContent = "LAST 30 SECONDS";
   message("");
-  if (!paired && !demo) resetView();
+  if (!paired && !demo && !localMode) resetView();
   enableControls();
 };
 function stopStream() {
@@ -784,10 +856,12 @@ async function receiveStream() {
 function loop() {
   if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
   if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
-  if (paired && !replay && Date.now() - lastArrival > 2000) {
+  if ((paired || (localMode && localCamera.active)) && !replay && !seeding && !calibrating && Date.now() - lastArrival > 2000) {
     setMetrics(null); setCoaching(null); $("record").disabled = true;
     $("tracking-label").textContent = "Waiting for fresh camera frames…";
   }
+  if (localMode && !replay) canvas.style.opacity = Date.now() - lastArrival > 200 ? "0" : "1";
+  else canvas.style.opacity = "1";
   setTimeout(loop, 33);
 }
 syncConfig(config);
@@ -800,6 +874,8 @@ api("/api/status")
       transport = s.transport;
       connected(true);
       loadSessions();
+    } else {
+      try { if (localStorage.getItem("klobflow.lastMode") === "local") navigator.permissions?.query({name:"camera"}).then(p => { if (p.state === "granted") startLocal(); }).catch(() => {}); } catch {}
     }
   })
   .catch((e) => message(e.message));
