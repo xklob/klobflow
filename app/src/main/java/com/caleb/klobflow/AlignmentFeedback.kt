@@ -37,7 +37,7 @@ private fun describeIssue(issue:Pair<String,Int>,count:Int):BoxText {
 /** Presentation hysteresis never changes scores or makes uncertain observations valid. */
 class AlignmentFeedback {
     private var time=-1L;private var key="";private var lastIssue:Pair<String,Int>?=null
-    private data class Sample(val time:Long,val valid:Boolean,val on:Boolean)
+    private data class Sample(val time:Long,val valid:Boolean,val on:Boolean,val horizontal:Double?=null,val vertical:Double?=null)
     private val samples=ArrayList<Sample>()
     private var onSince=arrayOfNulls<Long>(4);private var on=BooleanArray(4);private var alignedSince:Long?=null
     private fun clear(){onSince=arrayOfNulls(4);on=BooleanArray(4);alignedSince=null}
@@ -53,12 +53,13 @@ class AlignmentFeedback {
         // The tracker already confirms consecutive observations. Do not add a text-delay gate to scores.
         val confirmed=issue==null&&!snapshot
         samples.removeAll {t-it.time>5000||it.time==t}
-        if(snapshot)samples.clear() else samples.add(Sample(t,confirmed,confirmed&&cues.size==count*2&&cues.all {it.error<=c.tolerance}))
+        if(snapshot)samples.clear() else samples.add(Sample(t,confirmed,confirmed&&cues.size==count*2&&cues.all {it.error<=c.tolerance},if(confirmed)cues.find {it.axis=="horizontal"}?.error else null,if(confirmed)cues.find {it.axis=="vertical"}?.error else null))
         val measured=samples.filter {it.valid};val recent=measured.size>=3&&t-measured.last().time<=(if(issue?.first=="hidden")1500 else 1000)
         val coverage=(measured.size*100.0/max(1,samples.size)).roundToInt()
         val onPercent=if(measured.isEmpty())0 else (measured.count {it.on}*100.0/measured.size).roundToInt()
         val tolerance=if(c.tolerance%1.0==0.0)c.tolerance.toInt().toString()else c.tolerance.toString()
-        val summary=if(recent&&!free&&!snapshot)BoxText(if(onPercent>=80)"ok" else "warn","$onPercent% ON TARGET","Of measured frames in the last 5 seconds. Tolerance: $tolerance% of guide width. Unclear frames are excluded.")else null
+        val axisDetail=if(c.mode=="antispin"&&recent)"Horizontal tip: %.1f%% drift · Vertical tip: %.1f%% drift. ".format(measured.mapNotNull {it.horizontal}.average(),measured.mapNotNull {it.vertical}.average())else ""
+        val summary=if(recent&&!free&&!snapshot)BoxText(if(onPercent>=80)"ok" else "warn","$onPercent% ON TARGET",axisDetail+"Of measured frames in the last 5 seconds. Tolerance: $tolerance% of guide width. Unclear frames are excluded.")else null
         val tracking=when{
             snapshot->BoxText("wait","BACKGROUND SNAPSHOT","Move your staves out of view and keep the phone still.")
             recent->BoxText(if(coverage>=80)"ok" else "warn","$coverage% MEASURED","Frames with both ends located, over the last 5 seconds. Unclear frames pause live scores and rings.")

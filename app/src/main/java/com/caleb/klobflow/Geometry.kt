@@ -26,8 +26,8 @@ fun nearestOnSegment(p: P,s: Segment): P {
 }
 
 fun distanceToSegment(p:P,s:Segment):Double=p.distance(nearestOnSegment(p,s))
-data class TipCue(val tip:P,val target:P,val error:Double,val onTarget:Boolean) {
-    fun json()=JSONObject().put("tip",tip.json()).put("target",target.json()).put("error",error).put("onTarget",onTarget)
+data class TipCue(val tip:P,val target:P,val error:Double,val onTarget:Boolean,val axis:String?=null) {
+    fun json()=JSONObject().put("tip",tip.json()).put("target",target.json()).put("error",error).put("onTarget",onTarget).apply {if(axis!=null)put("axis",axis)}
 }
 
 data class Config(
@@ -70,7 +70,9 @@ data class Config(
         } else planeCorners
         validateCorners(corners)
         val colors=if(j.has("staffColors")){val a=j.getJSONArray("staffColors");require(a.length()<=staffColorNames.size){"Choose valid staff colors"};(0 until a.length()).map {a.getString(it)}.also {require(it.all {color->color in staffColorNames}){"Choose valid staff colors"}}.distinct()}else staffColors
-        return copy(streakEffects=flag("streakEffects",streakEffects),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt(),autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=choice("mode",mode,listOf("grid","circles","cube","free")),led=flag("led",led),
+        val nextCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt()
+        val nextMode=choice("mode",mode,listOf("grid","circles","cube","free","antispin"))
+        return copy(streakEffects=flag("streakEffects",streakEffects),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
             staffColors=colors,threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),
@@ -113,6 +115,7 @@ class Guide(val config: Config,val width: Int,val height: Int) {
         listOf(-0.5,0.5).flatMap { z -> listOf(P(-1.0,-1.0),P(1.0,-1.0),P(1.0,1.0),P(-1.0,1.0)).map { point(it.x+z*d,it.y-z*d) } }
     } else (-1..1).flatMap { x -> (-1..1).map { y -> point(x.toDouble(),y.toDouble()) } }
     val lines: List<Segment> get() = when(config.mode) {
+        "antispin" -> listOf(Segment(point(-1.0,0.0),point(1.0,0.0)),Segment(point(0.0,-1.0),point(0.0,1.0)))
         "grid" -> (-1..1).flatMap { i -> listOf(Segment(point(i.toDouble(),-1.0),point(i.toDouble(),1.0)),Segment(point(-1.0,i.toDouble()),point(1.0,i.toDouble()))) } +
             if(config.diagonals) listOf(Segment(point(-1.0,-1.0),point(1.0,1.0)),Segment(point(-1.0,1.0),point(1.0,-1.0))) else emptyList()
         "cube" -> vertices.let { v -> (0..1).flatMap { z -> (0..3).map { i -> Segment(v[z*4+i],v[z*4+(i+1)%4]) } }+(0..3).map { i -> Segment(v[i],v[i+4]) } }
@@ -122,22 +125,29 @@ class Guide(val config: Config,val width: Int,val height: Int) {
     fun deviation(p: P): Double = when(config.mode) {
         "circles" -> circles.minOf { abs(p.distance(it)-radius) }
         "cube" -> vertices.minOf { p.distance(it) }
-        "grid" -> lines.minOf { distanceToSegment(p,it) }
+        "grid", "antispin" -> lines.minOf { distanceToSegment(p,it) }
         else -> 0.0
     }
     fun cues(staffs:List<Segment?>):List<TipCue> {
-        if(config.mode=="free" || staffs.take(config.staffCount).size!=config.staffCount || staffs.take(config.staffCount).any {it==null || it.confidence<0.55})return emptyList()
+        if(config.mode=="free" || staffs.take(config.staffCount).size!=config.staffCount || staffs.take(config.staffCount).any {it==null || it.confidence<0.55 || it.blurred || it.occluded})return emptyList()
         val measured=staffs.take(config.staffCount).map {rectify(it!!) ?: return emptyList()}
         fun target(p:P):P=when(config.mode){
             "grid"->lines.map {nearestOnSegment(p,it)}.minBy {it.distance(p)}
             "cube"->vertices.minBy {it.distance(p)}
             else->circles.map {c->val d=p-c;c+(if(d.distance(P(0.0,0.0))<1e-9)P(1.0,0.0) else d*(1/d.distance(P(0.0,0.0))))*radius}.minBy {it.distance(p)}
         }
-        return measured.flatMapIndexed {i,s->listOf(s.a,s.b).mapIndexed {j,p->
-            val dest=target(p);val error=p.distance(dest)/(2*radius)*100
-            TipCue(if(j==0)staffs[i]!!.a else staffs[i]!!.b,project(dest),error,error<=config.tolerance)
+        return measured.flatMapIndexed {i,s->val axes=if(config.mode=="antispin")antispinAxes(s)else emptyList();listOf(s.a,s.b).mapIndexed {j,p->
+            val dest=if(axes.isNotEmpty())nearestOnSegment(p,lines[axes[j]])else target(p);val error=p.distance(dest)/(2*radius)*100
+            TipCue(if(j==0)staffs[i]!!.a else staffs[i]!!.b,project(dest),error,error<=config.tolerance,if(axes.isEmpty())null else if(axes[j]==0)"horizontal" else "vertical")
         }}
     }
+    /** Assign the two observed ends jointly: one per axis, never both on their nearest line. */
+    fun antispinAxes(s:Segment):List<Int> {
+        fun cost(a:Int,b:Int)=distanceToSegment(s.a,lines[a]).pow(2)+distanceToSegment(s.b,lines[b]).pow(2)
+        return if(cost(0,1)<=cost(1,0))listOf(0,1)else listOf(1,0)
+    }
+    fun antispinTips(s:Segment):List<P> = if(antispinAxes(s)[0]==0)listOf(s.a,s.b)else listOf(s.b,s.a)
+    fun local(p:P):P {val d=p-center;val r=Math.toRadians(config.rotation);return P(d.x*cos(r)+d.y*sin(r),-d.x*sin(r)+d.y*cos(r))}
     val displayLines get()=lines.map {it.copy(a=project(it.a),b=project(it.b))}
     val displayVertices get()=vertices.map {project(it)}
     val circlePaths get()=if(config.mode=="circles")circles.map {c->(0..96).map {i->val a=i*2*PI/96;project(c+P(cos(a),sin(a))*radius)}} else emptyList()
@@ -159,12 +169,12 @@ class Scorer {
         val measured=staffs.take(g.config.staffCount).map {it?.let(g::rectify)}
         history.addLast(t to measured)
         while(history.isNotEmpty() && t-history.first().first>1200)history.removeFirst()
-        val good=measured.filterNotNull().filter {it.confidence>=0.55}
+        val good=measured.filterNotNull().filter {it.confidence>=0.55 && !it.blurred && !it.occluded}
         val coverage=history.count {it.second.count {s->s!=null && s.confidence>=0.55}==g.config.staffCount}.toDouble()/history.size*100
         if(good.size!=g.config.staffCount)return Metrics(coverage=coverage)
         val pts=good.flatMap {listOf(it.a,it.b)}
-        val deviation=if(g.config.mode=="free")null else sqrt(pts.sumOf {g.deviation(it).pow(2)}/(2*g.config.staffCount))/(2*g.radius)*100
-        val angles=g.lines.map {it.angle}
+        val deviation=if(g.config.mode=="free")null else if(g.config.mode=="antispin")sqrt(g.cues(staffs).sumOf {it.error.pow(2)}/(2*g.config.staffCount))else sqrt(pts.sumOf {g.deviation(it).pow(2)}/(2*g.config.staffCount))/(2*g.radius)*100
+        val angles=if(g.config.mode=="antispin")emptyList()else g.lines.map {it.angle}
         val angle=if(angles.isEmpty())null else good.map {s->angles.minOf {Math.toDegrees(angleDifference(s.angle,it))}}.average()
         val localAngle=Math.toRadians(g.config.rotation)
         fun reflect(p:P):P {

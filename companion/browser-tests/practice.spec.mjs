@@ -77,7 +77,7 @@ test("analysis replay keeps missing scores and scrubs samples", async ({
 
 test('each mode tutorial dismisses independently and single-staff beat practice works',async({page})=>{
  await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
- for(const mode of ['grid','circles','cube','free']){
+ for(const mode of ['grid','circles','cube','free','antispin']){
   await page.locator(`[data-mode="${mode}"]`).click();await expect(page.locator('#mode-tutorial')).toBeVisible();
   await expect(page.locator('#tutorial-steps li')).toHaveCount(4);await page.locator('#dismiss-tutorial').click();await expect(page.locator('#mode-tutorial')).toBeHidden();
  }
@@ -88,6 +88,21 @@ test('each mode tutorial dismisses independently and single-staff beat practice 
  await expect(page.locator('#beat-feedback')).toBeVisible();await expect(page.locator('#beat-pulse')).toContainText('90 BPM');
  await expect(page.locator('#beat-hits')).toContainText(/point [1-4]:/,{timeout:12000});
  await page.screenshot({path:'../review/practice-timing.png',fullPage:true});
+});
+
+test('linear antispin selects one staff and explains each axis and its beats',async({page})=>{
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
+ await page.locator('[data-mode="antispin"]').click();await expect(page.locator('#staff-count')).toHaveValue('1');await expect(page.locator('#staff-count')).toBeDisabled();
+ await expect(page.locator('#tutorial-title')).toContainText('Linear antispin');await expect(page.locator('#error-label')).toHaveText('LINE DRIFT');await expect(page.locator('#angle').locator('..')).toBeHidden();
+ await expect(page.locator('#coaching-detail')).toContainText('Horizontal tip:',{timeout:10000});await expect(page.locator('#coaching-detail')).toContainText('Vertical tip:');
+ await page.locator('[data-config="tempoEnabled"]').check();await page.getByText('How beat practice works',{exact:true}).click();
+ await expect(page.locator('#antispin-beat-help')).toBeVisible();await expect(page.locator('#normal-beat-help')).toBeHidden();await expect(page.locator('[data-config="beatPoints"]')).toBeHidden();
+ await expect(page.locator('#beat-hits')).toContainText('turnaround',{timeout:12000});await page.locator('#fullscreen').click();await expect(page.locator('#exit-fullscreen')).toBeVisible();
+ const stage=await page.locator('#stage').boundingBox(),hud=await page.locator('#streak-hud').boundingBox();expect(hud.y).toBeGreaterThanOrEqual(stage.y+stage.height);
+ await page.screenshot({path:'../review/080-antispin-fullscreen.png'});await page.locator('#exit-fullscreen').click();
+ await page.setViewportSize({width:390,height:844});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.locator('[data-mode="grid"]').click();await expect(page.locator('#staff-count')).toBeEnabled();await expect(page.locator('[data-config="beatPoints"]')).toBeVisible();
+ expect(errors).toEqual([]);
 });
 
 test('alignment streak builds, resets, disables and respects free flow',async({page})=>{

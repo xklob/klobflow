@@ -136,8 +136,8 @@ class MainActivity:ComponentActivity() {
                         Button(onClick={if(permission)run{engine.bindCamera()}else request.launch(Manifest.permission.CAMERA)},modifier=Modifier.weight(1f)){Text(if(permission)"Open camera" else "Allow camera")}
                         OutlinedButton(onClick={engine.startDemo()}){Text("Try demo")}
                     }
-                    Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
-                    Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free","antispin" to "Antispin").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
+                    Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(enabled=ui.config.mode!="antispin" || count==1,selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
                     ModeTutorial(ui.config.mode)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         OutlinedButton(enabled=ui.frame!=null,onClick={run{engine.command(JSONObject().put("action","fit").put("zoom",true))}},modifier=Modifier.weight(1f)){Text("Auto-fit")}
@@ -167,8 +167,8 @@ class MainActivity:ComponentActivity() {
                     fun shown(raw:Double?,averaged:Double?)=if(raw==null || !scoring)null else averaged
                     val deviation=shown(f?.metrics?.deviation,f?.averagedMetrics?.deviation)
                     Row(Modifier.fillMaxWidth().padding(top=12.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        Metric("${if(ui.config.mode=="cube")"Vertex" else if(ui.config.mode=="circles")"Circle" else "Grid"} error",deviation,"%",Modifier.weight(1f),ui.config.tolerance)
-                        Metric("Angle error",shown(f?.metrics?.angle,f?.averagedMetrics?.angle),"°",Modifier.weight(1f))
+                        Metric("${if(ui.config.mode=="antispin")"Line drift" else if(ui.config.mode=="cube")"Vertex" else if(ui.config.mode=="circles")"Circle" else "Grid"} error",deviation,"%",Modifier.weight(1f),ui.config.tolerance)
+                        if(ui.config.mode!="antispin")Metric("Angle error",shown(f?.metrics?.angle,f?.averagedMetrics?.angle),"°",Modifier.weight(1f))
                         if(ui.config.staffCount==2)Metric("Symmetry",shown(f?.metrics?.symmetry,f?.averagedMetrics?.symmetry),"%",Modifier.weight(1f),ui.config.tolerance)
                     }
                     Text("Error cards show 5-second averages of clear samples.",color=Muted,fontSize=13.sp,modifier=Modifier.padding(top=4.dp,bottom=10.dp))
@@ -413,6 +413,16 @@ class MainActivity:ComponentActivity() {
                 val mid=p(s.center);val note=if(s.occluded)" · LAST SEEN" else if(s.blurred)" · ENDS UNCLEAR" else if(s.confidence<.55)" · UNSURE" else ""
                 tag("${if(i==0)"A" else "B"}$note",14.sp.toPx(),if(i==0)Lime else Lavender,Background,Background,listOf<(Float,Float)->Offset>({_,_->mid},{_,h->Offset(mid.x,mid.y-h*1.2f)},{_,h->Offset(mid.x,mid.y+h*1.2f)}),force=true,alpha=if(s.occluded).65f else 1f)
             }}
+            if(ui.config.mode=="antispin"){
+                if(ui.config.showGuide)g.displayLines.forEachIndexed {i,s->
+                    val color=if(i==0)Cyan else Lavender
+                    drawLine(color,p(s.a),p(s.b),2.5f*k)
+                    val pos=p(s.a);tag(if(i==0)"HORIZONTAL" else "VERTICAL",13.sp.toPx(),Background,color,null,listOf(beside(pos,0f,-1f,12f*k),beside(pos,1f,0f,12f*k)))
+                }
+                if(ui.config.showFeedback)feedback?.tips.orEmpty().forEach {cue->val pos=p(cue.tip);val horizontal=cue.axis=="horizontal"
+                    tag(if(horizontal)"H TIP" else "V TIP",13.sp.toPx(),Background,if(horizontal)Cyan else Lavender,null,listOf(beside(pos,0f,-1f,20f*k),beside(pos,1f,0f,20f*k),beside(pos,-1f,0f,20f*k)))
+                }
+            }
             if(f.beat.enabled){
                 val on=f.beat.phase<.18;val grow=on&&android.animation.ValueAnimator.areAnimatorsEnabled()
                 f.beat.targets.forEachIndexed {i,points->points.forEachIndexed {j,target->
@@ -424,7 +434,7 @@ class MainActivity:ComponentActivity() {
                     labelPaint.style=android.graphics.Paint.Style.FILL;labelPaint.color=android.graphics.Color.WHITE
                     drawContext.canvas.nativeCanvas.drawText("${j+1}",pos.x+r+7f*k,pos.y-r,labelPaint)
                 }}
-                f.staffs.forEach {s->if(s!=null && s.confidence>=.55){
+                if(ui.config.mode!="antispin")f.staffs.forEach {s->if(s!=null && s.confidence>=.55){
                     val pos=p(s.a);ring(pos,8f*k,Cyan,2.5f*k);drawCircle(Color.White,4f*k,pos)
                     tag("BEAT TIP",13.sp.toPx(),Background,Cyan,null,listOf(beside(pos,0f,-1f,10f*k),beside(pos,1f,0f,10f*k),beside(pos,-1f,0f,10f*k)))
                 }}

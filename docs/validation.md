@@ -1,3 +1,14 @@
+# v0.8.0 validation
+
+Validated locally on 2026-10-14.
+
+- 69 regular JVM tests and 53 Node tests pass, plus Android lint/debug builds. Five emulator integration flows pass, including generated antispin through the real native detector, one-staff enforcement, per-axis feedback in fullscreen, four turnaround targets, camera switching/recovery, recording/decoding and playback audio. A video replay diagnostic is optional and skipped in the ordinary JVM suite.
+- Native/browser parity covers 324 generated antispin frames across rotation, perspective correction, endpoint reversal and missing observations. Independent expected-value checks verify that both ends cannot use the same axis, shaft angle is not scored, off-axis drift has the right scale, size matching uses a full staff length per cross arm, and early/late timing remains separate from positional error in either direction.
+- Seventeen browser flows pass. The seven practice/UI flows are repeated after moving the antispin streak meter and demo label below the image, where they cannot obscure an outer target. Desktop large text, fullscreen and mobile layouts are inspected; no horizontal mobile overflow or page errors. README screenshots use generated motion only.
+- Replaying both existing private Pixel recordings preserves v0.7.1 tracking results: 2,161 measured and 2,469 observed frames among 2,661 in the recent practice session; 656 measured and 1,509 observed among 1,910 in the original recording. The detector itself is unchanged in this release. These recordings are regression inputs, not annotated ground truth for antispin. Physical antispin endpoint accuracy and end-to-end latency remain unmeasured.
+- Antispin is a projected line-tracing exercise. The two ends are jointly assigned to separate finite cross segments. Timing estimates outer turnarounds from their combined cycle phase; it does not classify arbitrary antispin variations. Uncertain, hidden, or blurred endpoints cannot earn precision, beat hits or streak time.
+- Package and signing identity remain unchanged; Android versionCode is 11. Klobstore's existing catalog entry follows the new GitHub release. Signed artifacts, checksums, matching companion source, remote refs and CI are checked during publication. All private footage and derived images remain outside Git and release assets.
+
 # v0.7.1 validation
 
 Validated locally on 2026-10-14.

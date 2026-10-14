@@ -19,8 +19,9 @@ class TimingCoach {
     fun targets(g:Guide,index:Int):List<P> {
         val c=g.config;val center=if(c.mode=="circles")g.circles[index]else g.center
         if(c.mode=="cube")return if(c.beatPoints==8)g.vertices else if(c.beatPoints==4)g.vertices.take(4)else listOf(g.vertices[0],g.vertices[2])
-        return (0 until c.beatPoints).map {i->
-            val a=-PI/2+i*2*PI/c.beatPoints+Math.toRadians(c.rotation)
+        val points=if(c.mode=="antispin")4 else c.beatPoints
+        return (0 until points).map {i->
+            val a=-PI/2+i*2*PI/points+Math.toRadians(c.rotation)
             val d=P(cos(a),sin(a))
             val r=if(c.mode=="grid")g.radius/max(abs(cos(a-Math.toRadians(c.rotation))),abs(sin(a-Math.toRadians(c.rotation))))else g.radius
             center+d*r
@@ -31,22 +32,29 @@ class TimingCoach {
         if(externalEpoch!=null)epoch=externalEpoch
         if(epoch==null)epoch=t.toDouble()
         val period=60000/tempo;val phase=(((t-epoch!!)/period)%1+1)%1
-        val measured=staffs.take(g.config.staffCount).map {it?.takeIf {s->s.confidence>=.55 && !s.occluded}?.let(g::rectify)}
+        val measured=staffs.take(g.config.staffCount).map {it?.takeIf {s->s.confidence>=.55 && !s.occluded && !s.blurred}?.let(g::rectify)}
         val targets=(0 until g.config.staffCount).map {targets(g,it)}
         val prev=previous;val dt=if(prev==null)0L else t-prev.first
         measured.forEachIndexed {i,s->
             val old=prev?.second?.getOrNull(i)
             if(s==null || old==null || dt !in 1..150){hits[i]=null;return@forEachIndexed}
             val center=if(g.config.mode=="circles")g.circles[i]else g.center
-            val a=old.a-center;val b=s.a-center
+            val antispin=g.config.mode=="antispin"
+            val oldTips=if(antispin)g.antispinTips(old)else listOf(old.a)
+            val tips=if(antispin)g.antispinTips(s)else listOf(s.a)
+            // A linear tip cannot cross angular rays. Together the horizontal x and vertical y
+            // coordinates describe cycle phase; each cardinal phase is an outer turnaround.
+            fun cycle(points:List<P>)=P(g.local(points[0]).x,g.local(points[1]).y)
+            val a=if(antispin)cycle(oldTips)else old.a-center;val b=if(antispin)cycle(tips)else s.a-center
             val before=atan2(a.y,a.x);val delta=atan2(sin(atan2(b.y,b.x)-before),cos(atan2(b.y,b.x)-before))
             // Ignore stationary props, center crossings, and implausibly large endpoint jumps.
             if(a.distance(P(0.0,0.0))>g.radius*.2 && b.distance(P(0.0,0.0))>g.radius*.2 && abs(delta) in .001..1.2){
                 targets[i].forEachIndexed {j,target->
-                    val d=target-center;val to=atan2(sin(atan2(d.y,d.x)-before),cos(atan2(d.y,d.x)-before));val fraction=to/delta
-                    if(fraction>0 && fraction<=1){
+                    val d=if(antispin)g.local(target)else target-center;val to=atan2(sin(atan2(d.y,d.x)-before),cos(atan2(d.y,d.x)-before));val raw=to/delta;val epsilon=if(antispin)1e-9 else 0.0;val fraction=raw.coerceIn(0.0,1.0)
+                    if(raw>epsilon && raw<=1+epsilon && (!antispin || hits[i]?.point!=j+1 || t-hits[i]!!.time>period*2)){
                         val at=prev!!.first+dt*fraction;val nearest=epoch!!+floor((at-epoch!!)/period+.5)*period
-                        val p=old.a+(s.a-old.a)*fraction
+                        val tip=if(antispin && j%2==0)1 else 0
+                        val p=oldTips[tip]+(tips[tip]-oldTips[tip])*fraction
                         hits[i]=BeatHit(at,at-nearest,p.distance(target)/(2*g.radius)*100,j+1)
                     }
                 }
@@ -70,14 +78,15 @@ class FitHelper {
     fun cancel(){active=false;samples.clear();status=""}
     fun update(t:Long,staffs:List<Segment?>,g:Guide,zoomMin:Double,zoomMax:Double,zoom:Double):JSONObject? {
         if(!active)return null
-        val measured=staffs.take(g.config.staffCount).map {it?.takeIf {s->s.confidence>=.7 && !s.occluded}?.let(g::rectify)}
+        val measured=staffs.take(g.config.staffCount).map {it?.takeIf {s->s.confidence>=.7 && !s.occluded && !s.blurred}?.let(g::rectify)}
         if(measured.size!=g.config.staffCount || measured.any {it==null}){start=0;samples.clear();status="Waiting for ${g.config.staffCount} fully visible staff${if(g.config.staffCount==2)"s"else""} to fit the guide.";return null}
         if(start==0L)start=t
         samples.add(measured.filterNotNull());if(samples.size>90)samples.removeAt(0)
         status="Fitting ${((t-start)/20).coerceAtMost(100)}% · keep the full movement in view"
         if(t-start<2000 || samples.size<12)return null
         val all=samples.flatten();val lengths=all.map {it.length}.sorted();val radius=lengths[lengths.size/2]/2
-        val center=P(all.map {it.center.x}.average(),all.map {it.center.y}.average())
+        val endpoints=all.flatMap {listOf(it.a,it.b)}.map(g::local)
+        val center=if(g.config.mode=="antispin")g.point((endpoints.minOf {it.x}+endpoints.maxOf {it.x})/(2*g.radius),(endpoints.minOf {it.y}+endpoints.maxOf {it.y})/(2*g.radius))else P(all.map {it.center.x}.average(),all.map {it.center.y}.average())
         val x=if(g.calibrated)max(1.0,g.config.planeAspect)else g.aspectX;val y=if(g.calibrated)max(1.0,1/g.config.planeAspect)else g.aspectY
         val spanX=all.maxOf {it.center.x+it.length/2}-all.minOf {it.center.x-it.length/2}
         val spanY=all.maxOf {it.center.y+it.length/2}-all.minOf {it.center.y-it.length/2}
@@ -87,14 +96,14 @@ class FitHelper {
             allowZoom=false
             if(abs(desired-zoom)>zoom*.08){start=0;samples.clear();status="Adjusting camera framing, then refitting the guide…";return JSONObject().put("zoom",desired)}
         }
-        val scale=if(sizeOnly || g.config.mode in listOf("circles","free"))radius else max(spanX,spanY)/2/(if(g.config.mode=="cube")1+g.config.cubeDepth/2 else 1.0)
+        val scale=if(g.config.mode=="antispin")radius*2 else if(sizeOnly || g.config.mode in listOf("circles","free"))radius else max(spanX,spanY)/2/(if(g.config.mode=="cube")1+g.config.cubeDepth/2 else 1.0)
         val patch=JSONObject().put("scale",scale.coerceIn(.1,.48))
         if(!sizeOnly)patch.put("cx",(center.x/x).coerceIn(.1,.9)).put("cy",(center.y/y).coerceIn(.1,.9))
         if(!sizeOnly && g.config.mode=="circles" && g.config.staffCount==2){
             val a=P(samples.map {it[0].center.x}.average(),samples.map {it[0].center.y}.average());val b=P(samples.map {it[1].center.x}.average(),samples.map {it[1].center.y}.average())
             patch.put("circleSeparation",(a.distance(b)/radius).coerceIn(0.0,1.8))
         }
-        active=false;samples.clear();status=if(scale>.48)"Guide reached its size limit. Step back or widen the camera, then fit again."else if(sizeOnly)"Guide diameter / width matches the visible staff length."else "Center and size fitted. Adjust Size for your intended pattern."
+        active=false;samples.clear();status=if(scale>.48)"Guide reached its size limit. Step back or widen the camera, then fit again."else if(g.config.mode=="antispin")"Cross center to each outer end matches one staff length. Check the center after a full cycle."else if(sizeOnly)"Guide diameter / width matches the visible staff length."else "Center and size fitted. Adjust Size for your intended pattern."
         return patch
     }
 }

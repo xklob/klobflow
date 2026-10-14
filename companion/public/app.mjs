@@ -2,7 +2,7 @@ import { defaults, demoFrame } from "./demo.mjs";
 import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
 import {SystemAudio} from "./system-audio.mjs";
-import {length} from "./core.mjs";
+import {length,patchConfig} from "./core.mjs";
 import {AlignmentFeedback,StableText,direction,capturingBackground} from './feedback.mjs';
 import {staffColorNames} from './staff-colors.mjs';
 import {FlowStreak,streakText} from './streak.mjs';
@@ -168,7 +168,7 @@ $('ui-size').onchange=()=>applyUiSize($('ui-size').value);
 // Overlay labels are sized in screen pixels, so track how large the canvas is displayed.
 let viewBox={width:0,height:0},hudBox=null;
 // Canvas labels avoid the streak box drawn over the stage (measured after layout, not every frame).
-function measureHud(){const e=$('streak-hud');hudBox=e.hidden?null:{x:e.offsetLeft-canvas.offsetLeft,y:e.offsetTop-canvas.offsetTop,w:e.offsetWidth,h:e.offsetHeight};}
+function measureHud(){const e=$('streak-hud');hudBox=e.hidden||e.parentElement!==$('stage')?null:{x:e.offsetLeft-canvas.offsetLeft,y:e.offsetTop-canvas.offsetTop,w:e.offsetWidth,h:e.offsetHeight};}
 new ResizeObserver(([entry])=>{viewBox=entry.contentRect;measureHud();if(replay&&current)render(current,lastImage);}).observe(canvas);
 new ResizeObserver(measureHud).observe($('streak-hud'));
 new ResizeObserver(([entry])=>{chartBox=entry.contentRect;rootPx=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;drawChart();}).observe(chart);
@@ -177,11 +177,12 @@ const setText=(id,text)=>{const e=$(id);if(e.textContent!==text)e.textContent=te
 function fitStage(){
   if(document.fullscreenElement)return;
   const stage=$('stage'),top=stage.getBoundingClientRect().top+scrollY;
-  stage.style.setProperty('--stage-max-h',`${Math.round(Math.max(160,innerHeight-top-12))}px`);
+  const footer=$('antispin-footer');
+  stage.style.setProperty('--stage-max-h',`${Math.round(Math.max(160,innerHeight-top-12-(footer.hidden?0:footer.offsetHeight+14)))}px`);
 }
 function setPracticing(on){if(document.body.classList.contains('practicing')!==on){document.body.classList.toggle('practicing',on);fitStage();}}
 addEventListener('resize',fitStage);document.addEventListener('fullscreenchange',fitStage);
-const layoutWatch=new ResizeObserver(()=>fitStage());for(const e of [document.querySelector('header'),document.querySelector('.stage-toolbar'),document.querySelector('.quick-actions'),document.querySelector('.status-row')])layoutWatch.observe(e);
+const layoutWatch=new ResizeObserver(()=>fitStage());for(const e of [document.querySelector('header'),document.querySelector('.stage-toolbar'),document.querySelector('.quick-actions'),document.querySelector('.status-row'),$('antispin-footer')])layoutWatch.observe(e);
 // LED colors: an empty list means any color, including rainbow patterns.
 const colorNames=colors=>colors.map(c=>c[0].toUpperCase()+c.slice(1)).join(' + ');
 for(const chip of document.querySelectorAll('#staff-colors .chip'))chip.onclick=()=>{
@@ -256,6 +257,7 @@ function downloadBlob(blob, name) {
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 const descriptions = {
+  antispin: "One staff: trace the horizontal line with one tip and the vertical line with the other. Error measures drift from each assigned line, not shaft angle.",
   grid: "Trace clean lines through the grid. Error measures tip distance to the nearest guide line.",
   circles:
     "Follow overlapping circles. Error measures tip distance from the nearest circumference.",
@@ -300,6 +302,7 @@ function enableControls() {
   document
     .querySelectorAll("[data-config], [data-mode]")
     .forEach((e) => (e.disabled = !(available || demo) || !!replay));
+  $("staff-count").disabled ||= config.mode === "antispin";
   for(const id of ["fit-guide","fit-size","sync-beat"])$(id).disabled=!available||!!replay;
   $("audio-pc").disabled=!available||audioStarting||!!replay;
   $("audio-phone").hidden=!paired;
@@ -357,10 +360,21 @@ function syncConfig(c) {
   $("symmetry").closest("article").hidden=config.staffCount===1;
   const symmetry=document.querySelector('[data-config="symmetry"]');symmetry.closest("label").hidden=config.staffCount===1;
   $("mode-description").textContent = descriptions[config.mode];
+  const antispin=config.mode==='antispin';
+  // Keep every arm of the cross visible, including the bottom turnaround on small previews.
+  const footer=$('antispin-footer'),overlayHost=antispin?footer:$('stage');footer.hidden=!antispin;
+  for(const id of ['stage-badge','streak-hud'])if($(id).parentElement!==overlayHost)overlayHost.append($(id));
+  measureHud();fitStage();
+  document.querySelector('[data-config="beatPoints"]').closest('label').hidden=antispin;
+  $('antispin-beat-help').hidden=!antispin;
+  $('normal-beat-help').hidden=antispin;
+  $('angle').closest('article').hidden=antispin;
+  $('fit-size').title=antispin?'Set center-to-edge distance to one full staff length':'Set guide width or circle diameter to one staff length';
+  $('beat-legend').querySelector('span').textContent=antispin?'Blue rings = outer turnarounds. Alternate the horizontal and vertical tips on successive pulses.':'Blue numbered rings = beat points. The small white dot marks the tip used for timing.';
   $("depth-control").hidden = config.mode !== "cube";
   $("circles-control").hidden = config.mode !== "circles";
   $("error-label").textContent =
-    config.mode === "cube"
+    config.mode === "antispin" ? "LINE DRIFT" : config.mode === "cube"
       ? "VERTEX ERROR"
       : config.mode === "circles"
         ? "CIRCLE ERROR"
@@ -393,7 +407,7 @@ function patch(update) {
   if(update.bpm!==undefined){systemAudio.stop();update={...update,tempoSource:"manual"};}
   configChain = configChain.then(async () => {
     if (demo) {
-      syncConfig({ ...config, ...update });
+      syncConfig(patchConfig(config,update));
       trail = [];
       return;
     }
@@ -750,6 +764,10 @@ function render(frame, image) {
     const x=(s.a[0]+s.b[0])/2*u,y=(s.a[1]+s.b[1])/2*u,note=s.occluded?' · LAST SEEN':s.blurred?' · ENDS UNCLEAR':s.confidence<.55?' · UNSURE':'';
     tag(`${'AB'[n]}${note}`,{fill:n?'#b5a3ff':'#b6f36b',ink:'#10130f',stroke:'#10130f',size:15,alpha:s.occluded?.65:1,force:true,candidates:[()=>[x,y],(pw,ph)=>[x,y-ph*1.2],(pw,ph)=>[x,y+ph*1.2]]});
   });
+  if(c.mode==='antispin'){
+    if(c.showGuide)g.lines.forEach((s,i)=>{const color=i?'#b5a3ff':'#6dd8ff';line(s.a,s.b,color,2.5*k);const [x,y]=at(s.a);tag(i?'VERTICAL':'HORIZONTAL',{ink:color,size:13,candidates:[beside(x,y,0,-1,12*k),beside(x,y,1,0,12*k)]});});
+    if(c.showFeedback)for(const cue of displayedFeedback.tips||[]){const [x,y]=at(cue.tip);tag(cue.axis==='horizontal'?'H TIP':'V TIP',{ink:cue.axis==='horizontal'?'#6dd8ff':'#b5a3ff',size:13,candidates:[beside(x,y,0,-1,20*k),beside(x,y,1,0,20*k),beside(x,y,-1,0,20*k)]});}
+  }
   if(frame.beat?.enabled){
     const on=frame.beat.phase<.18,grow=on&&!reducedMotion.matches;
     ctx.font=`700 ${14*k}px system-ui, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
@@ -758,7 +776,7 @@ function render(frame, image) {
       const nx=x+r+7*k,ny=y-r-4*k;ctx.lineWidth=3.5*k;ctx.strokeStyle='#000';ctx.strokeText(String(j+1),nx,ny);ctx.fillStyle='#fff';ctx.fillText(String(j+1),nx,ny);
     }));
     ctx.textAlign='start';ctx.textBaseline='alphabetic';
-    frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){const [x,y]=at(s.a);ring(x,y,8*k,'#6dd8ff',2.5*k);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,4*k,0,Math.PI*2);ctx.fill();tag('BEAT TIP',{ink:'#9ae9ff',size:13,candidates:[beside(x,y,0,-1,10*k),beside(x,y,1,0,10*k),beside(x,y,-1,0,10*k)]});}});
+    if(c.mode!=='antispin')frame.staffs.forEach(s=>{if(s&&s.confidence>=.55){const [x,y]=at(s.a);ring(x,y,8*k,'#6dd8ff',2.5*k);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,4*k,0,Math.PI*2);ctx.fill();tag('BEAT TIP',{ink:'#9ae9ff',size:13,candidates:[beside(x,y,0,-1,10*k),beside(x,y,1,0,10*k),beside(x,y,-1,0,10*k)]});}});
   }
   // Correction cues: amber ring = the tip to move, arrow = which way, white bullseye = where it belongs.
   const cues=c.showFeedback!==false?displayedFeedback.tips||[]:[],labels=[];
@@ -807,9 +825,9 @@ function showBeat(f){
   return;
  }
  const bpm=Math.round(beat.bpm),rows=beat.hits.map((hit,i)=>{
-  if(!hit)return {text:`${'AB'[i]} · pass the BEAT TIP across a numbered target on a pulse`,good:false};
+  if(!hit)return {text:f.config.mode==='antispin'?'Alternate tips at the four outer turnarounds, one per pulse.':`${'AB'[i]} · pass the BEAT TIP across a numbered target on a pulse`,good:false};
   const onBeat=Math.abs(hit.offsetMs)<=75,precise=hit.error<=f.config.tolerance,timing=onBeat?'on beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${hit.offsetMs<0?'early':'late'}`;
-  return {text:`${'AB'[i]} · point ${hit.point}: ${timing} · ${precise?'on target':'off target'} (${hit.error.toFixed(1)}%)`,good:onBeat&&precise};
+  return {text:`${'AB'[i]} · ${f.config.mode==='antispin'?'turnaround':'point'} ${hit.point}: ${timing} · ${precise?'on target':'off target'} (${hit.error.toFixed(1)}%)`,good:onBeat&&precise};
  });
  timingBox.show({key:`${bpm}|${rows.map(r=>r.text).join('|')}`,paused:false,bpm,tone:'timing',render(){$('beat-pulse').textContent=`${bpm} BPM`;$('beat-hits').replaceChildren(...rows.map(r=>Object.assign(document.createElement('div'),{textContent:r.text,className:r.good?'good':''})));}},{immediate});
 }
@@ -956,7 +974,7 @@ function acceptFrame(f, image = null) {
   if($('fit-status').textContent!==fitText)$('fit-status').textContent=fitText;
   // Keep the last size reading briefly so this helper does not flicker while tips blur.
   const visible=f.staffs.filter(s=>s&&s.confidence>=.7&&!s.occluded);const staffLength=visible.length?visible.reduce((n,s)=>n+length(s),0)/visible.length:0;
-  if(staffLength&&!f.guide.calibrated)sizeReading={text:`Guide width / staff length: ${(f.guide.span/staffLength).toFixed(2)}×. Match staff length sets this to 1×; adjust Size for your pattern.`,time:f.time};
+  if(staffLength&&!f.guide.calibrated)sizeReading={text:`Guide width / staff length: ${(f.guide.span/staffLength).toFixed(2)}×. Match staff length sets this to ${f.config.mode==='antispin'?'2× for the antispin cross (center to edge = one staff)':'1×'}; adjust Size for your pattern.`,time:f.time};
   else if(f.guide.calibrated||!sizeReading||f.time-sizeReading.time>2500||f.time<sizeReading.time)sizeReading={text:f.guide.calibrated?'With angle calibration, size is fitted in the calibrated plane.':'Size help appears when a full staff is clearly visible.',time:-Infinity};
   if($('size-helper').textContent!==sizeReading.text)$('size-helper').textContent=sizeReading.text;
   // Explain the detector minimum in pixels of this camera image (the PC camera reports its full resolution).

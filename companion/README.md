@@ -14,7 +14,7 @@ Use **Calibrate viewing angle** to select top left, top right, bottom right, and
 
 Source, screenshots, release notes, and verification limits: https://github.com/xklob/klobflow
 
-Choose one or two double-ended staves. Each practice mode has a dismissible setup tutorial. Auto-fit runs only when you press it and collects reliable endpoints; Match staff length matches the circle diameter / guide width to the prop. Manual Auto-fit can adjust hardware zoom conservatively. Reset guide layout restores center X/Y, size, rotation, and circle separation while retaining camera, calibration, and tempo settings.
+Choose one or two double-ended staves. Each practice mode has a dismissible setup tutorial. Auto-fit runs only when you press it and collects reliable endpoints; Match staff length matches the circle diameter / guide width to the prop. In Antispin, it sets center-to-edge to one staff length: one tip follows the horizontal line and the other follows the vertical line. The mode selects one staff and gives separate five-second drift readings. Beat practice alternates tips at four outer turnarounds. Manual Auto-fit can adjust hardware zoom conservatively. Reset guide layout restores center X/Y, size, rotation, and circle separation while retaining camera, calibration, and tempo settings.
 
 Beat practice supports manual BPM, tap tempo, 2/4/8 target points, and separate timing (milliseconds early/late) and position (percent of guide width) feedback. Use Start beat now to set the pulse phase.
 

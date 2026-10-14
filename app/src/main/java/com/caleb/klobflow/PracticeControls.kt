@@ -57,7 +57,7 @@ import kotlin.math.*
     Text(ui.frame?.fitStatus?.takeIf {it.isNotEmpty()} ?: "Get into position, then press Auto-fit and spin normally for two seconds with your full staves in view. Match staff length changes size only.",fontSize=15.sp,lineHeight=20.sp,color=Ink)
     Text("Reset guide layout recenters the guide and restores its default size, rotation and circle separation.",fontSize=14.sp,lineHeight=19.sp,color=Muted,modifier=Modifier.padding(top=4.dp))
     val lengths=ui.frame?.let {f->f.staffs.take(ui.config.staffCount).mapNotNull {s->s?.takeIf {it.confidence>=.7 && !it.occluded}?.let(f.guide::rectify)?.length}}.orEmpty()
-    if(lengths.isNotEmpty())Text("Guide width / staff length: %.2f×. Match staff length sets 1×; adjust Size for your pattern.".format(ui.config.scale*2/lengths.average()),fontSize=14.sp,lineHeight=19.sp,color=Muted,modifier=Modifier.padding(top=4.dp,bottom=8.dp))
+    if(lengths.isNotEmpty())Text((if(ui.config.mode=="antispin")"Cross width / staff length: %.2f×. Match staff length sets 2×: center to each outer end is one full staff."else"Guide width / staff length: %.2f×. Match staff length sets 1×; adjust Size for your pattern.").format(ui.config.scale*2/lengths.average()),fontSize=14.sp,lineHeight=19.sp,color=Muted,modifier=Modifier.padding(top=4.dp,bottom=8.dp))
 }
 @Composable fun BeatSettings(ui:FlowUi,engine:FlowEngine) {
     AudioControls(ui,engine)
@@ -68,7 +68,8 @@ import kotlin.math.*
         OutlinedTextField(value=bpm,onValueChange={bpm=it.filter(Char::isDigit).take(3)},label={Text("BPM (30–240)")},singleLine=true,modifier=Modifier.weight(1f))
         Button(enabled=bpm.toIntOrNull() in 30..240,onClick={engine.updateConfig(JSONObject().put("bpm",bpm.toInt()).put("tempoEnabled",true).put("tempoSource","manual"))}){Text("Set")}
     }
-    Row {listOf(2,4,8).forEach {n->FilterChip(selected=ui.config.beatPoints==n,onClick={engine.updateConfig(JSONObject().put("beatPoints",n))},label={Text("$n points")},modifier=Modifier.padding(end=6.dp))}}
+    if(ui.config.mode=="antispin")Text("4 outer turnarounds per cycle · alternate tips",fontSize=16.sp,color=Cyan)
+    else Row {listOf(2,4,8).forEach {n->FilterChip(selected=ui.config.beatPoints==n,onClick={engine.updateConfig(JSONObject().put("beatPoints",n))},label={Text("$n points")},modifier=Modifier.padding(end=6.dp))}}
     Row {
         TextButton(enabled=ui.config.tempoSource=="manual",onClick={engine.command(JSONObject().put("action","syncBeat"))}){Text("Start beat now")}
         TextButton(onClick={val now=SystemClock.elapsedRealtime();taps=if(taps.isEmpty() || now-taps.last()>2000)listOf(now)else (taps+now).takeLast(6);if(taps.size>1){val tempo=(60000.0*(taps.size-1)/(now-taps.first())).roundToInt().coerceIn(30,240);engine.updateConfig(JSONObject().put("bpm",tempo).put("tempoEnabled",true).put("tempoSource","manual"));engine.command(JSONObject().put("action","syncBeat"))}}){Text("Tap tempo")}
@@ -76,11 +77,12 @@ import kotlin.math.*
     var help by remember {mutableStateOf(false)}
     TextButton(onClick={help=true}){Text("How beat practice works")}
     if(help)AlertDialog(onDismissRequest={help=false},title={Text("Hit a point on each beat")},text={Column(Modifier.verticalScroll(rememberScrollState())){
-        listOf("Follow the end labeled BEAT TIP. Only that end is timed. Pass it across a numbered target on each blue pulse, in either direction. The pulse is visual; there is no metronome sound.",
-            "With 4 points at 120 BPM: top → right → bottom → left on successive beats. One full circle takes 2 seconds. Try 2 points first. All target rings pulse together; numbers label positions, not a required starting point.",
+        ((if(ui.config.mode=="antispin")listOf("Alternate the two tips at the four outer ends of the cross: top → right → bottom → left, or reverse. Reach one outer end on each blue pulse. All four rings pulse together; start anywhere. At 120 BPM, one full cycle takes 2 seconds.",
+            "The horizontal tip moves left/right; the vertical tip moves up/down. Timing uses their combined cycle phase to estimate each turnaround. Position measures the arriving tip against that outer target. The pulse is silent.")else listOf("Follow the end labeled BEAT TIP. Only that end is timed. Pass it across a numbered target on each blue pulse, in either direction. The pulse is visual; there is no metronome sound.",
+            "With 4 points at 120 BPM: top → right → bottom → left on successive beats. One full circle takes 2 seconds. Try 2 points first. All target rings pulse together; numbers label positions, not a required starting point."))+listOf(
             "On beat means within 75 ms early or late. On target means within your Target tolerance. These are separate checks. Hidden or unclear tips do not produce a beat result.",
             "Start beat now resets the manual pulse. Tap tempo sets its speed from your taps. System audio follows its detected beat. Adjust Audio offset if the pulse consistently leads or lags the music.")
-            .forEach {Text(it,fontSize=16.sp,lineHeight=22.sp,modifier=Modifier.padding(bottom=12.dp))}
+            ).forEach {Text(it,fontSize=16.sp,lineHeight=22.sp,modifier=Modifier.padding(bottom=12.dp))}
     }},confirmButton={TextButton(onClick={help=false}){Text("Got it")}})
 }
 /** Timing box: the text holds and fades slowly; only the small dot pulses on the beat. */
@@ -92,9 +94,9 @@ import kotlin.math.*
     val next=if(paused)BoxText("wait","Beat timing paused",if(f.audio.status.contains("Following"))"Waiting for fresh audio timing." else f.audio.status)
     else BoxText("timing","${beat.bpm.roundToInt()} BPM",beat.hits.mapIndexed {i,hit->
         val name=if(i==0)"A" else "B"
-        if(hit==null)"$name · pass the BEAT TIP across a numbered target on a pulse" else {
+        if(hit==null)(if(ui.config.mode=="antispin")"Alternate tips at the four outer turnarounds, one per pulse." else "$name · pass the BEAT TIP across a numbered target on a pulse") else {
             val timing=if(abs(hit.offsetMs)<=75)"on beat" else "${abs(hit.offsetMs).roundToInt()} ms ${if(hit.offsetMs<0)"early" else "late"}"
-            "$name · point ${hit.point}: $timing · ${if(hit.error<=ui.config.tolerance)"on target" else "off target"} (${"%.1f".format(hit.error)}%)"
+            "$name · ${if(ui.config.mode=="antispin")"turnaround"else"point"} ${hit.point}: $timing · ${if(hit.error<=ui.config.tolerance)"on target" else "off target"} (${"%.1f".format(hit.error)}%)"
         }
     }.joinToString("\n"),beat.bpm)
     val pulse=beat.enabled && beat.phase<.18
@@ -152,7 +154,7 @@ private fun toneFill(tone:String)=when(tone){"ok"->Color(0xff13241c);"warn"->Col
             // A minimum text height keeps the box (and the camera preview below it) from jumping between messages.
             Column(Modifier.heightIn(min=if(compact)28.dp else 86.dp).alpha(fade.value)){
                 Text(shown.title,color=tone,fontSize=21.sp,lineHeight=25.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=2.dp))
-                if(shown.detail.isNotEmpty() && (!compact || label=="Timing"))Text(shown.detail,color=Ink,fontSize=15.sp,lineHeight=20.sp,modifier=Modifier.padding(top=3.dp))
+                if(shown.detail.isNotEmpty() && (!compact || label=="Timing" || shown.detail.startsWith("Horizontal tip:")))Text(if(compact && shown.detail.startsWith("Horizontal tip:"))shown.detail.substringBefore(". ")+" · 5s"else shown.detail,color=Ink,fontSize=15.sp,lineHeight=20.sp,modifier=Modifier.padding(top=3.dp))
             }
         }
     }

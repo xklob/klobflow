@@ -17,6 +17,28 @@ import java.net.URL
 
 @RunWith(AndroidJUnit4::class)
 class FlowDeviceTest {
+    @Test fun antispinModeTracksTwoAxesAndShowsItsTutorial(){
+        val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
+        context.getSharedPreferences("practice",0).edit().putString("config",Config(mode="antispin",staffCount=1,scale=.3,tempoEnabled=true,beatPoints=8).json().toString()).putBoolean("sharingEnabled",false).commit()
+        context.getSharedPreferences("tutorials",0).edit().putBoolean("antispin",true).commit()
+        val guides=JSONObject(context.assets.open("practice-guides.json").bufferedReader().use {it.readText()})
+        assertEquals(4,guides.getJSONObject("antispin").getJSONArray("steps").length())
+        ActivityScenario.launch(MainActivity::class.java).use {scenario->
+            lateinit var engine:FlowEngine;scenario.onActivity {engine=it.engine;engine.startDemo()}
+            await {engine.ui.value.frame?.metrics?.deviation!=null}
+            val f=engine.ui.value.frame!!;assertEquals(1,f.guide.config.staffCount);assertNull(f.metrics.angle)
+            assertEquals(setOf("horizontal","vertical"),f.guide.cues(f.staffs).map {it.axis}.toSet());assertEquals(4,f.beat.targets[0].size)
+            await {engine.ui.value.frame!!.beat.hits.any {it!=null}}
+            val device=androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+            assertNotNull(device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.text("Antispin")),5000))
+            device.findObject(androidx.test.uiautomator.By.text("Full screen")).click()
+            assertTrue(device.wait(androidx.test.uiautomator.Until.hasObject(androidx.test.uiautomator.By.text("Exit full screen")),5000))
+            val axis=device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.textContains("Horizontal tip:")),12000)
+            assertNotNull("Antispin must show per-axis drift in full screen",axis)
+            val screenshot=instrumentation.uiAutomation.takeScreenshot()
+            java.io.File(context.getExternalFilesDir(null),"practice-antispin.png").outputStream().use {screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};screenshot.recycle()
+        }
+    }
     private fun await(timeout:Long=15000,condition:()->Boolean){val end=SystemClock.elapsedRealtime()+timeout;while(SystemClock.elapsedRealtime()<end){if(condition())return;Thread.sleep(150)};assertTrue("Timed out",condition())}
     @Test fun cameraSharingAndZoomRecoverAcrossBackgroundAndRecreation() {
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext

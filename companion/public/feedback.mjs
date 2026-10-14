@@ -35,10 +35,12 @@ export class AlignmentFeedback {
   if(issue){this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=issue;}
   const snapshot=capturingBackground(frame),confirmed=!issue&&!snapshot;
   this.samples=this.samples.filter(s=>time-s.time<=5000&&s.time!==time);
-  if(snapshot)this.samples=[];else this.samples.push({time,valid:confirmed,on:confirmed&&cues.length===count*2&&cues.every(c=>c.error<=config.tolerance)});
+  if(snapshot)this.samples=[];else this.samples.push({time,valid:confirmed,on:confirmed&&cues.length===count*2&&cues.every(c=>c.error<=config.tolerance),horizontal:confirmed?cues.find(c=>c.axis==='horizontal')?.error:null,vertical:confirmed?cues.find(c=>c.axis==='vertical')?.error:null});
   const measured=this.samples.filter(s=>s.valid),recent=measured.length>=3&&time-measured.at(-1).time<=(issue?.kind==='hidden'?1500:1000);
   const coverage=Math.round(measured.length/Math.max(1,this.samples.length)*100),onPercent=measured.length?Math.round(measured.filter(s=>s.on).length/measured.length*100):0;
-  const summary=recent&&!free&&!snapshot?{tone:onPercent>=80?'ok':'warn',title:`${onPercent}% ON TARGET`,detail:`Of measured frames in the last 5 seconds. Tolerance: ${config.tolerance}% of guide width. Unclear frames are excluded.`}:null;
+  const average=axis=>{const values=measured.map(s=>s[axis]).filter(Number.isFinite);return values.length?(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1):'–';};
+  const axisDetail=config.mode==='antispin'&&recent?`Horizontal tip: ${average('horizontal')}% drift · Vertical tip: ${average('vertical')}% drift. `:'';
+  const summary=recent&&!free&&!snapshot?{tone:onPercent>=80?'ok':'warn',title:`${onPercent}% ON TARGET`,detail:axisDetail+`Of measured frames in the last 5 seconds. Tolerance: ${config.tolerance}% of guide width. Unclear frames are excluded.`}:null;
   // Text changes are held and faded by StableText, independently of current measurements.
   const shown=snapshot?{tone:'wait',title:'BACKGROUND SNAPSHOT',detail:'Move your staves out of view and keep the camera still.'}:confirmed?{tone:'ok',title:'CLEAR',detail:count===1?'Your staff and both of its ends are sharp.':'Both staves and all four ends are sharp.'}:describeIssue(issue??this.lastIssue??{kind:'starting'},count);
   if(recent&&!snapshot){shown.tone=coverage>=80?'ok':'warn';shown.title=`${coverage}% MEASURED`;shown.detail='Frames with both ends located, over the last 5 seconds. Unclear frames pause live scores and rings.';}

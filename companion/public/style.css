@@ -246,6 +246,7 @@ h1 span {
   font-weight: 400;
   line-height: 1;
 }
+.mode-grid [data-mode="antispin"] { grid-column: 1 / -1; flex-direction: row; justify-content: center; }
 .mode-grid .active {
   border-color: var(--lime);
   background: #b6f36b14;
@@ -1108,6 +1109,11 @@ input[type="number"] {
   display: block;
   font-size: 0.75rem;
 }
+#antispin-footer { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; flex:none; }
+#antispin-footer[hidden] { display:none; }
+#antispin-footer .streak-hud { position:static; flex:1; width:auto; min-width:12rem; }
+#antispin-footer .streak-hud small { display:none; }
+#antispin-footer #stage-badge { position:static; margin:0; }
 .streak-hud[data-state="paused"] strong {
   color: var(--slate);
 }

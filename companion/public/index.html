@@ -38,7 +38,7 @@
             <button data-mode="grid" class="active"><b>⊞</b> Grid</button
             ><button data-mode="circles"><b>◎</b> Circles</button
             ><button data-mode="cube"><b>◇</b> Cube</button
-            ><button data-mode="free"><b>~</b> Free flow</button>
+            ><button data-mode="free"><b>~</b> Free flow</button><button data-mode="antispin"><b>+</b> Linear antispin</button>
           </div>
           <div class="divider"></div>
           <div class="section-title">
@@ -138,8 +138,9 @@
           <label class="select-label">Points per turn <select data-config="beatPoints"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select></label>
           <div class="button-row wrap"><button id="sync-beat" class="subtle">Start beat now</button><button id="tap-tempo" class="subtle">Tap tempo</button></div>
           <details class="beat-help"><summary>How beat practice works</summary>
-          <p>Follow the end labeled <strong>BEAT TIP</strong>. Only that end is timed. Pass it across a numbered target on each blue pulse; either direction works. The pulse is visual, with no metronome sound.</p>
-          <p>With 4 points and 120 BPM, pass top → right → bottom → left on successive beats: one full circle every 2 seconds. Start with 2 points for a simpler exercise. All target rings pulse together; the numbers label positions, not a required starting point.</p>
+          <div id="normal-beat-help"><p>Follow the end labeled <strong>BEAT TIP</strong>. Only that end is timed. Pass it across a numbered target on each blue pulse; either direction works. The pulse is visual, with no metronome sound.</p>
+          <p>With 4 points and 120 BPM, pass top → right → bottom → left on successive beats: one full circle every 2 seconds. Start with 2 points for a simpler exercise. All target rings pulse together; the numbers label positions, not a required starting point.</p></div>
+          <div id="antispin-beat-help" hidden><p>Alternate the two tips at the four outer ends of the cross: top → right → bottom → left, or reverse. Reach one outer end on each blue pulse. All four rings pulse together; start anywhere. At 120 BPM, one full cycle takes 2 seconds.</p><p>The horizontal tip moves left/right; the vertical tip moves up/down. Timing uses their combined cycle phase to estimate each turnaround. Position is how close the arriving tip comes to that outer target. The pulse is silent.</p></div>
           <p><strong>On beat</strong> means within 75 milliseconds early or late. <strong>On target</strong> means within your Target tolerance. These are separate checks. Hidden or unclear tips do not produce a beat result.</p>
           <p>With manual BPM, <strong>Start beat now</strong> resets the pulse; <strong>Tap tempo</strong> sets its speed from your taps. System audio follows its detected beat. Adjust Audio timing offset if the pulse consistently leads or lags the music.</p>
           </details></div>
@@ -247,6 +248,7 @@
               <div id="stage-badge" hidden>DEMO · GENERATED MOTION</div>
               <div id="seed-message" hidden></div>
             </div>
+            <div id="antispin-footer" hidden></div>
           </div>
           <details class="legend-help"><summary>What do the lines and rings mean?</summary>
           <div class="feedback-legend" aria-label="What the practice view shows">
