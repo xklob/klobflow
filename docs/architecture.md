@@ -45,3 +45,13 @@ Android application ID: `com.caleb.klobflow`. Debug builds add `.debug`. A stabl
 `browser-camera.mjs` owns getUserMedia, capture-profile measurement, lifecycle, hardware zoom, and MediaRecorder/IndexedDB sessions. Native video preview is independent of a single-in-flight worker (`tracker-worker.mjs`) that analyzes mirrored 384-pixel images. `core.mjs` ports the deterministic native detector, tracker, geometry, homography, and scorer. Native-generated committed fixtures are checked by both JVM and Node tests, including nonzero perspective measurements and occlusion.
 
 Hidden tips retain association memory for 1.5 seconds, with confidence below the scoring threshold and an explicit occluded field. A shortened segment cannot supply a precise unseen endpoint. Three observations are required for reacquisition; identities can still be ambiguous after long or overlapping occlusion.
+
+## Audio tempo (0.5.0)
+
+Android uses a user-approved `mediaProjection` foreground service and `AudioPlaybackCaptureConfiguration`. PCM becomes 20 ms low-band/full-band energy samples; a bounded eight-second periodicity window estimates BPM, phase, and confidence. The implementation adapts the local Prism visualizer's periodicity approach. Only estimated rhythm enters frame exports. No microphone source, screen image buffer, or audio recording is created.
+
+The browser's user-initiated `getDisplayMedia` receives a system/tab audio track. An AudioWorklet calculates the same energy envelope and a dedicated worker calculates periodicity. Silence and low confidence clear a usable tempo. Capture is explicitly stoppable, and missing audio tracks release the selected stream with an explanation. Native/browser PCM fixtures compare estimate outputs.
+
+For PC audio with Android camera tracking, `/api/clock` samples the phone monotonic clock. The browser picks the lowest round trip of three samples and refreshes every 20 seconds. Rhythm messages include converted beat origin, confidence, and sample age. The Android engine expires PC tempo after two seconds. Unsynchronized or invalid rhythm messages are rejected. Camera frames and authoritative Android beat measurements remain timestamped by the phone.
+
+Fitting revisions prevent queued automatic fit updates from overwriting later manual guide/camera edits.

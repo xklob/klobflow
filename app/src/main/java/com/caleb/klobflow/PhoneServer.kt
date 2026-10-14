@@ -19,6 +19,7 @@ class PhoneServer(private val engine:FlowEngine):NanoHTTPD("0.0.0.0",8787) {
                 session.method==Method.GET && session.uri=="/api/stream"->newChunkedResponse(Response.Status.OK,"application/x-klobflow-stream",engine.stream.open()).apply {
                     addHeader("Cache-Control","no-store");addHeader("X-Content-Type-Options","nosniff")
                 }
+                session.method==Method.GET && session.uri=="/api/clock"->json(Response.Status.OK,JSONObject().put("time",android.os.SystemClock.elapsedRealtime()))
                 session.method==Method.GET && session.uri=="/api/live"->json(Response.Status.OK,engine.liveJson())
                 session.method==Method.GET && session.uri=="/api/sessions"->json(Response.Status.OK,JSONObject().put("sessions",engine.sessionsJson()))
                 session.method==Method.GET && session.uri=="/api/session"->{

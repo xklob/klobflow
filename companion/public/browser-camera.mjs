@@ -6,7 +6,7 @@ export class BrowserCamera {
   constructor(video,{onFrame=()=>{},onStatus=()=>{},onSessions=()=>{}}={}){
     this.video=video;this.onFrame=onFrame;this.onStatus=onStatus;this.onSessions=onSessions;
     this.config={...defaults};try{this.config=patchConfig(this.config,JSON.parse(localStorage.getItem("klobflow.local.config")||"{}"),{restore:true});}catch{}
-    this.active=false;this.recording=false;this.finalizing=false;this.generation=0;this.requestId=0;this.pending=new Map();this.unsaved=new Map();this.lastFrame=null;
+    this.active=false;this.recording=false;this.finalizing=false;this.generation=0;this.requestId=0;this.configRevision=0;this.pending=new Map();this.unsaved=new Map();this.lastFrame=null;
     this.canvas=document.createElement("canvas");this.context=this.canvas.getContext("2d",{willReadFrequently:true});
     this.recordCanvas=document.createElement("canvas");this.recordContext=this.recordCanvas.getContext("2d");
     this.resumeOnVisible=false;
@@ -47,7 +47,7 @@ export class BrowserCamera {
       this.worker.onmessage=({data})=>{
         if(generation!==this.generation)return;
         if(data.id){const p=this.pending.get(data.id);this.pending.delete(data.id);if(p){clearTimeout(p.timer);data.type==="error"?p.reject(Error(data.error)):p.resolve(data);}}
-        if(data.type==="fit")this.command({action:"config",config:data.config,fromFit:true}).catch(e=>this.onStatus(e.message));
+        if(data.type==="fit"&&data.revision===this.configRevision)this.command({action:"config",config:data.config,fromFit:true}).catch(e=>this.onStatus(e.message));
         if(data.type==="error"){if(data.frame)this.busy=false;this.onStatus(data.error);}
         if(data.type==="frame"){
           this.busy=false;const f={...data.frame,cameraReady:this.active,recording:this.recording,finalizing:this.finalizing,elapsedMs:this.recording?Math.max(0,data.frame.time-this.recordingStarted):0,status:this.status,zoom:this.zoom,cameraFps:this.cameraFps||this.profile.measuredFps};
@@ -57,7 +57,7 @@ export class BrowserCamera {
         }
       };
       this.worker.onerror=()=>{this.busy=false;this.onStatus("Camera analysis stopped. Restart the PC camera to try again.");};
-      await this.request("config",{config:this.config,restore:true,start:true,zoom:this.zoom});
+      await this.request("config",{config:this.config,restore:true,start:true,zoom:this.zoom,revision:this.configRevision});
       this.active=true;this.busy=false;this.lastSubmitted=0;this.cameraSamples=[];
       this.track.onended=()=>{if(this.active){this.stop().catch(()=>{});this.onStatus("Camera disconnected. Reconnect it and choose Start PC camera.");}};
       this.status=`${this.settings.width} × ${this.settings.height} · ${Math.round(this.profile.measuredFps)} fps measured · PC camera`;
@@ -101,12 +101,14 @@ export class BrowserCamera {
     await this.track.applyConstraints({advanced:[{zoom:ratio}]});
     this.zoom={min:cap.min,max:cap.max,ratio:this.track.getSettings().zoom??ratio};
   }
+  audioTempo(audio){this.worker?.postMessage({type:"audio",audio});}
   async command(command){
     if(command.action==="config"){
       if((this.recording||this.finalizing)&&["mirror","facing","fps"].some(k=>k in command.config&&command.config[k]!==this.config[k]))throw Error("Stop recording before changing camera or mirroring");
+      if(!command.fromFit)++this.configRevision;const revision=this.configRevision;
       const next=patchConfig(this.config,command.config),previous=this.config;
       this.config=next;
-      try{if(next.zoom!==previous.zoom)await this.applyZoom();await this.request("config",{config:next,fromFit:!!command.fromFit,zoom:this.zoom});}
+      try{if(next.zoom!==previous.zoom)await this.applyZoom();if(command.fromFit&&revision!==this.configRevision)return {ok:true,config:this.config};await this.request("config",{config:next,fromFit:!!command.fromFit,zoom:this.zoom,revision});}
       catch(e){this.config=previous;throw e;}
       this.video.style.transform=next.mirror?"scaleX(-1)":"none";this.remember();return {ok:true,config:this.config};
     }
@@ -114,7 +116,7 @@ export class BrowserCamera {
       if(!this.lastFrame)throw Error("Wait for camera frames");
       return this.command({action:"config",config:{planeCorners:command.points,planeAspect:command.aspect,calibrationImageAspect:this.lastFrame.width/this.lastFrame.height}});
     }
-    if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly});
+    if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly,revision:++this.configRevision});
     else if(command.action==="syncBeat")await this.request("syncBeat",{time:performance.now()});
     else if(command.action==="seed")await this.request("seed",{points:command.points,time:performance.now()});
     else if(command.action==="reset")this.worker.postMessage({type:"reset"});

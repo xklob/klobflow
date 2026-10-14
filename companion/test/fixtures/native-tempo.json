@@ -1,0 +1,182 @@
+{"states": [
+  {
+    "running": true,
+    "at": 1500,
+    "level": 5.291019286010338E-7,
+    "origin": 0,
+    "confidence": 0,
+    "bpm": null,
+    "status": "Listening for a steady beat\u2026 allow 6\u201310 seconds."
+  },
+  {
+    "running": true,
+    "at": 2000,
+    "level": 5.29101928601033E-7,
+    "origin": 0,
+    "confidence": 0,
+    "bpm": null,
+    "status": "Listening for a steady beat\u2026 allow 6\u201310 seconds."
+  },
+  {
+    "running": true,
+    "at": 2500,
+    "level": 5.29101928601033E-7,
+    "origin": 0,
+    "confidence": 0,
+    "bpm": null,
+    "status": "Listening for a steady beat\u2026 allow 6\u201310 seconds."
+  },
+  {
+    "running": true,
+    "at": 3000,
+    "level": 5.291019286010326E-7,
+    "origin": 0,
+    "confidence": 0,
+    "bpm": null,
+    "status": "Listening for a steady beat\u2026 allow 6\u201310 seconds."
+  },
+  {
+    "running": true,
+    "at": 3500,
+    "level": 5.291019286010318E-7,
+    "origin": 0,
+    "confidence": 0,
+    "bpm": null,
+    "status": "Listening for a steady beat\u2026 allow 6\u201310 seconds."
+  },
+  {
+    "running": true,
+    "at": 4000,
+    "level": 5.291019286010319E-7,
+    "origin": 4025.0000000000005,
+    "confidence": 0.9842362022465979,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 4500,
+    "level": 5.291019286010313E-7,
+    "origin": 4528.4375,
+    "confidence": 0.9841719062914969,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 5000,
+    "level": 5.291019286010306E-7,
+    "origin": 5024.0625,
+    "confidence": 0.9843682962094773,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 5500,
+    "level": 5.29101928601031E-7,
+    "origin": 5527.5,
+    "confidence": 0.9844141507014151,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 6000,
+    "level": 5.2910192860103E-7,
+    "origin": 6023.125,
+    "confidence": 0.9844154351106208,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 6500,
+    "level": 5.291019286010304E-7,
+    "origin": 6526.5625,
+    "confidence": 0.9844938187514358,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 7000,
+    "level": 5.291019286010296E-7,
+    "origin": 7022.1875,
+    "confidence": 0.9843696796926571,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 7500,
+    "level": 5.29101928601029E-7,
+    "origin": 7523.4375,
+    "confidence": 0.9846251014092627,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 8000,
+    "level": 5.291019286010299E-7,
+    "origin": 8026.875,
+    "confidence": 0.9847023902359711,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 8500,
+    "level": 5.291019286010291E-7,
+    "origin": 8522.5,
+    "confidence": 0.9844610355175925,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 9000,
+    "level": 5.291019286010276E-7,
+    "origin": 9025.9375,
+    "confidence": 0.9845840015281484,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 9500,
+    "level": 5.291019286010275E-7,
+    "origin": 9521.5625,
+    "confidence": 0.9844485935807599,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 10000,
+    "level": 5.291019286010272E-7,
+    "origin": 10025,
+    "confidence": 0.9846905636132005,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 10500,
+    "level": 5.291019286010281E-7,
+    "origin": 10528.4375,
+    "confidence": 0.9846267113439081,
+    "bpm": 120,
+    "status": "Following system audio"
+  },
+  {
+    "running": true,
+    "at": 11000,
+    "level": 5.291019286010264E-7,
+    "origin": 11024.0625,
+    "confidence": 0.9846894754918745,
+    "bpm": 120,
+    "status": "Following system audio"
+  }
+]}

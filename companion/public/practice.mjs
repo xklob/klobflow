@@ -8,8 +8,9 @@ export class TimingCoach {
   if(c.mode==='cube')return c.beatPoints===8?g.vertices:c.beatPoints===4?g.vertices.slice(0,4):[g.vertices[0],g.vertices[2]];
   return Array.from({length:c.beatPoints},(_,i)=>{const a=-Math.PI/2+i*2*Math.PI/c.beatPoints+c.rotation*Math.PI/180,d=[Math.cos(a),Math.sin(a)],r=c.mode==='grid'?g.radius/Math.max(Math.abs(Math.cos(a-c.rotation*Math.PI/180)),Math.abs(Math.sin(a-c.rotation*Math.PI/180))):g.radius;return add(origin,mul(d,r));});
  }
- update(t,staffs,g,tempo=g.config.bpm){
-  if(!g.config.tempoEnabled){this.reset();return {enabled:false,bpm:120,phase:0,targets:[],hits:[]};}
+ update(t,staffs,g,tempo=g.config.bpm,externalEpoch=null,ready=true){
+  if(!g.config.tempoEnabled||!ready){this.reset();return {enabled:false,bpm:120,phase:0,targets:[],hits:[]};}
+  if(externalEpoch!==null)this.epoch=externalEpoch;
   this.epoch??=t;const period=60000/tempo,phase=(((t-this.epoch)/period)%1+1)%1;
   const measured=staffs.slice(0,g.config.staffCount).map(s=>s&&s.confidence>=.55&&!s.occluded?g.rectify(s):null),targets=Array.from({length:g.config.staffCount},(_,i)=>this.targets(g,i)),prev=this.previous,dt=prev?t-prev.time:0;
   measured.forEach((s,i)=>{

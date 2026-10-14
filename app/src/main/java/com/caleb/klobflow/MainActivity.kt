@@ -50,6 +50,26 @@ private val Background=Color(0xff10130f)
 private val Muted=Color(0xffa1aa9b)
 class MainActivity:ComponentActivity() {
     internal lateinit var engine:FlowEngine
+    private var audioRequest=false
+    private val audioPermission=registerForActivityResult(ActivityResultContracts.RequestPermission()){granted->if(granted)launchAudioConsent()else {audioRequest=false;PhoneAudio.report("Audio permission was declined. Manual BPM is available.")}}
+    private val audioConsent=registerForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
+        audioRequest=false
+        if(result.resultCode==RESULT_OK && result.data!=null){engine.updateConfig(JSONObject().put("tempoSource","phone").put("tempoEnabled",true));ContextCompat.startForegroundService(this,Intent(this,PlaybackTempoService::class.java).putExtra("consent",result.data))}
+        else PhoneAudio.report("Audio sharing was canceled. Manual BPM is available.")
+    }
+    private fun launchAudioConsent(){
+        val manager=getSystemService(android.media.projection.MediaProjectionManager::class.java)
+        val intent=if(android.os.Build.VERSION.SDK_INT>=34)manager.createScreenCaptureIntent(android.media.projection.MediaProjectionConfig.createConfigForDefaultDisplay())else manager.createScreenCaptureIntent()
+        audioConsent.launch(intent)
+    }
+    fun requestSystemAudio(){
+        if(audioRequest)return
+        if(PhoneAudio.state.value.running){engine.updateConfig(JSONObject().put("tempoSource","phone").put("tempoEnabled",true));return}
+        engine.updateConfig(JSONObject().put("tempoSource","phone").put("tempoEnabled",true))
+        PhoneAudio.report("Approve system audio in the Android sharing prompt.")
+        audioRequest=true
+        if(ContextCompat.checkSelfPermission(this,Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)launchAudioConsent()else audioPermission.launch(Manifest.permission.RECORD_AUDIO)
+    }
     override fun onCreate(savedInstanceState:Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

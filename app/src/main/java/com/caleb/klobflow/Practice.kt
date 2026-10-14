@@ -26,8 +26,9 @@ class TimingCoach {
             center+d*r
         }
     }
-    fun update(t:Long,staffs:List<Segment?>,g:Guide,tempo:Double=g.config.bpm):BeatFrame {
-        if(!g.config.tempoEnabled){reset();return BeatFrame()}
+    fun update(t:Long,staffs:List<Segment?>,g:Guide,tempo:Double=g.config.bpm,externalEpoch:Double?=null,ready:Boolean=true):BeatFrame {
+        if(!g.config.tempoEnabled || !ready){reset();return BeatFrame()}
+        if(externalEpoch!=null)epoch=externalEpoch
         if(epoch==null)epoch=t.toDouble()
         val period=60000/tempo;val phase=(((t-epoch!!)/period)%1+1)%1
         val measured=staffs.take(g.config.staffCount).map {it?.takeIf {s->s.confidence>=.55 && !s.occluded}?.let(g::rectify)}

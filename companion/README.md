@@ -15,3 +15,5 @@ Source, screenshots, release notes, and verification limits: https://github.com/
 Choose one or two double-ended staves. Each practice mode has a dismissible setup tutorial. Fit center & size collects reliable endpoints; Match staff length matches the circle diameter / guide width to the prop. Startup fitting can adjust hardware zoom conservatively.
 
 Beat practice supports manual BPM, tap tempo, 2/4/8 target points, and separate timing (milliseconds early/late) and position (percent of guide width) feedback. Use Start beat now to set the pulse phase.
+
+Use PC system audio to follow music from a shared tab or screen with audio enabled. This can drive either PC-camera practice or the Android camera over USB/LAN. Use phone audio requests native approval on the Android device. Allow 6–10 seconds to establish tempo, use Half/Double for rhythmic ambiguity, and use Audio offset for timing latency. Missing/silent/unsupported audio pauses beat feedback. Use manual BPM / stop audio releases capture and restores manual timing. Audio is never recorded or uploaded.

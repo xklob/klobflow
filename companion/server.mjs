@@ -126,7 +126,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           paired: !!pairing,
           address: pairing?.address,
           transport: pairing?.transport,
-          version: "0.4.0",
+          version: "0.5.0",
         });
       if (url.pathname === "/api/pair" && req.method === "POST") {
         const input = await readJson(req);
@@ -139,7 +139,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           const response = await upstream("/api/live", "GET", undefined, candidate);
           const state = await response.json();
           if (state.protocol !== 2 || typeof state.version !== "string")
-            throw new Error("Update the phone to Klobflow 0.4.0 or newer.");
+            throw new Error("Update the phone to Klobflow 0.5.0 or newer.");
           if (generation !== pairGeneration) throw new Error("Connection was canceled.");
           stopStreams();
           await pairing?.close?.();
@@ -159,7 +159,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
       if (url.pathname === "/api/control" && req.method === "POST") {
         const body = await readJson(req);
         if (
-          !["config", "reset", "seed", "calibrate", "record", "stop"].includes(body.action)
+          !["config", "reset", "seed", "calibrate", "record", "stop", "fit", "syncBeat", "audioStart", "audioStop", "audioTempo"].includes(body.action)
         )
           throw new Error("Unknown control.");
         return json(
@@ -168,7 +168,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         );
       }
       if (
-        ["/api/live", "/api/sessions"].includes(url.pathname) &&
+        ["/api/live", "/api/sessions", "/api/clock"].includes(url.pathname) &&
         req.method === "GET"
       )
         return json(200, await (await upstream(url.pathname)).json());
@@ -210,6 +210,10 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         "/stream.mjs": ["stream.mjs", "text/javascript"],
         "/core.mjs": ["core.mjs", "text/javascript"],
         "/practice.mjs": ["practice.mjs", "text/javascript"],
+        "/system-audio.mjs": ["system-audio.mjs", "text/javascript"],
+        "/tempo-core.mjs": ["tempo-core.mjs", "text/javascript"],
+        "/tempo-worker.mjs": ["tempo-worker.mjs", "text/javascript"],
+        "/audio-worklet.mjs": ["audio-worklet.mjs", "text/javascript"],
         "/practice-guides.json": ["practice-guides.json", "application/json"],
         "/camera.mjs": ["camera.mjs", "text/javascript"],
         "/tracker-worker.mjs": ["tracker-worker.mjs", "text/javascript"],

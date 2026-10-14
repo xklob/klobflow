@@ -1,6 +1,7 @@
 import { defaults, demoFrame } from "./demo.mjs";
 import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
+import {SystemAudio} from "./system-audio.mjs";
 import {length} from "./core.mjs";
 const $ = (id) => document.getElementById(id);
 const canvas = $("view"),
@@ -82,7 +83,35 @@ $('dismiss-tutorial').onclick=()=>{try{localStorage.setItem('klobflow.tutorial.'
 for(const [id,sizeOnly] of [['fit-guide',false],['fit-size',true]])$(id).onclick=async()=>{try{await api('/api/control',{action:'fit',sizeOnly});}catch(e){message(e.message);}};
 $('sync-beat').onclick=async()=>{try{await api('/api/control',{action:'syncBeat'});}catch(e){message(e.message);}};
 let taps=[];
-$('tap-tempo').onclick=async()=>{const now=performance.now();if(taps.length&&now-taps.at(-1)>2000)taps=[];taps.push(now);taps=taps.slice(-6);if(taps.length>1){const bpm=Math.max(30,Math.min(240,Math.round(60000*(taps.length-1)/(now-taps[0]))));await patch({bpm,tempoEnabled:true});if(!demo)$('sync-beat').click();}else message('Keep tapping the beat to set tempo.');};
+$('tap-tempo').onclick=async()=>{systemAudio.stop();const now=performance.now();if(taps.length&&now-taps.at(-1)>2000)taps=[];taps.push(now);taps=taps.slice(-6);if(taps.length>1){const bpm=Math.max(30,Math.min(240,Math.round(60000*(taps.length-1)/(now-taps[0]))));await patch({bpm,tempoEnabled:true,tempoSource:"manual"});if(!demo)$('sync-beat').click();}else message('Keep tapping the beat to set tempo.');};
+let audioStarting=false,audioSending=false,audioClock=null;
+const systemAudio=new SystemAudio(state=>{if(localMode)localCamera.audioTempo(state);if(config.tempoSource==='pc')pushPcTempo(state);});
+async function syncAudioClock(){
+ let best=null;
+ for(let i=0;i<3;i++){const start=performance.now(),reply=await api('/api/clock'),end=performance.now(),rtt=end-start;if(!Number.isFinite(reply.time))throw Error('Update the phone app to synchronize audio timing.');if(!best||rtt<best.rtt)best={offset:reply.time-(start+end)/2,rtt,at:end};}
+ if(best.rtt>300)throw Error('Phone audio synchronization is too slow. Try USB or use phone audio.');audioClock=best;return best;
+}
+async function pushPcTempo(state){
+ if(!paired||config.tempoSource!=='pc'||audioSending)return;
+ audioSending=true;
+ try{
+  if(!audioClock||performance.now()-audioClock.at>20000)await syncAudioClock();
+  if(config.tempoSource!=='pc'||!paired)return;
+  await api('/api/control',{action:'audioTempo',running:state.running,bpm:state.bpm,origin:state.bpm?state.origin+audioClock.offset:0,confidence:state.confidence||0,level:state.level||0,ageMs:Math.max(0,Math.min(5000,performance.now()-(state.at||performance.now())))});
+ }catch(e){message(e.message);}finally{audioSending=false;}
+}
+$('audio-pc').onclick=async()=>{
+ if(audioStarting)return;audioStarting=true;enableControls();
+ try{systemAudio.stop();const capture=systemAudio.start();await capture;audioClock=null;await patch({tempoSource:'pc',tempoEnabled:true});if(paired)await syncAudioClock();if(systemAudio.state){if(localMode)localCamera.audioTempo(systemAudio.state);await pushPcTempo(systemAudio.state);}message('System audio stays local. Allow several beats for tempo detection.');}
+ catch(e){systemAudio.stop();message(e.message);}finally{audioStarting=false;enableControls();}
+};
+$('audio-phone').onclick=async()=>{systemAudio.stop();try{await api('/api/control',{action:'audioStart'});message('Approve system-audio capture in the Android prompt on your phone.');}catch(e){message(e.message);}};
+$('audio-manual').onclick=async()=>{systemAudio.stop();audioClock=null;if(paired)try{await api('/api/control',{action:'audioStop'});}catch(e){message(e.message);}await patch({tempoSource:'manual'});};
+function updateAudioStatus(f){
+ if(f.config.tempoSource==='manual'){$('audio-status').textContent=`Manual tempo · ${f.config.bpm} BPM. Choose phone or PC system audio to detect music.`;return;}
+ const audio=f.audio||{},fresh=audio.running&&f.time-audio.at<2000;
+ $('audio-status').textContent=(f.config.tempoSource==='phone'?'Phone audio · ':'PC audio · ')+(fresh&&audio.bpm?`${Math.round(audio.bpm*f.config.audioRate)} BPM · ${Math.round(audio.confidence*100)}% confidence`:(fresh?audio.status:audio.status?.includes('Following')?'Waiting for fresh audio timing':audio.status||'Connect system audio to begin'))+(paired&&f.config.tempoSource==='pc'&&audioClock?` · clock ±${Math.round(audioClock.rtt/2)} ms`:'');
+}
 let sessionVideoUrl = null;
 $("close-video").onclick = () => $("video-dialog").close();
 $("video-dialog").onclose = () => { $("session-video").pause(); $("session-video").removeAttribute("src"); if (sessionVideoUrl) URL.revokeObjectURL(sessionVideoUrl); sessionVideoUrl = null; };
@@ -136,6 +165,10 @@ function enableControls() {
     .querySelectorAll("[data-config], [data-mode]")
     .forEach((e) => (e.disabled = !(available || demo) || !!replay));
   for(const id of ["fit-guide","fit-size","sync-beat"])$(id).disabled=!available||!!replay;
+  $("audio-pc").disabled=!available||audioStarting||!!replay;
+  $("audio-phone").hidden=!paired;
+  $("audio-phone").disabled=!paired||!!replay;
+  $("sync-beat").disabled=!available||!!replay||config.tempoSource!=="manual";
   $("tap-tempo").disabled=!(available||demo)||!!replay;
   $("calibrate").disabled = !available || !!replay || !current;
   $("clear-calibration").disabled = !available || !!replay || !config.planeCorners?.length;
@@ -206,6 +239,7 @@ function rangeLabel(el) {
 }
 let configChain = Promise.resolve();
 function patch(update) {
+  if(update.bpm!==undefined){systemAudio.stop();update={...update,tempoSource:"manual"};}
   configChain = configChain.then(async () => {
     if (demo) {
       syncConfig({ ...config, ...update });
@@ -240,7 +274,7 @@ document.querySelectorAll("[data-config]").forEach((el) => {
       [el.dataset.config]:
         el.type === "checkbox"
           ? el.checked
-          : el.type === "range" || el.type === "number" || ["fps","staffCount","beatPoints"].includes(el.dataset.config)
+          : el.type === "range" || el.type === "number" || ["fps","staffCount","beatPoints","audioRate"].includes(el.dataset.config)
             ? Number(el.value)
             : el.value,
     }),
@@ -253,6 +287,7 @@ function openPair() {
 }
 $("pair-open").onclick = async () => {
   if (paired) {
+    systemAudio.stop();audioClock=null;
     await api("/api/disconnect", {});
     connected(false);
     resetView();
@@ -276,6 +311,7 @@ $("pair-form").onsubmit = async (e) => {
       address: $("phone-address").value.trim(),
       transport: $("transport").value,
     });
+    systemAudio.stop();audioClock=null;
     transport = result.transport;
     stopStream();
     await localCamera.stop(); localMode = false; updateSourceControls();
@@ -317,6 +353,7 @@ function resetView() {
   drawChart();
 }
 $("demo-start").onclick = async () => {
+  systemAudio.stop();
   await localCamera.stop(); localMode = false; updateSourceControls();
   demo = true;
   replay = null;
@@ -550,7 +587,13 @@ function render(frame, image) {
   }
 }
 function showBeat(f){
- const beat=f.beat;$('beat-feedback').hidden=!beat?.enabled;if(!beat?.enabled)return;
+ const beat=f.beat;
+ if(!beat?.enabled){
+  const paused=f.config.tempoEnabled&&f.config.tempoSource!=='manual';$('beat-feedback').hidden=!paused;
+  if(paused){$('beat-feedback').classList.remove('pulse');$('beat-pulse').textContent='Beat timing paused';$('beat-hits').textContent=f.audio?.status?.includes('Following')?'Waiting for fresh audio timing':f.audio?.status||'Connect system audio or choose manual BPM.';}
+  return;
+ }
+ $('beat-feedback').hidden=false;
  $('beat-feedback').classList.toggle('pulse',beat.phase<.18);$('beat-pulse').textContent=`${Math.round(beat.bpm)} BPM · ${beat.phase<.18?'BEAT':'next pulse…'}`;
  $('beat-hits').replaceChildren(...beat.hits.map((hit,i)=>{const row=document.createElement('div');if(!hit){row.textContent=`${i?'B':'A'} · waiting for a visible tip to pass a point`;return row;}const early=hit.offsetMs<0,timing=Math.abs(hit.offsetMs)<=75?'On beat':`${Math.round(Math.abs(hit.offsetMs))} ms ${early?'early':'late'}`,precise=hit.error<=f.config.tolerance;row.textContent=`${i?'B':'A'} · point ${hit.point}: ${timing} · ${hit.error.toFixed(1)}% from point ${precise?'✓':'→ adjust position'}`;row.className=precise&&Math.abs(hit.offsetMs)<=75?'good':'';return row;}));
 }
@@ -694,6 +737,7 @@ function acceptFrame(f, image = null) {
   $('fit-status').textContent=f.fitStatus||'Use Fit center & size, or match the guide width to your staff length.';
   const visible=f.staffs.filter(s=>s&&s.confidence>=.7&&!s.occluded);const staffLength=visible.length?visible.reduce((n,s)=>n+length(s),0)/visible.length:0;
   $('size-helper').textContent=staffLength&&!f.guide.calibrated?`Guide width / staff length: ${(f.guide.span/staffLength).toFixed(2)}×. Match staff length sets this to 1×; adjust Size for your pattern.`:'Size help waits for a fully visible staff; perspective-corrected size is fitted in the selected plane.';
+  updateAudioStatus(f);
   showBeat(f);
   setCoaching(f);
   setMetrics(f.metrics);

@@ -45,6 +45,7 @@ test("code-free connection, phone controls, session downloads and disconnect", a
           metrics: { deviation: 2 },
         }),
       );
+    else if (req.url === "/api/clock") res.end(JSON.stringify({time:123456}));
     else if (req.url === "/api/control") {
       let body = "";
       for await (const c of req) body += c;
@@ -90,6 +91,10 @@ test("code-free connection, phone controls, session downloads and disconnect", a
     200,
   );
   assert.deepEqual(controls, [{ action: "config", config: { mode: "cube" } }]);
+  assert.deepEqual(await (await fetch(url+"/api/clock")).json(),{time:123456});
+  for(const action of ["fit","syncBeat","audioStart","audioStop"]){assert.equal((await post(url+"/api/control",{action})).status,200);assert.equal(controls.at(-1).action,action);}
+  const tempo={action:"audioTempo",bpm:120,origin:123400,confidence:.9,ageMs:25,running:true};
+  assert.equal((await post(url+"/api/control",tempo)).status,200);assert.deepEqual(controls.at(-1),tempo);
   assert.equal(
     (await fetch(url + "/api/session?id=klobflow-1780000000000")).status,
     200,

@@ -1,4 +1,4 @@
-# Requested release sequence
+# Completed release sequence
 
 1. **0.2.0:** automatic camera and sharing recovery, code-free connection, continuous preview, USB transport, manual perspective correction, widest-default zoom, mirrored rear camera, clear alignment cues, and README screenshots.
 2. **0.3.0:** fully browser-only mode with local PC camera access and native/companion feature parity where feasible. Choose camera resolution/frame rate by measured performance, including 720p/60-capable webcams.
@@ -6,3 +6,5 @@
 4. **0.5.0:** system-audio BPM detection for Android and browser, preserving manual tempo and reporting confidence/availability. Use Android playback capture and browser-supported system/tab audio capture with their native consent prompts.
 
 Each completed update is committed, pushed, and published with a signed APK and companion ZIP. Preserve package/signing identity and increasing version codes. Keep camera, tracking, sessions, calibration, cues, and controls consistent across both implementations; document actual platform differences.
+
+Releases v0.2.0, v0.3.0, v0.4.0, and v0.5.0 implement these stages. The v0.3.0 update also fixes live selection and adds longer/brighter trails and brief occlusion continuity. Validation uses shared geometry/tracking/timing/audio fixtures, native integration, and browser flows. Further accuracy tuning depends on real practice feedback.

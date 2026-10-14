@@ -39,10 +39,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
-data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="") {
+data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="",val audio:AudioTempo=AudioTempo()) {
     fun json()=JSONObject().put("time",time).put("width",width).put("height",height)
         .put("staffs",JSONArray(staffs.map {it?.json() ?: JSONObject.NULL})).put("metrics",metrics.json())
-        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus)
+        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus).put("audio",audio.json())
 }
 data class FlowUi(val config:Config=Config(),val bitmap:Bitmap?=null,val frame:Frame?=null,
     val status:String="Ready when you are",val cameraReady:Boolean=false,val demo:Boolean=false,
@@ -71,6 +71,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private var sessionFrames=0;private var sessionValid=0;private var errorSum=0.0
     private val sessionsDir=File(context.filesDir,"sessions").apply {mkdirs()}
     private val detector=StaffDetector();private val tracker=StaffTracker();private val scorer=Scorer()
+    @Volatile private var pcAudio=AudioTempo()
+    private var fitRevision=0
     private val timingCoach=TimingCoach();private val fit=FitHelper()
     private val processing=Any();private val sessionLock=Any()
     private var lastTime=0L;private var fps=0.0
@@ -92,7 +94,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         if(closed)return
         camera?.cameraInfo?.zoomState?.removeObservers(owner)
         if(config.autoFit && config.planeCorners.isEmpty())config=config.copy(zoom=0.0)
-        synchronized(processing){if(config.autoFit)fit.begin(zoom=config.planeCorners.isEmpty())else fit.cancel()}
+        synchronized(processing){fitRevision++;if(config.autoFit)fit.begin(zoom=config.planeCorners.isEmpty())else fit.cancel()}
         demo=false;active=true;generation++;val currentGeneration=generation
         mutable.update {it.copy(config=config,demo=false,cameraReady=false,frame=null,bitmap=null,error=null,status="Opening ${config.facing} camera…")}
         val future=ProcessCameraProvider.getInstance(context)
@@ -154,9 +156,13 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             val guide=Guide(c,bitmap.width,bitmap.height)
             if(lastTime>0 && now>lastTime)fps=if(fps==0.0)1000.0/(now-lastTime) else fps*0.85+1000.0/(now-lastTime)*0.15
             lastTime=now
+            val fitVersion=fitRevision
             val fitPatch=fit.update(now,staffs,guide,ui.value.zoomMin.toDouble(),ui.value.zoomMax.toDouble(),ui.value.zoomRatio.toDouble())
-            if(fitPatch!=null)main.post {if(active && streamGeneration==generation)updateConfig(fitPatch,fromFit=true)}
-            val frame=Frame(now,bitmap.width,bitmap.height,staffs,scorer.score(now,staffs,guide),guide,fps,source,timingCoach.update(now,staffs,guide),fit.status)
+            if(fitPatch!=null)main.post {if(active && streamGeneration==generation && fitVersion==fitRevision)updateConfig(fitPatch,fromFit=true)}
+            val audio=if(c.tempoSource=="phone")PhoneAudio.state.value else if(c.tempoSource=="pc")pcAudio else AudioTempo(status="Manual tempo")
+            val ready=c.tempoSource=="manual" || audio.usable(now.toDouble())
+            val beat=timingCoach.update(now,staffs,guide,if(c.tempoSource=="manual")c.bpm else (audio.bpm ?: c.bpm)*c.audioRate,if(c.tempoSource=="manual")null else audio.origin+c.audioOffsetMs,ready)
+            val frame=Frame(now,bitmap.width,bitmap.height,staffs,scorer.score(now,staffs,guide),guide,fps,source,beat,fit.status,audio)
             if(!active || streamGeneration!=generation)return
             val elapsed=if(recordingStarted>0)now-recordingStarted else 0L
             mutable.update {it.copy(bitmap=bitmap,frame=frame,elapsed=elapsed)}
@@ -199,11 +205,13 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private var demoScheduled=false
     fun updateConfig(patch:JSONObject,fromFit:Boolean=false) {
         val next=config.patch(patch)
+        if(next.tempoSource!="phone" || !next.tempoEnabled)context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))
+        if(next.tempoSource!="pc")pcAudio=AudioTempo()
         val cameraChange=next.facing!=config.facing || next.fps!=config.fps || next.mirror!=config.mirror
         val zoomChange=next.zoom!=config.zoom
         require(!(cameraChange && (ui.value.recording || ui.value.finalizing))){"Stop recording before changing camera or frame rate."}
         synchronized(processing){
-            if(!fromFit)fit.cancel()
+            if(!fromFit){fitRevision++;fit.cancel()}
             if(next.staffCount!=config.staffCount || zoomChange)tracker.reset()
             config=next;scorer.reset();timingCoach.reset()
         }
@@ -296,7 +304,17 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                     .put("calibrationImageAspect",f.width.toDouble()/f.height)
                     .put("calibrationRotation",context.getSystemService(android.view.WindowManager::class.java).defaultDisplay.rotation))
             }
-            "fit"->synchronized(processing){fit.begin(zoom=j.optBoolean("zoom",false),size=j.optBoolean("sizeOnly",false))}
+            "audioStart"->(context as? MainActivity)?.requestSystemAudio() ?: error("Open Klobflow on the phone to authorize audio")
+            "audioStop"->{context.stopService(android.content.Intent(context,PlaybackTempoService::class.java));pcAudio=AudioTempo();updateConfig(JSONObject().put("tempoSource","manual"))}
+            "audioTempo"->{
+                require(config.tempoSource=="pc"){"Select PC system audio first"}
+                val bpm=if(j.isNull("bpm"))null else j.getDouble("bpm")
+                val age=j.optDouble("ageMs",0.0);require(age.isFinite() && age in 0.0..5000.0){"Invalid audio age"}
+                val confidence=j.getDouble("confidence");val origin=j.optDouble("origin",0.0);val now=SystemClock.elapsedRealtime().toDouble()
+                require((bpm==null || bpm.isFinite() && bpm in 30.0..400.0) && confidence.isFinite() && confidence in 0.0..1.0 && origin.isFinite() && (bpm==null || abs(origin-now)<10000)){"Invalid or unsynchronized audio tempo"}
+                pcAudio=AudioTempo(j.optBoolean("running",false),bpm,origin,confidence,j.optDouble("level",0.0).coerceIn(0.0,1.0),now-age,if(bpm==null)"Waiting for a reliable PC audio beat"else "Following PC system audio")
+            }
+            "fit"->synchronized(processing){fitRevision++;fit.begin(zoom=j.optBoolean("zoom",false),size=j.optBoolean("sizeOnly",false))}
             "syncBeat"->synchronized(processing){timingCoach.reset(SystemClock.elapsedRealtime().toDouble())}
             "reset"->resetTracking()
             "record"->startRecording()

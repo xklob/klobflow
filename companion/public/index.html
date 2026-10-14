@@ -124,8 +124,14 @@
           <button id="calibrate" class="subtle" disabled>Calibrate viewing angle</button>
           <button id="clear-calibration" class="subtle" disabled>Clear calibration</button>
           <p id="calibration-info" class="small-note">For an off-angle camera, mark the four corners of a rectangle in your movement plane. Use 1 for a square. Recalibrate after moving the camera.</p>
-          <div class="timing-controls"><label class="toggle"><input type="checkbox" data-config="tempoEnabled"><span>Beat practice</span></label>
-          <label>BPM <input id="bpm" data-config="bpm" type="number" min="30" max="240" step="1" value="120"></label>
+          <div class="timing-controls"><div id="audio-controls">
+          <strong>Tempo source</strong><div class="button-row"><button id="audio-pc" class="subtle">Use PC system audio</button><button id="audio-phone" class="subtle">Use phone audio</button><button id="audio-manual" class="subtle">Use manual BPM / stop audio</button></div>
+          <p id="audio-status" class="small-note">Manual tempo. System audio needs approval in the device or browser sharing dialog.</p>
+          <label>Detected tempo rate <select data-config="audioRate"><option value="0.5">Half speed</option><option value="1" selected>Detected speed</option><option value="2">Double speed</option></select></label>
+          <label>Audio timing offset (ms) <input type="number" data-config="audioOffsetMs" min="-500" max="500" step="10" value="0"></label>
+          <p class="small-note">Positive offset moves the pulse later. Audio is analyzed locally and never added to your recording. Unsupported or silent sources pause beat feedback.</p>
+          </div><label class="toggle"><input type="checkbox" data-config="tempoEnabled"><span>Beat practice</span></label>
+          <label>Manual BPM <input id="bpm" data-config="bpm" type="number" min="30" max="240" step="1" value="120"></label>
           <label>Points per turn <select data-config="beatPoints"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select></label>
           <div class="button-row"><button id="sync-beat" class="subtle">Start beat now</button><button id="tap-tempo" class="subtle">Tap tempo</button></div>
           <p class="small-note">Pass numbered points on each pulse. A filled tip marks the measured end. Timing and position error are shown separately.</p></div>

@@ -1,3 +1,16 @@
+# v0.5.0 validation
+
+Validated locally on 2026-10-14.
+
+- 36 JVM and 15 Node tests cover tempo detection at 60/90/120/174/200 BPM, tempo changes, silence, stale clocks, jittering Android hardware timestamps, PCM-envelope parity, and all prior geometry/tracking/transport behavior.
+- Nine browser flows cover local webcam practice, approved-stream processing through the real AudioWorklet/tempo worker, half-speed timing, silence, missing audio-track cleanup, manual fallback, and clock-converted tempo forwarding through the companion relay. The browser audio source is generated and supplied by a test replacement for the sharing picker, not an OS loopback benchmark.
+- Four Android emulator integration tests cover the real Android consent dialog and playback-capture service, generated 120 BPM AudioTrack playback reaching the detector, live audio-driven timing, silence, stop behavior, relayed PC tempo, stale-PC expiration, camera recovery, recording/decoding, single-staff fitting, and tutorial assets.
+- Hardware timestamp jitter on the emulator initially reversed sample time. Sample-count timing with bounded drift correction fixes the issue and has a regression test. Audio shutdown is synchronized with publishing so stopped capture cannot report itself running again.
+- The relay now forwards fit, beat-sync, and audio controls. Queued automatic fitting cannot overwrite newer manual adjustments.
+- Lint, debug/release builds, signing continuity, APK alignment, release asset checksums, and GitHub checks are verified for the published source.
+
+Real LED occlusion accuracy, representative music across source apps, physical webcam performance, and Pixel motion-to-display latency still require real use. Android source apps may block playback capture. Browser system/tab audio depends on the OS, browser, selected surface, and audio-sharing choice. Raw audio and screen pixels are neither recorded nor uploaded.
+
 # v0.4.0 validation
 
 - 31 JVM tests and 13 Node tests cover manual tempo, independent early/late and spatial errors, missing-tip suppression, single-staff scoring, uncertain-fit rejection, size fitting, and shared native/browser timing and fit fixtures.

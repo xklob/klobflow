@@ -86,6 +86,14 @@ Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start bea
 
 Timing uses interpolated crossings in the measured practice plane. It does not infer musical phrasing or VTG patterns, and display/capture latency still matters. Identical staff ends can swap after occlusion, so use a fresh sync after ambiguous tracking. Browser and Android recordings include beat observations in JSONL alongside ordinary alignment scores.
 
+## Automatic tempo from system audio
+
+On Android, open **Adjust → Beat timing → Connect system audio**, then approve Android's audio permission and sharing dialog. Play music in an app that permits playback capture. Klobflow analyzes playback audio locally with a foreground notification and Stop action. It does not use the microphone, acquire screen images, save audio, or add audio to practice videos. A source app can prevent capture; silence produces an explanation instead of a fabricated BPM. See [Android playback-capture requirements](https://developer.android.com/media/platform/av-capture).
+
+In the web UI, choose **Use PC system audio**. Select a music tab or screen and enable **Share audio** in the browser picker. This works with either the PC camera or Android's camera stream. With Android capture, only tempo/confidence/beat phase are relayed to the phone, using a measured phone/PC clock offset. **Use phone audio** opens Android's approval flow on the phone instead. Browser and OS support varies, and some sharing choices contain no audio track; [browser capture options](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) describe these limits. Chrome/Edge on Windows are the intended PC targets.
+
+Allow roughly 6–10 seconds of steady music. The detector searches 60–200 BPM and reports confidence; **Half / Detected / Double** handles ambiguous tempo multiples. The estimate is a rhythmic heuristic, not guaranteed musical beat or downbeat recognition. **Audio offset** shifts the pulse for capture or speaker latency, with positive values moving it later. Fresh audio estimates drive the timing targets; silence, low confidence, or stale PC data pauses beat feedback. **Use manual BPM / stop audio** restores your saved manual tempo and releases capture. Android's notification can also stop listening. Capturing needs fresh user approval after the session ends.
+
 ## What the numbers mean
 
 Tracking coordinates use square-pixel image geometry, normalized by the shorter image dimension. With perspective calibration, scores use rectified plane coordinates. All distance errors use the guide's front-square width (or circle diameter) as the denominator.
