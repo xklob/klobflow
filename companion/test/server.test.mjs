@@ -145,6 +145,8 @@ test("local app rejects hostile origin, host, non-JSON and oversized control bod
   );
   assert.equal((await fetch(url + "/server.mjs")).status, 404);
   assert.equal((await fetch(url + "/")).status, 200);
+  for (const asset of ["cap-evidence.mjs", "cap-occlusion.mjs", "selected-color-recovery.mjs"])
+    assert.equal((await fetch(url + "/" + asset)).status, 200);
 });
 test("upstream redirect is never followed", async (t) => {
   let reached = false;

@@ -1,13 +1,24 @@
 # Post-v0.8.0 review branch
 
-Validated locally on 2026-10-14. These changes are proposed in a pull request; this is not another published release.
+Validated locally on 2026-10-14, including the endpoint-quality follow-up. These changes are proposed in a pull request; this is not another published release.
 
-- 79 regular JVM tests and 63 Node tests pass. Android lint, debug APK, and instrumentation APK builds pass. The optional private-video diagnostic is skipped by the regular suite and run separately below.
-- All 27 browser integration flows pass in one final run. Coverage includes capture/reopen, disconnect and page lifecycle, stale phone overlays, recording through analysis failure, unavailable storage with downloadable fallback, rejected control rollback, delayed settings acknowledgements preserving newer edits, display-resolution drawing, compact portrait/landscape fullscreen, background capture, LED colors, beat audio, and prior practice flows. README screenshots use generated motion only.
-- All six disposable Android emulator flows pass on the final debug build, covering camera/sharing recovery, recording and decoded playback, playback audio, one-staff fitting/timing, antispin, and a queued frame arriving after its camera source stops. No physical phone or live LED setup was modified during the review.
-- Android and browser agree on endpoint coordinates, confidence, blur/occlusion flags, score validity, and all five raw metrics across 21,187 frame/configuration cases: the original Pixel recording (1,910 frames), recent practice recording (2,661), and narrated recording (8,308) under both unrestricted and pink/purple color settings. This covers 12,879 distinct decoded frames. Replays preserve original timestamps at 384×216 analysis resolution.
-- Final unrestricted results retain 656 measured frames in the original Pixel clip and 2,161 in the recent practice clip. Observed original-clip frames change from 1,509 to 1,506 after resetting stale uncertain history; recent observed frames remain 2,469. The narrated clip at threshold 250 has 7,606 observed and 5,204 measured frames; with pink/purple selected, 6,320 observed and 4,717 measured. These counts are availability, not physical accuracy.
-- The narrated audio was transcribed locally and used to choose expected-behavior intervals. Sparse visible-cap labels and a fixed early-circle fit distinguish later circle practice from deliberately inaccurate movement. The [review findings](review-2026-10-14.md) record configuration effects and confirmed remaining false endpoints. The [framework comparison](vision-framework-review.md) documents measured OpenCV parity/performance and optical-flow drift. Private recordings, transcript, images, and replay reports remain outside Git.
+- 93 regular JVM tests and 78 Node tests pass. Android lint and the debug APK build pass. The optional private-video diagnostic is skipped by the regular suite and run separately below. Tests include gradual body truncation, true foreshortening, missing frames during cap recovery, source/count/history resets, metadata omission from exports, sunlight adjacent to a valid colored staff, one-sided reflections, and clipped geometry that cannot earn precision or falsely report motion blur.
+- All 27 browser integration flows pass with Chromium 1248. After the final selected-color change, all three affected worker/color/spinning flows pass again. The review preview serves all new modules, and its real module worker analyzes generated frames and returns measurements without page errors. Normal localhost port 8788 remains untouched. README screenshots use generated motion only.
+- Six disposable Android emulator flows passed earlier in this review, before this detector-only follow-up: camera/sharing recovery, recording and decoded playback, playback audio, one-staff fitting/timing, antispin, and a queued old-source frame. They were not repeated for the endpoint follow-up. No physical phone or live LED setup was modified during the review; physical camera latency remains unmeasured.
+- Android and browser agree on endpoint coordinates, confidence, blur/occlusion flags, score validity, and all five raw metrics across 29,495 frame/configuration cases. These cover 12,879 distinct frames from the original Pixel recording (1,910), recent practice recording (2,661), and narrated recording (8,308). The narrated clip is replayed with Any/rainbow at threshold 250 and pink/purple at thresholds 175 and 250. Original timestamps and 384×216 analysis resolution are preserved.
+- A 46-frame diagnostic label set and a separate 16-frame set evaluate visibility and endpoint error independently from reading availability. With the narrated clip at Any/rainbow and threshold 175, false precision on 24 hidden/clipped frames falls from 13 to 3 while visible reading availability remains 20/35. At threshold 250 those counts are 14 to 4 and 31/35. Color recovery corrects two demonstrated white-shaft truncations and withholds a previously incorrect near-edge reading. The [endpoint-quality report](endpoint-quality-review.md) includes all configurations, labeling limits, and the remaining reflected-end and early-occlusion failures.
+
+Final complete replay availability:
+
+| Recording/configuration | Observed frames | Measured frames | Total frames |
+| --- | ---: | ---: | ---: |
+| Original Pixel, threshold 175 | 1,482 | 632 | 1,910 |
+| Recent Pixel practice, threshold 250 | 2,184 | 1,876 | 2,661 |
+| Narrated, Any/rainbow, threshold 250 | 7,489 | 5,087 | 8,308 |
+| Narrated, pink/purple, threshold 175 | 7,078 | 4,698 | 8,308 |
+| Narrated, pink/purple, threshold 250 | 6,183 | 4,542 | 8,308 |
+
+These are availability counts, not physical accuracy. The new checks deliberately withhold some previous readings, and can also delay reacquisition of visible caps. The narrated audio was transcribed locally and used to choose expected-behavior intervals. The [broader review](review-2026-10-14.md) and [framework comparison](vision-framework-review.md) record circle checks, OpenCV parity/performance, and optical-flow drift. Private recordings, transcripts, images, labels, and replay reports remain outside Git.
 
 # v0.8.0 validation
 

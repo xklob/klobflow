@@ -1,6 +1,9 @@
 // Browser counterpart of Geometry.kt / Perspective.kt / StaffTracker.kt.
 // Shared fixture tests compare this implementation with the native engine.
 import {filterStaffColors,staffColorNames} from './staff-colors.mjs';
+import {recoverSelectedColorEndpoints} from './selected-color-recovery.mjs';
+import {attachCapEvidence} from './cap-evidence.mjs';
+import {CapOcclusionGuard} from './cap-occlusion.mjs';
 export const defaults = {
   mode: "grid", led: true, staffColors: [], threshold: 175, minLength: .22, cx: .5, cy: .5,
   scale: .32, rotation: 0, cubeDepth: .4, circleSeparation: 1, tolerance: 4,
@@ -218,15 +221,21 @@ export class StaffDetector {
   constructor(){this.cosines=Array.from({length:180},(_,i)=>Math.cos(i*Math.PI/180));this.sines=Array.from({length:180},(_,i)=>Math.sin(i*Math.PI/180));}
   detect(argb,w,h,c,hints=[]){
     if(argb.length!==w*h||w<1||h<1)throw Error("Invalid camera pixels");
+    const original=argb;
     if(c.led)argb=filterStaffColors(argb,w,h,c.staffColors);
-    if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return recovered.map(s=>s.blurred?(glowBodyEndpoints(argb,w,h,s)??s):s);}
+    const finish=found=>{
+      // Keep the user threshold for discovery; recovery needs sharper bright geometry.
+      const recovered=recoverSelectedColorEndpoints(argb,w,h,c,found,()=>this.detect(original,w,h,{...c,staffColors:[],threshold:Math.max(c.threshold,250)},hints));
+      return c.led?recovered.map(s=>attachCapEvidence(original,w,h,s)):recovered;
+    };
+    if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return finish(recovered.map(s=>s.blurred?(glowBodyEndpoints(argb,w,h,s)??s):s));}
     const short=Math.min(w,h),mask=new Uint8Array(w*h),value=i=>{const p=argb[i];return Math.max((p>>>16)&255,(p>>>8)&255,p&255);};
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
       const i=y*w+x,p=argb[i],hi=value(i),lo=Math.min((p>>>16)&255,(p>>>8)&255,p&255);
       mask[i]=c.led?hi>=c.threshold&&(hi-lo>35||hi>=Math.min(250,c.threshold+35)):Math.abs(value(i+1)-value(i-1))+Math.abs(value(i+w)-value(i-w))>c.threshold/2;
     }
     const pixels=[];for(let y=4;y<h-4;y++)for(let x=4;x<w-4;x++){const i=y*w+x;if(mask[i]&&(!mask[i-1]||!mask[i+1]||!mask[i-w]||!mask[i+w]))pixels.push([x,y]);}
-    if(pixels.length<12)return c.led?motionCandidates(argb,w,h,c,hints,[]):[];
+    if(pixels.length<12)return finish(c.led?motionCandidates(argb,w,h,c,hints,[]):[]);
     const step=Math.max(1,Math.floor((pixels.length+3499)/3500)),diag=Math.ceil(Math.hypot(w,h)),bins=2*diag+1,votes=new Int32Array(180*bins);
     for(let i=0;i<pixels.length;i+=step){const p=pixels[i];for(let a=0;a<180;a++)votes[a*bins+Math.round(p[0]*this.cosines[a]+p[1]*this.sines[a])+diag]++;}
     const result=[];
@@ -253,7 +262,7 @@ export class StaffDetector {
       const s=segment(mul(aa,1/short),mul(bb,1/short),clamp(support*.9+.1*Math.min(1,len/(short*.6)),0,1));
       if(!result.some(old=>angleDifference(angle(old),angle(s))<.14&&(distanceToSegment(center(s),old)<.035||distanceToSegment(center(old),s)<.035)))result.push(s);
     }
-    return (c.led?motionCandidates(argb,w,h,c,hints,result):result).sort((a,b)=>b.confidence*Math.sqrt(length(b))-a.confidence*Math.sqrt(length(a))).slice(0,8);
+    return finish((c.led?motionCandidates(argb,w,h,c,hints,result):result).sort((a,b)=>b.confidence*Math.sqrt(length(b))-a.confidence*Math.sqrt(length(a))).slice(0,8));
   }
 }
 
@@ -350,14 +359,16 @@ function motionCandidates(argb,w,h,c,hints,sharp){
 }
 export class StaffTracker {
   constructor(){this.reset();}
-  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.confirmedAt=[-Infinity,-Infinity];this.motion=[[0,0,0],[0,0,0]];this.updatedAt=null;}
+  reset(){this.last=[null,null];this.lastAt=[0,0];this.streak=[0,0];this.confirmedAt=[-Infinity,-Infinity];this.motion=[[0,0,0],[0,0,0]];this.updatedAt=null;this.capGuards=[new CapOcclusionGuard(),new CapOcclusionGuard()];this.guardCount=null;}
   seed(staffs,time){if(![1,2].includes(staffs.length))throw Error("Select each staff");this.reset();this.last=[staffs[0],staffs[1]||null];this.lastAt=[time,time];this.updatedAt=time;}
   predicted(i,time){const s=this.last[i];if(!s)return null;const dt=clamp((time-this.lastAt[i])/1000,0,.15),v=this.motion[i],c=add(center(s),[v[0]*dt,v[1]*dt]),a=angle(s)+v[2]*dt,d=mul([Math.cos(a),Math.sin(a)],length(s)/2);return {...s,a:sub(c,d),b:add(c,d)};}
   hints(time,count=2){return this.last.map((s,i)=>i<count&&s&&time>=this.lastAt[i]&&time-this.lastAt[i]<250?this.predicted(i,time):null).filter(Boolean);}
   update(candidates,time,count=2){
     // A restarted/repeated clock cannot supply another independent observation.
     if(this.updatedAt!==null&&time<=this.updatedAt)this.reset();this.updatedAt=time;
+    if(this.guardCount!==count){this.capGuards.forEach(guard=>guard.reset());this.guardCount=count;}
     const prior=this.last.map((s,i)=>i<count&&s&&time-this.lastAt[i]<(s.blurred?350:1500)?s:null);
+    prior.forEach((s,i)=>{if(!s)this.capGuards[i].reset();});
     for(let i=0;i<prior.length;i++)if(!prior[i]||time-this.lastAt[i]>250){this.streak[i]=0;this.confirmedAt[i]=-Infinity;this.motion[i]=[0,0,0];}
     const cost=(i,s)=>{const p=prior[i];if(!p)return .22-s.confidence*.1;const predicted=this.predicted(i,time),delta=Math.max(1,time-this.lastAt[i])/1000,dist=distance(center(predicted),center(s)),ang=angleDifference(angle(predicted),angle(s)),ratio=length(s)/length(p);if(dist>.16+delta*1.8||ang>.3+delta*20||ratio<.25||ratio>1.4)return 10;return dist+ang*.13+Math.abs(Math.log(ratio))*.10+(1-s.confidence)*.15;};
     const assignments=[];
@@ -380,6 +391,8 @@ export class StaffTracker {
       if(confirmed)this.confirmedAt[i]=time;
       return {...s,occluded:false,confidence:ambiguous?Math.min(.4,s.confidence):confirmed?s.confidence:Math.min(.5,s.confidence)};
     });
-    this.last=selected.map((s,i)=>{if(s&&!ambiguous&&!s.occluded){const p=prior[i],dt=(time-this.lastAt[i])/1000;if(p&&dt>=.008&&dt<=.2){const delta=sub(center(s),center(p)),da=.5*Math.atan2(Math.sin(2*(angle(s)-angle(p))),Math.cos(2*(angle(s)-angle(p))));this.motion[i]=[clamp(delta[0]/dt,-3,3),clamp(delta[1]/dt,-3,3),clamp(da/dt,-30,30)].map((v,j)=>this.motion[i][j]*.35+v*.65);}else this.motion[i]=[0,0,0];this.lastAt[i]=time;return s;}return s?.occluded&&prior[i]?{...prior[i],occluded:true}:prior[i];});return selected;
+    this.last=selected.map((s,i)=>{if(s&&!ambiguous&&!s.occluded){const p=prior[i],dt=(time-this.lastAt[i])/1000;if(p&&dt>=.008&&dt<=.2){const delta=sub(center(s),center(p)),da=.5*Math.atan2(Math.sin(2*(angle(s)-angle(p))),Math.cos(2*(angle(s)-angle(p))));this.motion[i]=[clamp(delta[0]/dt,-3,3),clamp(delta[1]/dt,-3,3),clamp(da/dt,-30,30)].map((v,j)=>this.motion[i][j]*.35+v*.65);}else this.motion[i]=[0,0,0];this.lastAt[i]=time;return s;}return s?.occluded&&prior[i]?{...prior[i],occluded:true}:prior[i];});
+    // Keep current observed coordinates; uncertainty affects scoring, not detector feedback.
+    return selected.map((s,i)=>this.capGuards[i].update(s,time));
   }
 }

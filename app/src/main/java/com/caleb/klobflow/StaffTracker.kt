@@ -9,12 +9,18 @@ class StaffDetector {
     private val sines=DoubleArray(angles){sin(it*PI/angles)}
     fun detect(pixels: IntArray,w: Int,h: Int,c: Config,hints:List<Segment> = emptyList()): List<Segment> {
         require(pixels.size==w*h && w>0 && h>0)
+        val original=pixels
         val argb=if(c.led)filterStaffColors(pixels,w,h,c.staffColors)else pixels
+        fun finish(found:List<Segment>):List<Segment> {
+            // Keep the user threshold for discovery; recovery needs sharper bright geometry.
+            val recovered=recoverSelectedColorEndpoints(argb,w,h,c,found){detect(original,w,h,c.copy(staffColors=emptyList(),threshold=max(c.threshold,250)),hints)}
+            return if(c.led)recovered.map {s->s.copy(capEvidence=measureCapEvidence(original,w,h,s))}else recovered
+        }
         if(c.led){
             val lights=ledRegions(argb,w,h,c,hints)
             val recovered=if(lights.second && lights.first.all {s->hints.isEmpty() || hints.any {s.length>it.length*.85}})lights.first
                 else motionCandidates(argb,w,h,c,hints,lights.first)
-            if(recovered.isNotEmpty()||c.staffCount==1||!lights.third)return recovered.map {s->if(s.blurred)glowBodyEndpoints(argb,w,h,s) ?: s else s}
+            if(recovered.isNotEmpty()||c.staffCount==1||!lights.third)return finish(recovered.map {s->if(s.blurred)glowBodyEndpoints(argb,w,h,s) ?: s else s})
         }
         val short=min(w,h).toDouble()
         val mask=BooleanArray(w*h)
@@ -31,7 +37,7 @@ class StaffDetector {
             val i=y*w+x
             if(mask[i] && (!mask[i-1] || !mask[i+1] || !mask[i-w] || !mask[i+w]))pixels.add(P(x.toDouble(),y.toDouble()))
         }
-        if(pixels.size<12)return if(c.led)motionCandidates(argb,w,h,c,hints,emptyList())else emptyList()
+        if(pixels.size<12)return finish(if(c.led)motionCandidates(argb,w,h,c,hints,emptyList())else emptyList())
         val step=max(1,(pixels.size+3499)/3500)
         val diag=ceil(hypot(w.toDouble(),h.toDouble())).toInt()
         val bins=2*diag+1
@@ -83,7 +89,7 @@ class StaffDetector {
             val s=Segment(aa*(1/short),bb*(1/short),(support*0.9+0.1*(len/(short*0.6)).coerceAtMost(1.0)).coerceIn(0.0,1.0))
             if(result.none {old->angleDifference(old.angle,s.angle)<0.14 && (distanceToSegment(s.center,old)<0.035 || distanceToSegment(old.center,s)<0.035)})result.add(s)
         }
-        return (if(c.led)motionCandidates(argb,w,h,c,hints,result)else result).sortedByDescending {it.confidence*sqrt(it.length)}.take(8)
+        return finish((if(c.led)motionCandidates(argb,w,h,c,hints,result)else result).sortedByDescending {it.confidence*sqrt(it.length)}.take(8))
     }
 
     /** Pair luminous halves across a grip; do not confuse room edges with an entire staff. */
@@ -204,7 +210,9 @@ class StaffTracker {
     private var confirmedAt=longArrayOf(-1000000,-1000000)
     private var motion=Array(2){DoubleArray(3)}
     private var updatedAt:Long?=null
-    fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0);confirmedAt=longArrayOf(-1000000,-1000000);motion=Array(2){DoubleArray(3)};updatedAt=null}
+    private val capGuards=Array(2){CapOcclusionGuard()}
+    private var guardCount:Int?=null
+    fun reset(){last=listOf(null,null);lastAt=longArrayOf(0,0);streak=intArrayOf(0,0);confirmedAt=longArrayOf(-1000000,-1000000);motion=Array(2){DoubleArray(3)};updatedAt=null;capGuards.forEach {it.reset()};guardCount=null}
     fun seed(staffs: List<Segment>,t:Long){require(staffs.size in 1..2);reset();last=staffs+List(2-staffs.size){null};lastAt=longArrayOf(t,t);updatedAt=t}
     private fun predicted(i:Int,t:Long):Segment? {
         val s=last[i] ?: return null;val dt=((t-lastAt[i])/1000.0).coerceIn(0.0,.15);val v=motion[i]
@@ -216,7 +224,9 @@ class StaffTracker {
         // A restarted/repeated clock cannot supply another independent observation.
         if(updatedAt?.let {t<=it}==true)reset()
         updatedAt=t
+        if(guardCount!=count){capGuards.forEach {it.reset()};guardCount=count}
         val prior=last.mapIndexed {i,s->s?.takeIf {i<count}?.takeIf {t-lastAt[i]<(if(it.blurred)350 else 1500)}}
+        prior.forEachIndexed {i,s->if(s==null)capGuards[i].reset()}
         for(i in prior.indices)if(prior[i]==null || t-lastAt[i]>250){
             streak[i]=0;confirmedAt[i]=-1000000;motion[i]=DoubleArray(3)
         }
@@ -270,6 +280,7 @@ class StaffTracker {
             }else motion[i]=DoubleArray(3)
             lastAt[i]=t;s
         }else if(s?.occluded==true)prior[i]?.copy(occluded=true) else prior[i]}
-        return selected
+        // Preserve current observed coordinates and detector feedback; gate measured output only.
+        return selected.mapIndexed {i,s->capGuards[i].update(s,t)}
     }
 }

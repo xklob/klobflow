@@ -11,7 +11,8 @@ data class P(val x: Double, val y: Double) {
     fun distance(o: P) = hypot(x-o.x,y-o.y)
     fun json() = JSONArray(listOf(x,y))
 }
-data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false, val blurred:Boolean=false) {
+data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false, val blurred:Boolean=false,
+    internal val capEvidence:CapEvidence?=null) {
     val center get() = (a+b)*0.5
     val length get() = a.distance(b)
     val angle get() = atan2(b.y-a.y,b.x-a.x)
