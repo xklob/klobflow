@@ -3,20 +3,28 @@ import {TimingCoach,FitHelper} from "./practice.mjs";
 import {BackgroundFilter} from "./background.mjs";
 import {RollingErrors} from "./rolling-errors.mjs";
 import {FlowStreak} from "./streak.mjs";
-const background=new BackgroundFilter(),rollingErrors=new RollingErrors(),streakCoach=new FlowStreak(),timingCoach=new TimingCoach(),fit=new FitHelper();let zoom={min:1,max:1,ratio:1};
-let revision=0;let audio={running:false,bpm:null,confidence:0,at:0,status:"Connect system audio"};
+import {MovingPacer} from "./pacer.mjs";
+const background=new BackgroundFilter(),rollingErrors=new RollingErrors(),streakCoach=new FlowStreak(),timingCoach=new TimingCoach(),pacerCoach=new MovingPacer(),fit=new FitHelper();let zoom={min:1,max:1,ratio:1};
+let revision=0,pacerFrameFloor=-Infinity;let audio={running:false,bpm:null,confidence:0,at:0,status:"Connect system audio"};
 let config={...defaults},detector=new StaffDetector(),tracker=new StaffTracker(),scorer=new Scorer(),previous=0,fps=0,lastFrame=null;
 self.onmessage=({data})=>{
   try {
-    if(data.type==="config") {revision=data.revision??revision;const old=config;config=patchConfig(config,data.config,{restore:!!data.restore});if(old.staffCount!==config.staffCount||old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing||old.led!==config.led||JSON.stringify(old.staffColors)!==JSON.stringify(config.staffColors))tracker.reset();if(old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing)background.clear();scorer.reset();timingCoach.reconfigure(old,config);zoom=data.zoom||zoom;if(!data.fromFit)fit.cancel();self.postMessage({type:"config",id:data.id,config});return;}
+    if(data.type==="config") {revision=data.revision??revision;const old=config;config=patchConfig(config,data.config,{restore:!!data.restore});if(old.staffCount!==config.staffCount||old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing||old.led!==config.led||JSON.stringify(old.staffColors)!==JSON.stringify(config.staffColors))tracker.reset();if(old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing)background.clear();scorer.reset();timingCoach.reconfigure(old,config);pacerCoach.reconfigure(old,config);zoom=data.zoom||zoom;if(!data.fromFit)fit.cancel();self.postMessage({type:"config",id:data.id,config});return;}
     if(data.type==="background"){
       if(!['capture','clear','cancel'].includes(data.mode))throw Error('Choose capture, clear or cancel');
       if(data.mode==='capture')background.begin(data.time);else background.clear();
-      tracker.reset();scorer.reset();timingCoach.reset();rollingErrors.reset();streakCoach.reset();fit.cancel();
+      tracker.reset();scorer.reset();timingCoach.reset();pacerCoach.reset();rollingErrors.reset();streakCoach.reset();fit.cancel();
       self.postMessage({type:'ack',id:data.id});return;
     }
     if(data.type==="audio"){audio=data.audio;return;}
-    if(data.type==="reset"){rollingErrors.reset();streakCoach.reset();tracker.reset();scorer.reset();timingCoach.reset();return;}
+    if(data.type==="reset"){rollingErrors.reset();streakCoach.reset();tracker.reset();scorer.reset();timingCoach.reset();pacerCoach.reset();pacerFrameFloor=-Infinity;return;}
+    if(data.type==="pacer"){
+      if(!lastFrame)throw Error("Wait for camera frames before starting the guide dots.");
+      if(['start','resume','restart'].includes(data.operation)&&['countdown','capturing'].includes(background.status.state))throw Error("Finish the background snapshot before starting the guide dots.");
+      if(!Number.isFinite(data.time))throw Error("Invalid exercise time");
+      pacerCoach.command(data.operation,data.time,new Guide(config,lastFrame.width,lastFrame.height));pacerFrameFloor=data.time;streakCoach.reset();
+      self.postMessage({type:"ack",id:data.id});return;
+    }
     if(data.type==="fit"){revision=data.revision??revision;fit.begin(!!data.zoom,!!data.sizeOnly);self.postMessage({type:"ack",id:data.id});return;}
     if(data.type==="syncBeat"){timingCoach.reset(data.time);self.postMessage({type:"ack",id:data.id});return;}
     if(data.type==="seed"){
@@ -25,9 +33,12 @@ self.onmessage=({data})=>{
       const g=new Guide(config,lastFrame.width,lastFrame.height),p=data.points.map(p=>[p[0]*g.aspectX,p[1]*g.aspectY]);
       const segments=Array.from({length:config.staffCount},(_,i)=>({a:p[i*2],b:p[i*2+1],confidence:1}));
       if(segments.some(s=>distance(s.a,s.b)<.08))throw Error("Staff endpoints are too close together");
-      tracker.seed(segments,data.time);scorer.reset();streakCoach.reset();rollingErrors.reset();self.postMessage({type:"ack",id:data.id});return;
+      tracker.seed(segments,data.time);scorer.reset();streakCoach.reset();pacerCoach.reset();rollingErrors.reset();self.postMessage({type:"ack",id:data.id});return;
     }
     if(data.type!=="frame")return;
+    // A captured frame queued before a control must not rewind that control's clock.
+    // Acknowledge the skipped image so BrowserCamera can submit the next fresh frame.
+    if(data.time<pacerFrameFloor){self.postMessage({type:"frameSkipped",id:data.id});return;}
     const start=performance.now(),{width,height,time}=data,rgba=new Uint8ClampedArray(data.pixels),argb=new Int32Array(width*height);
     for(let i=0;i<argb.length;i++)argb[i]=(255<<24)|(rgba[i*4]<<16)|(rgba[i*4+1]<<8)|rgba[i*4+2];
     const detected=detector.detect(background.apply(argb,width,height,time,`${config.facing}:${config.mirror}:${config.zoom}`),width,height,config,tracker.hints(time,config.staffCount)),staffs=tracker.update(detected,time,config.staffCount),g=new Guide(config,width,height);
@@ -35,7 +46,8 @@ self.onmessage=({data})=>{
     const fitPatch=fit.update(time,staffs,g,zoom.min,zoom.max,zoom.ratio);if(fitPatch)self.postMessage({type:"fit",config:fitPatch,revision});
     const ready=config.tempoSource==="manual"||(audio.running&&audio.bpm&&audio.confidence>=.6&&time-audio.at>=-100&&time-audio.at<2000&&(!audio.holding||time-audio.at<audio.holdRemainingMs));
     const metrics=scorer.score(time,staffs,g);
-    lastFrame={background:background.status,averagedMetrics:rollingErrors.update(time,metrics,config),streak:streakCoach.update({time,config,staffs,feedback:g.cues(staffs)}),audio,beat:timingCoach.update(time,staffs,g,config.tempoSource==="manual"?config.bpm:(audio.bpm||config.bpm)*config.audioRate,config.tempoSource==="manual"?null:audio.origin+config.audioOffsetMs,ready),fitStatus:fit.status,time,width,height,staffs,config,currentConfig:config,guide:g.json(),feedback:g.cues(staffs),metrics,analysisFps:fps,source:"camera"};
+    const pacer=pacerCoach.update(time,staffs,g),feedback=pacer.enabled?pacer.feedback:g.cues(staffs);
+    lastFrame={background:background.status,averagedMetrics:rollingErrors.update(time,metrics,config),streak:streakCoach.update({time,config,staffs,feedback,pacer}),pacer,audio,beat:timingCoach.update(time,staffs,g,config.tempoSource==="manual"?config.bpm:(audio.bpm||config.bpm)*config.audioRate,config.tempoSource==="manual"?null:audio.origin+config.audioOffsetMs,ready),fitStatus:fit.status,time,width,height,staffs,config,currentConfig:config,guide:g.json(),feedback,metrics,analysisFps:fps,source:"camera"};
     self.postMessage({type:"frame",frame:lastFrame,processingMs:performance.now()-start});
   } catch(e){self.postMessage({type:"error",id:data.id,error:e.message,frame:data.type==="frame"});}
 };

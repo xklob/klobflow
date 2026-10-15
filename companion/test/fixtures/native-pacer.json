@@ -1,0 +1,6002 @@
+[
+  {
+    "width": 640,
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 30,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 2,
+      "mode": "circles",
+      "symmetry": true,
+      "pacerEnabled": true,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 90,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 1.3333333333333333,
+      "timing": "tog-same",
+      "rotation": 23,
+      "pacerCountdown": 1,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "steps": [
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 0,
+        "staffs": [
+          {
+            "a": [
+              0.8861681935036347,
+              0.4653728571209666
+            ],
+            "b": [
+              0.24860358672491756,
+              0.4095931817624658
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.6520085539420947,
+              0.8040240462295707
+            ],
+            "b": [
+              1.0718863324960197,
+              0.3210099148869969
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 100,
+        "operation": "start",
+        "staffs": [
+          {
+            "a": [
+              0.22482433700949522,
+              0.3124490583251487
+            ],
+            "b": [
+              0.8139474432190571,
+              0.5625169805582837
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.9389814043356248,
+              0.2679554274535029
+            ],
+            "b": [
+              0.6889134821024894,
+              0.8570785336630646
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 600,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.5193858901142762,
+              0.4374830194417162
+            ],
+            "b": [
+              1.1085089963238381,
+              0.6875509416748514
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 1100,
+        "staffs": [
+          {
+            "a": [
+              0.8139474432190571,
+              0.5625169805582838
+            ],
+            "b": [
+              0.22482433700949522,
+              0.3124490583251486
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          },
+          {
+            "a": [
+              0.6889134821024895,
+              0.8570785336630646
+            ],
+            "b": [
+              0.9389814043356247,
+              0.2679554274535029
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.125,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.639260000007368,
+                0.7341818529030881
+              ],
+              [
+                0.3995117802211843,
+                0.14078418598034426
+              ]
+            ],
+            [
+              [
+                0.933821553112149,
+                0.8592158140196557
+              ],
+              [
+                0.6940733333259652,
+                0.2658181470969118
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 7.500000000000005,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.6872600000073681,
+                0.7341818529030881
+              ],
+              "error": 7.500000000000007,
+              "target": [
+                0.639260000007368,
+                0.7341818529030881
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.44751178022118426,
+                0.14078418598034426
+              ],
+              "error": 7.499999999999998,
+              "target": [
+                0.3995117802211843,
+                0.14078418598034426
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.981821553112149,
+                0.8592158140196557
+              ],
+              "error": 7.500000000000007,
+              "target": [
+                0.933821553112149,
+                0.8592158140196557
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.7420733333259653,
+                0.2658181470969118
+              ],
+              "error": 7.500000000000007,
+              "target": [
+                0.6940733333259652,
+                0.2658181470969118
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.25,
+          "onTargetPercent": 0
+        },
+        "time": 1350,
+        "staffs": [
+          {
+            "a": [
+              0.6872600000073681,
+              0.7341818529030881
+            ],
+            "b": [
+              0.44751178022118426,
+              0.14078418598034426
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.981821553112149,
+              0.8592158140196557
+            ],
+            "b": [
+              0.7420733333259653,
+              0.2658181470969118
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.175,
+          "onTarget": true,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.5417079617123963,
+                0.7567035155248599
+              ],
+              [
+                0.497063818516156,
+                0.11826252335857246
+              ]
+            ],
+            [
+              [
+                1.0196394783187497,
+                0.8076512023563568
+              ],
+              [
+                0.6082554081193645,
+                0.3173827587602108
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 3.7500000000000124,
+          "feedback": [
+            {
+              "onTarget": true,
+              "tip": [
+                0.5417079617123962,
+                0.75670351552486
+              ],
+              "error": 2.4532694666933988E-14,
+              "target": [
+                0.5417079617123963,
+                0.7567035155248599
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                0.49706381851615616,
+                0.1182625233585724
+              ],
+              "error": 2.742838647325548E-14,
+              "target": [
+                0.497063818516156,
+                0.11826252335857246
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                1.0196394783187497,
+                0.8076512023563567
+              ],
+              "error": 1.734723475976807E-14,
+              "target": [
+                1.0196394783187497,
+                0.8076512023563568
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                0.6082554081193645,
+                0.3173827587602109
+              ],
+              "error": 8.673617379884035E-15,
+              "target": [
+                0.6082554081193645,
+                0.3173827587602108
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 66.66666666666666,
+          "state": "running",
+          "elapsedSeconds": 0.35,
+          "onTargetPercent": 50
+        },
+        "patch": {
+          "pacerDotSize": 24,
+          "trails": false
+        },
+        "time": 1450,
+        "staffs": [
+          {
+            "a": [
+              0.5417079617123962,
+              0.75670351552486
+            ],
+            "b": [
+              0.49706381851615616,
+              0.1182625233585724
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.0196394783187497,
+              0.8076512023563567
+            ],
+            "b": [
+              0.6082554081193645,
+              0.3173827587602109
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.3943519289977086,
+                0.7320445725464971
+              ],
+              [
+                0.6444198512308437,
+                0.14292146633693525
+              ]
+            ],
+            [
+              [
+                1.108508996323838,
+                0.6875509416748514
+              ],
+              [
+                0.5193858901142763,
+                0.4374830194417162
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1600,
+        "operation": "pause",
+        "staffs": [
+          {
+            "a": [
+              0.6444198512308437,
+              0.14292146633693525
+            ],
+            "b": [
+              0.3943519289977086,
+              0.7320445725464971
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.5193858901142763,
+              0.4374830194417162
+            ],
+            "b": [
+              1.108508996323838,
+              0.6875509416748514
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.3943519289977086,
+                0.7320445725464971
+              ],
+              [
+                0.6444198512308437,
+                0.14292146633693525
+              ]
+            ],
+            [
+              [
+                1.108508996323838,
+                0.6875509416748514
+              ],
+              [
+                0.5193858901142763,
+                0.4374830194417162
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1900,
+        "staffs": [
+          null,
+          {
+            "a": [
+              1.088240979443733,
+              0.3977047965870666
+            ],
+            "b": [
+              0.5396539069943811,
+              0.727329164529501
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.3943519289977086,
+                0.7320445725464971
+              ],
+              [
+                0.6444198512308437,
+                0.14292146633693525
+              ]
+            ],
+            [
+              [
+                1.108508996323838,
+                0.6875509416748514
+              ],
+              [
+                0.5193858901142763,
+                0.4374830194417162
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2000,
+        "operation": "resume",
+        "staffs": [
+          {
+            "a": [
+              0.24860358672491756,
+              0.4095931817624658
+            ],
+            "b": [
+              0.8861681935036347,
+              0.4653728571209666
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.0718863324960197,
+              0.3210099148869969
+            ],
+            "b": [
+              0.6520085539420947,
+              0.8040240462295707
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [
+            [
+              [
+                0.3943519289977086,
+                0.7320445725464971
+              ],
+              [
+                0.6444198512308437,
+                0.14292146633693525
+              ]
+            ],
+            [
+              [
+                1.108508996323838,
+                0.6875509416748514
+              ],
+              [
+                0.5193858901142763,
+                0.4374830194417162
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2500,
+        "staffs": [
+          {
+            "a": [
+              0.49149605243502564,
+              0.7562653228310747
+            ],
+            "b": [
+              0.5472757277935267,
+              0.1187007160523576
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.0554545088903442,
+              0.7724558698352462
+            ],
+            "b": [
+              0.57244037754777,
+              0.35257809128132145
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.3943519289977086,
+                0.7320445725464971
+              ],
+              [
+                0.6444198512308437,
+                0.14292146633693525
+              ]
+            ],
+            [
+              [
+                1.108508996323838,
+                0.6875509416748514
+              ],
+              [
+                0.5193858901142763,
+                0.4374830194417162
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 3000,
+        "staffs": [
+          {
+            "a": [
+              0.8381681935036347,
+              0.4653728571209667
+            ],
+            "b": [
+              0.20060358672491757,
+              0.4095931817624657
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          },
+          {
+            "a": [
+              0.6040085539420947,
+              0.8040240462295709
+            ],
+            "b": [
+              1.0238863324960195,
+              0.32100991488699676
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.22268705665290423,
+                0.5573571293348081
+              ],
+              [
+                0.8160847235756481,
+                0.3176089095486243
+              ]
+            ],
+            [
+              [
+                1.110646276680429,
+                0.442642870665192
+              ],
+              [
+                0.5172486097576852,
+                0.6823910904513756
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 58.7785252292473,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.7250779252139689,
+                0.6826172412397891
+              ],
+              "error": 58.77852522924729,
+              "target": [
+                0.8160847235756481,
+                0.3176089095486243
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.31369385501458347,
+                0.1923487976436433
+              ],
+              "error": 58.77852522924729,
+              "target": [
+                0.22268705665290423,
+                0.5573571293348081
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.8362695148171772,
+                0.8817374766414277
+              ],
+              "error": 58.778525229247315,
+              "target": [
+                0.5172486097576852,
+                0.6823910904513756
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.791625371620937,
+                0.24329648447514002
+              ],
+              "error": 58.7785252292473,
+              "target": [
+                1.110646276680429,
+                0.442642870665192
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [
+          {
+            "a": [
+              0.7250779252139689,
+              0.6826172412397891
+            ],
+            "b": [
+              0.31369385501458347,
+              0.1923487976436433
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.8362695148171772,
+              0.8817374766414277
+            ],
+            "b": [
+              0.791625371620937,
+              0.24329648447514002
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.22268705665290423,
+                0.5573571293348081
+              ],
+              [
+                0.8160847235756481,
+                0.3176089095486243
+              ]
+            ],
+            [
+              [
+                1.110646276680429,
+                0.442642870665192
+              ],
+              [
+                0.5172486097576852,
+                0.6823910904513756
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 58.7785252292473,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.8396253716209371,
+              0.24329648447514002
+            ],
+            "b": [
+              0.8842695148171772,
+              0.8817374766414277
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3300,
+        "operation": "stop",
+        "staffs": [
+          {
+            "a": [
+              0.6841980740854934,
+              0.7117765556663922
+            ],
+            "b": [
+              0.35457370614305894,
+              0.1631894832170402
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.885931780609094,
+              0.8743154012895591
+            ],
+            "b": [
+              0.7419631058290201,
+              0.2507185598270086
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3400,
+        "operation": "restart",
+        "staffs": [
+          {
+            "a": [
+              0.5913702275043131,
+              0.7492814401729915
+            ],
+            "b": [
+              0.4474015527242392,
+              0.12568459871044096
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.9787596271902743,
+              0.8368105167829598
+            ],
+            "b": [
+              0.6491352592478399,
+              0.28822344433360775
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3900,
+        "staffs": [
+          {
+            "a": [
+              0.8311843108455514,
+              0.3654986820516792
+            ],
+            "b": [
+              0.20758746938300093,
+              0.5094673568317531
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.5396539069943811,
+              0.727329164529501
+            ],
+            "b": [
+              1.088240979443733,
+              0.3977047965870666
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8139474432190571,
+                0.5625169805582838
+              ],
+              [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            ],
+            [
+              [
+                0.6889134821024895,
+                0.8570785336630646
+              ],
+              [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 45.53027049107454,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.49540155272423897,
+                0.12568459871044102
+              ],
+              "error": 51.37109194740813,
+              "target": [
+                0.22482433700949522,
+                0.3124490583251486
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.6393702275043134,
+                0.7492814401729914
+              ],
+              "error": 39.945692999448625,
+              "target": [
+                0.8139474432190571,
+                0.5625169805582838
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.69713525924784,
+                0.2882234443336077
+              ],
+              "error": 37.92092873319607,
+              "target": [
+                0.9389814043356247,
+                0.2679554274535029
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                1.0267596271902741,
+                0.8368105167829599
+              ],
+              "error": 52.883368284245336,
+              "target": [
+                0.6889134821024895,
+                0.8570785336630646
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 4400,
+        "staffs": [
+          {
+            "a": [
+              0.49540155272423897,
+              0.12568459871044102
+            ],
+            "b": [
+              0.6393702275043134,
+              0.7492814401729914
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.69713525924784,
+              0.2882234443336077
+            ],
+            "b": [
+              1.0267596271902741,
+              0.8368105167829599
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8277550160208438,
+                0.5683779474856229
+              ],
+              [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            ],
+            [
+              [
+                0.6909991210495978,
+                0.890554646193977
+              ],
+              [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "patch": {"scale": 0.35},
+        "time": 4500,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.5636066629428735,
+              0.33875728733894533
+            ],
+            "b": [
+              1.0919033690988138,
+              0.7979986076323005
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.8277550160208438,
+                0.5683779474856229
+              ],
+              [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            ],
+            [
+              [
+                0.6909991210495978,
+                0.890554646193977
+              ],
+              [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 4600,
+        "operation": "start",
+        "staffs": [
+          {
+            "a": [
+              0.36882242234124385,
+              0.7537987512227312
+            ],
+            "b": [
+              0.6423342122837353,
+              0.10944535380602294
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.1499317147291979,
+              0.7051338424568687
+            ],
+            "b": [
+              0.5055783173124895,
+              0.431622052514377
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 400,
+          "targets": [
+            [
+              [
+                0.8277550160208438,
+                0.5683779474856229
+              ],
+              [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            ],
+            [
+              [
+                0.6909991210495978,
+                0.890554646193977
+              ],
+              [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 5200,
+        "staffs": [
+          {
+            "a": [
+              0.76972667039046,
+              0.6612427126610543
+            ],
+            "b": [
+              0.24142996423451912,
+              0.20200139236769984
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.7972505060591629,
+              0.9170460918177338
+            ],
+            "b": [
+              0.8582595259825244,
+              0.21970980315351196
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8277550160208438,
+                0.5683779474856229
+              ],
+              [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            ],
+            [
+              [
+                0.6909991210495978,
+                0.890554646193977
+              ],
+              [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 70.76701583869448,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.42132242234124384,
+                0.7537987512227312
+              ],
+              "error": 63.818672922144934,
+              "target": [
+                0.8277550160208438,
+                0.5683779474856229
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.6948342122837353,
+                0.10944535380602294
+              ],
+              "error": 77.71535875524403,
+              "target": [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                1.2024317147291976,
+                0.7051338424568687
+              ],
+              "error": 77.71535875524403,
+              "target": [
+                0.6909991210495978,
+                0.890554646193977
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.5580783173124896,
+                0.431622052514377
+              ],
+              "error": 63.818672922144934,
+              "target": [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 5600,
+        "staffs": [
+          {
+            "a": [
+              0.42132242234124384,
+              0.7537987512227312
+            ],
+            "b": [
+              0.6948342122837353,
+              0.10944535380602294
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.2024317147291976,
+              0.7051338424568687
+            ],
+            "b": [
+              0.5580783173124896,
+              0.431622052514377
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.05,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.7697266703904597,
+                0.6612427126610546
+              ],
+              [
+                0.2414299642345194,
+                0.20200139236769954
+              ]
+            ],
+            [
+              [
+                0.7972505060591633,
+                0.9170460918177338
+              ],
+              [
+                0.8582595259825241,
+                0.21970980315351196
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 70.73884697867459,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.7351989774591668,
+                0.16747369943640666
+              ],
+              "error": 70.71067811865471,
+              "target": [
+                0.2414299642345194,
+                0.20200139236769954
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.27595765716581233,
+                0.6957704055923475
+              ],
+              "error": 70.7106781186547,
+              "target": [
+                0.7697266703904597,
+                0.6612427126610546
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.47908687168873276,
+                0.5378734375239421
+              ],
+              "error": 70.71067811865473,
+              "target": [
+                0.8582595259825241,
+                0.21970980315351196
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                1.1764231603529547,
+                0.5988824574473036
+              ],
+              "error": 70.71067811865473,
+              "target": [
+                0.7972505060591633,
+                0.9170460918177338
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0.1,
+          "onTargetPercent": 0
+        },
+        "time": 5700,
+        "staffs": [
+          {
+            "a": [
+              0.7351989774591668,
+              0.16747369943640666
+            ],
+            "b": [
+              0.27595765716581233,
+              0.6957704055923475
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.47908687168873276,
+              0.5378734375239421
+            ],
+            "b": [
+              1.1764231603529547,
+              0.5988824574473036
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8277550160208438,
+                0.5683779474856229
+              ],
+              [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            ],
+            [
+              [
+                0.6909991210495978,
+                0.890554646193977
+              ],
+              [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6501,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.5628865930692593,
+              0.33958826563099775
+            ],
+            "b": [
+              1.092623438972428,
+              0.797167629340248
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8277550160208438,
+                0.5683779474856229
+              ],
+              [
+                0.18340161860413545,
+                0.2948661575431313
+              ]
+            ],
+            [
+              [
+                0.6909991210495978,
+                0.890554646193977
+              ],
+              [
+                0.9645109109920895,
+                0.2462012487772688
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6400,
+        "staffs": [
+          {
+            "a": [
+              0.42684544829213644,
+              0.09059252983954486
+            ],
+            "b": [
+              0.5843111863328427,
+              0.7726515751892093
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.647491689802325,
+              0.26836939223988343
+            ],
+            "b": [
+              1.0080183422393625,
+              0.8683865027313623
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      }
+    ],
+    "height": 480
+  },
+  {
+    "width": 640,
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 30,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "same",
+      "staffCount": 2,
+      "mode": "circles",
+      "symmetry": true,
+      "pacerEnabled": true,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 90,
+      "pacerDirection": "ccw",
+      "calibrationImageAspect": 1.3333333333333333,
+      "timing": "tog-same",
+      "rotation": 23,
+      "pacerCountdown": 1,
+      "fps": 60,
+      "planeCorners": [
+        [
+          0.12,
+          0.1
+        ],
+        [
+          0.87,
+          0.16
+        ],
+        [
+          0.91,
+          0.9
+        ],
+        [
+          0.08,
+          0.81
+        ]
+      ],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "steps": [
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 0,
+        "staffs": [
+          {
+            "a": [
+              0.8039499013497257,
+              0.5929121693369658
+            ],
+            "b": [
+              0.3074823589646482,
+              0.25967429510142753
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.6354670397007366,
+              0.6990916756225488
+            ],
+            "b": [
+              1.0754191564403361,
+              0.3745841810609133
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 100,
+        "operation": "start",
+        "staffs": [
+          {
+            "a": [
+              0.20273099242088166,
+              0.31076564695758124
+            ],
+            "b": [
+              0.8081609161517695,
+              0.5302211426179775
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.9340231137969403,
+              0.3280842131137092
+            ],
+            "b": [
+              0.6755126387942358,
+              0.7432566369184472
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 600,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.4989283922108363,
+              0.4181309168861921
+            ],
+            "b": [
+              1.1313084034981424,
+              0.6473552472059959
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 1100,
+        "staffs": [
+          {
+            "a": [
+              0.8081609161517695,
+              0.5302211426179775
+            ],
+            "b": [
+              0.20273099242088166,
+              0.31076564695758124
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          },
+          {
+            "a": [
+              0.6755126387942358,
+              0.7432566369184472
+            ],
+            "b": [
+              0.9340231137969403,
+              0.3280842131137092
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.125,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8069601482804826,
+                0.3543810184957745
+              ],
+              [
+                0.18908122527134816,
+                0.4822565306248127
+              ]
+            ],
+            [
+              [
+                0.9449664708398584,
+                0.7659528851866694
+              ],
+              [
+                0.6803832849449746,
+                0.31004555300575276
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 7.499999999999994,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.8569897052721308,
+                0.3576986453347376
+              ],
+              "error": 7.500000000000007,
+              "target": [
+                0.8069601482804826,
+                0.3543810184957745
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.23849538201972223,
+                0.4857822139762014
+              ],
+              "error": 7.499999999999991,
+              "target": [
+                0.18908122527134816,
+                0.4822565306248127
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.9982780617621474,
+                0.7701139516478512
+              ],
+              "error": 7.4999999999999885,
+              "target": [
+                0.9449664708398584,
+                0.7659528851866694
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.7297874283365222,
+                0.31326950793746267
+              ],
+              "error": 7.4999999999999885,
+              "target": [
+                0.6803832849449746,
+                0.31004555300575276
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.25,
+          "onTargetPercent": 0
+        },
+        "time": 1350,
+        "staffs": [
+          {
+            "a": [
+              0.8569897052721308,
+              0.3576986453347376
+            ],
+            "b": [
+              0.23849538201972223,
+              0.4857822139762014
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.9982780617621474,
+              0.7701139516478512
+            ],
+            "b": [
+              0.7297874283365222,
+              0.31326950793746267
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.175,
+          "onTarget": true,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.7526547963225501,
+                0.29129774186359164
+              ],
+              [
+                0.23846018890394707,
+                0.5483341936539481
+              ]
+            ],
+            [
+              [
+                1.0383685769146633,
+                0.7328568734098151
+              ],
+              [
+                0.5920235579572385,
+                0.33997051679594814
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 3.7500000000000098,
+          "feedback": [
+            {
+              "onTarget": true,
+              "tip": [
+                0.7526547963225501,
+                0.29129774186359153
+              ],
+              "error": 4.336808689942018E-14,
+              "target": [
+                0.7526547963225501,
+                0.29129774186359164
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                0.23846018890394713,
+                0.5483341936539481
+              ],
+              "error": 1.939479807224432E-14,
+              "target": [
+                0.23846018890394707,
+                0.5483341936539481
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                1.0383685769146633,
+                0.732856873409815
+              ],
+              "error": 3.878959614448864E-14,
+              "target": [
+                1.0383685769146633,
+                0.7328568734098151
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                0.5920235579572385,
+                0.33997051679594814
+              ],
+              "error": 0,
+              "target": [
+                0.5920235579572385,
+                0.33997051679594814
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 66.66666666666666,
+          "state": "running",
+          "elapsedSeconds": 0.35,
+          "onTargetPercent": 50
+        },
+        "patch": {
+          "pacerDotSize": 24,
+          "trails": false
+        },
+        "time": 1450,
+        "staffs": [
+          {
+            "a": [
+              0.7526547963225501,
+              0.29129774186359153
+            ],
+            "b": [
+              0.23846018890394713,
+              0.5483341936539481
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.0383685769146633,
+              0.732856873409815
+            ],
+            "b": [
+              0.5920235579572385,
+              0.33997051679594814
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.6298924813535721,
+                0.22304407750695754
+              ],
+              [
+                0.3610591831318707,
+                0.6235037669780688
+              ]
+            ],
+            [
+              [
+                1.1313084034981424,
+                0.6473552472059959
+              ],
+              [
+                0.49892839221083635,
+                0.4181309168861921
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1600,
+        "operation": "pause",
+        "staffs": [
+          {
+            "a": [
+              0.3610591831318707,
+              0.6235037669780688
+            ],
+            "b": [
+              0.6298924813535721,
+              0.22304407750695754
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.49892839221083635,
+              0.4181309168861921
+            ],
+            "b": [
+              1.1313084034981424,
+              0.6473552472059959
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.6298924813535721,
+                0.22304407750695754
+              ],
+              [
+                0.3610591831318707,
+                0.6235037669780688
+              ]
+            ],
+            [
+              [
+                1.1313084034981424,
+                0.6473552472059959
+              ],
+              [
+                0.49892839221083635,
+                0.4181309168861921
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1900,
+        "staffs": [
+          null,
+          {
+            "a": [
+              1.0960300378042194,
+              0.430558375740538
+            ],
+            "b": [
+              0.5154710863924298,
+              0.6315528801216628
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.6298924813535721,
+                0.22304407750695754
+              ],
+              [
+                0.3610591831318707,
+                0.6235037669780688
+              ]
+            ],
+            [
+              [
+                1.1313084034981424,
+                0.6473552472059959
+              ],
+              [
+                0.49892839221083635,
+                0.4181309168861921
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2000,
+        "operation": "resume",
+        "staffs": [
+          {
+            "a": [
+              0.3074823589646482,
+              0.25967429510142753
+            ],
+            "b": [
+              0.8039499013497257,
+              0.5929121693369658
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.0754191564403361,
+              0.3745841810609133
+            ],
+            "b": [
+              0.6354670397007366,
+              0.6990916756225488
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [
+            [
+              [
+                0.6298924813535721,
+                0.22304407750695754
+              ],
+              [
+                0.3610591831318707,
+                0.6235037669780688
+              ]
+            ],
+            [
+              [
+                1.1313084034981424,
+                0.6473552472059959
+              ],
+              [
+                0.49892839221083635,
+                0.4181309168861921
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2500,
+        "staffs": [
+          {
+            "a": [
+              0.7163184515026946,
+              0.2644503649339575
+            ],
+            "b": [
+              0.273670205897662,
+              0.5773737199708152
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.0766108771416087,
+              0.7084500776920477
+            ],
+            "b": [
+              0.5548620553514417,
+              0.3620513054928147
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.6298924813535721,
+                0.22304407750695754
+              ],
+              [
+                0.3610591831318707,
+                0.6235037669780688
+              ]
+            ],
+            [
+              [
+                1.1313084034981424,
+                0.6473552472059959
+              ],
+              [
+                0.49892839221083635,
+                0.4181309168861921
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 3000,
+        "staffs": [
+          {
+            "a": [
+              0.7523860541925876,
+              0.58913223997754
+            ],
+            "b": [
+              0.2594761958636283,
+              0.25657871888852446
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          },
+          {
+            "a": [
+              0.5835759473107459,
+              0.6951067096792989
+            ],
+            "b": [
+              1.024731739076221,
+              0.37121939316379743
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.38380366259616255,
+                0.2061640436588482
+              ],
+              [
+                0.6220058990589614,
+                0.6447403897469114
+              ]
+            ],
+            [
+              [
+                1.1220245682279635,
+                0.4647371084605726
+              ],
+              [
+                0.492406657039355,
+                0.5960996301468356
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 58.77852522924731,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.8320136943678756,
+                0.4250634114088463
+              ],
+              "error": 58.77852522924729,
+              "target": [
+                0.6220058990589614,
+                0.6447403897469114
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.17081708328717043,
+                0.41130194593729735
+              ],
+              "error": 58.778525229247315,
+              "target": [
+                0.38380366259616255,
+                0.2061640436588482
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.8375311278851957,
+                0.7752405482539257
+              ],
+              "error": 58.7785252292473,
+              "target": [
+                0.492406657039355,
+                0.5960996301468356
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.7806880799192196,
+                0.30103048965539986
+              ],
+              "error": 58.778525229247315,
+              "target": [
+                1.1220245682279635,
+                0.4647371084605726
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [
+          {
+            "a": [
+              0.8320136943678756,
+              0.4250634114088463
+            ],
+            "b": [
+              0.17081708328717043,
+              0.41130194593729735
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.8375311278851957,
+              0.7752405482539257
+            ],
+            "b": [
+              0.7806880799192196,
+              0.30103048965539986
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.38380366259616255,
+                0.2061640436588482
+              ],
+              [
+                0.6220058990589614,
+                0.6447403897469114
+              ]
+            ],
+            [
+              [
+                1.1220245682279635,
+                0.4647371084605726
+              ],
+              [
+                0.492406657039355,
+                0.5960996301468356
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 58.77852522924731,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.8302735323605857,
+              0.3042436610714001
+            ],
+            "b": [
+              0.8906347838298011,
+              0.7794128471600361
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3300,
+        "operation": "stop",
+        "staffs": [
+          {
+            "a": [
+              0.8234255276279532,
+              0.38917968415494336
+            ],
+            "b": [
+              0.17593399659452905,
+              0.44694807703263406
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.8923002488031835,
+              0.7737008440613548
+            ],
+            "b": [
+              0.7295818271607903,
+              0.3028314958937635
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3400,
+        "operation": "restart",
+        "staffs": [
+          {
+            "a": [
+              0.7831417381621432,
+              0.3215000010696023
+            ],
+            "b": [
+              0.21005887131112116,
+              0.5163449056157055
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.994097114854325,
+              0.7522084352513133
+            ],
+            "b": [
+              0.6341851240307919,
+              0.3225132549330329
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3900,
+        "staffs": [
+          {
+            "a": [
+              0.6703338340089607,
+              0.6314108914814072
+            ],
+            "b": [
+              0.3383187496036974,
+              0.21828416677343132
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.5154710863924298,
+              0.6315528801216628
+            ],
+            "b": [
+              1.0960300378042194,
+              0.430558375740538
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8081609161517695,
+                0.5302211426179775
+              ],
+              [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            ],
+            [
+              [
+                0.6755126387942358,
+                0.7432566369184472
+              ],
+              [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 45.7068195475563,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.25976288502971756,
+                0.5199395583379101
+              ],
+              "error": 46.52770038482855,
+              "target": [
+                0.20273099242088166,
+                0.31076564695758124
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.8328788053560082,
+                0.32475260378947657
+              ],
+              "error": 45.49528078795521,
+              "target": [
+                0.8081609161517695,
+                0.5302211426179775
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.6835647245346187,
+                0.3257581130241868
+              ],
+              "error": 37.92092873319608,
+              "target": [
+                0.9340231137969403,
+                0.3280842131137092
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                1.0474358925372105,
+                0.756344311788116
+              ],
+              "error": 52.88336828424537,
+              "target": [
+                0.6755126387942358,
+                0.7432566369184472
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 4400,
+        "staffs": [
+          {
+            "a": [
+              0.25976288502971756,
+              0.5199395583379101
+            ],
+            "b": [
+              0.8328788053560082,
+              0.32475260378947657
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.6835647245346187,
+              0.3257581130241868
+            ],
+            "b": [
+              1.0474358925372105,
+              0.756344311788116
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8229904422310557,
+                0.5355965310297089
+              ],
+              [
+                0.16207662572672787,
+                0.29602930201670785
+              ]
+            ],
+            [
+              [
+                0.677822991062544,
+                0.7696018828374668
+              ],
+              [
+                0.9600464132082351,
+                0.31466662940431267
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "patch": {"scale": 0.35},
+        "time": 4500,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.5459423567798181,
+              0.35179688831389083
+            ],
+            "b": [
+              1.118234130294155,
+              0.7314675268235032
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": true
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [
+            [
+              [
+                0.8229904422310557,
+                0.5355965310297089
+              ],
+              [
+                0.16207662572672787,
+                0.29602930201670785
+              ]
+            ],
+            [
+              [
+                0.677822991062544,
+                0.7696018828374668
+              ],
+              [
+                0.9600464132082351,
+                0.31466662940431267
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 4600,
+        "operation": "start",
+        "staffs": [
+          {
+            "a": [
+              0.6279126243105191,
+              0.20046751141388588
+            ],
+            "b": [
+              0.3333391230937,
+              0.6377961985453826
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.177920920618364,
+              0.664251295200386
+            ],
+            "b": [
+              0.48475950587398714,
+              0.412994996357442
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 400,
+          "targets": [
+            [
+              [
+                0.8229904422310557,
+                0.5355965310297089
+              ],
+              [
+                0.16207662572672787,
+                0.29602930201670785
+              ]
+            ],
+            [
+              [
+                0.677822991062544,
+                0.7696018828374668
+              ],
+              [
+                0.9600464132082351,
+                0.31466662940431267
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 5200,
+        "staffs": [
+          {
+            "a": [
+              0.8493421988964998,
+              0.45997889003713566
+            ],
+            "b": [
+              0.13003212697952993,
+              0.36728116030811414
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.7949583168548364,
+              0.7997377767301284
+            ],
+            "b": [
+              0.8491382212417861,
+              0.28921111331704047
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8229904422310557,
+                0.5355965310297089
+              ],
+              [
+                0.16207662572672787,
+                0.29602930201670785
+              ]
+            ],
+            [
+              [
+                0.677822991062544,
+                0.7696018828374668
+              ],
+              [
+                0.9600464132082351,
+                0.31466662940431267
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 5600,
+        "staffs": [
+          {
+            "a": [
+              0.6809666949163644,
+              0.20376383441824109
+            ],
+            "b": [
+              0.38897544674727186,
+              0.6420058338039203
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              1.2360909331264383,
+              0.6685895236221817
+            ],
+            "b": [
+              0.5390750473966468,
+              0.416725283417421
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0.05,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8493421988964996,
+                0.45997889003713527
+              ],
+              [
+                0.13003212697952996,
+                0.36728116030811453
+              ]
+            ],
+            [
+              [
+                0.7949583168548368,
+                0.7997377767301284
+              ],
+              [
+                0.8491382212417858,
+                0.28921111331704047
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0.1,
+          "onTargetPercent": null
+        },
+        "time": 5700,
+        "staffs": [
+          {
+            "a": [
+              0.44551946049016755,
+              0.6663937673712564
+            ],
+            "b": [
+              0.5214218129497261,
+              0.17624237630685397
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.45515517395901717,
+              0.4871001656862822
+            ],
+            "b": [
+              1.2012949083939775,
+              0.5854731828479861
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8229904422310557,
+                0.5355965310297089
+              ],
+              [
+                0.16207662572672787,
+                0.29602930201670785
+              ]
+            ],
+            [
+              [
+                0.677822991062544,
+                0.7696018828374668
+              ],
+              [
+                0.9600464132082351,
+                0.31466662940431267
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6501,
+        "staffs": [
+          null,
+          {
+            "a": [
+              0.5451926655836383,
+              0.35232668228930514
+            ],
+            "b": [
+              1.1189959338415862,
+              0.7308784455521704
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [
+            [
+              [
+                0.8229904422310557,
+                0.5355965310297089
+              ],
+              [
+                0.16207662572672787,
+                0.29602930201670785
+              ]
+            ],
+            [
+              [
+                0.677822991062544,
+                0.7696018828374668
+              ],
+              [
+                0.9600464132082351,
+                0.31466662940431267
+              ]
+            ]
+          ],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6400,
+        "staffs": [
+          {
+            "a": [
+              0.16876038666110235,
+              0.5203437419449412
+            ],
+            "b": [
+              0.7951974154367548,
+              0.3075354613518465
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          },
+          {
+            "a": [
+              0.6325668285696062,
+              0.3086846108818588
+            ],
+            "b": [
+              1.0277941879857762,
+              0.7796440538610853
+            ],
+            "confidence": 0.9,
+            "occluded": false,
+            "blurred": false
+          }
+        ]
+      }
+    ],
+    "height": 480
+  },
+  {
+    "width": 640,
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 30,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 1,
+      "mode": "antispin",
+      "symmetry": true,
+      "pacerEnabled": true,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 90,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 1.3333333333333333,
+      "timing": "tog-same",
+      "rotation": 23,
+      "pacerCountdown": 1,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "steps": [
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 0,
+        "staffs": [{
+          "a": [
+            0.6760290478076308,
+            0.591024525798856
+          ],
+          "b": [
+            0.4345219821363438,
+            0.38108563652189353
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 100,
+        "operation": "start",
+        "staffs": [{
+          "a": [
+            0.3721051135618857,
+            0.3749660388834324
+          ],
+          "b": [
+            0.6666666666666666,
+            0.5
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 600,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 1100,
+        "staffs": [{
+          "a": [
+            0.9612282197714476,
+            0.6250339611165676
+          ],
+          "b": [
+            0.6666666666666666,
+            0.5
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": true
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.125,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.8749531383438985,
+              0.5884123617841401
+            ],
+            [
+              0.5782543048825266,
+              0.7082864716772319
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 7.500000000000007,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.9229531383438986,
+                0.5884123617841401
+              ],
+              "error": 7.500000000000007,
+              "axis": "horizontal",
+              "target": [
+                0.8749531383438985,
+                0.5884123617841401
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.6262543048825266,
+                0.7082864716772319
+              ],
+              "error": 7.500000000000007,
+              "axis": "vertical",
+              "target": [
+                0.5782543048825266,
+                0.7082864716772319
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.25,
+          "onTargetPercent": 0
+        },
+        "time": 1350,
+        "staffs": [{
+          "a": [
+            0.9229531383438986,
+            0.5884123617841401
+          ],
+          "b": [
+            0.6262543048825266,
+            0.7082864716772319
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.175,
+          "onTarget": true,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.8003948133647631,
+              0.5567642304917256
+            ],
+            [
+              0.5552605915666902,
+              0.7624562655914182
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 3.750000000000008,
+          "feedback": [
+            {
+              "onTarget": true,
+              "tip": [
+                0.8003948133647631,
+                0.5567642304917255
+              ],
+              "error": 1.734723475976807E-14,
+              "axis": "horizontal",
+              "target": [
+                0.8003948133647631,
+                0.5567642304917256
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                0.5552605915666902,
+                0.7624562655914182
+              ],
+              "error": 0,
+              "axis": "vertical",
+              "target": [
+                0.5552605915666902,
+                0.7624562655914182
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 66.66666666666666,
+          "state": "running",
+          "elapsedSeconds": 0.35,
+          "onTargetPercent": 50
+        },
+        "patch": {
+          "pacerDotSize": 24,
+          "trails": false
+        },
+        "time": 1450,
+        "staffs": [{
+          "a": [
+            0.8003948133647631,
+            0.5567642304917255
+          ],
+          "b": [
+            0.5552605915666902,
+            0.7624562655914182
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.6666666666666666,
+              0.5
+            ],
+            [
+              0.541632705550099,
+              0.7945615531047809
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1600,
+        "operation": "pause",
+        "staffs": [{
+          "a": [
+            0.541632705550099,
+            0.7945615531047809
+          ],
+          "b": [
+            0.6666666666666666,
+            0.5
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.6666666666666666,
+              0.5
+            ],
+            [
+              0.541632705550099,
+              0.7945615531047809
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1900,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.6666666666666666,
+              0.5
+            ],
+            [
+              0.541632705550099,
+              0.7945615531047809
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2000,
+        "operation": "resume",
+        "staffs": [{
+          "a": [
+            0.4345219821363438,
+            0.38108563652189353
+          ],
+          "b": [
+            0.6760290478076308,
+            0.591024525798856
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [[
+            [
+              0.6666666666666666,
+              0.5
+            ],
+            [
+              0.541632705550099,
+              0.7945615531047809
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2500,
+        "staffs": [{
+          "a": [
+            0.7855810301447731,
+            0.21985531546967718
+          ],
+          "b": [
+            0.5756421408678107,
+            0.46136238114096423
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.6666666666666666,
+              0.5
+            ],
+            [
+              0.541632705550099,
+              0.7945615531047809
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 3000,
+        "staffs": [{
+          "a": [
+            0.9468113511969894,
+            0.6189143634781065
+          ],
+          "b": [
+            0.7053042855257025,
+            0.4089754742011441
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": true
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.4583801949894347,
+              0.41158763821586
+            ],
+            [
+              0.5782543048825266,
+              0.7082864716772319
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 49.444899136295646,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.9291229322580848,
+                0.6114060750999765
+              ],
+              "error": 56.874700573854376,
+              "axis": "vertical",
+              "target": [
+                0.5782543048825266,
+                0.7082864716772319
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.6099024361749411,
+                0.6337281466980964
+              ],
+              "error": 42.01509769873691,
+              "axis": "horizontal",
+              "target": [
+                0.4583801949894347,
+                0.41158763821586
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [{
+          "a": [
+            0.9291229322580848,
+            0.6114060750999765
+          ],
+          "b": [
+            0.6099024361749411,
+            0.6337281466980964
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.4583801949894347,
+              0.41158763821586
+            ],
+            [
+              0.5782543048825266,
+              0.7082864716772319
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 49.444899136295646,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3300,
+        "operation": "stop",
+        "staffs": [{
+          "a": [
+            0.9049719690179129,
+            0.6011545994173195
+          ],
+          "b": [
+            0.5931735482866376,
+            0.6731389368073565
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3400,
+        "operation": "restart",
+        "staffs": [{
+          "a": [
+            0.8398056034740231,
+            0.573493118380029
+          ],
+          "b": [
+            0.5655120672493471,
+            0.7383053023512463
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3900,
+        "staffs": [{
+          "a": [
+            0.5931735482866376,
+            0.6731389368073565
+          ],
+          "b": [
+            0.4283613643154204,
+            0.3988454005826805
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9612282197714476,
+              0.6250339611165676
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 41.91241301556581,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.54152772985931,
+                0.4265068816199709
+              ],
+              "error": 22.675633924745664,
+              "axis": "vertical",
+              "target": [
+                0.6666666666666666,
+                0.5
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.8158212660839862,
+                0.26169469764875386
+              ],
+              "error": 61.149192106385954,
+              "axis": "horizontal",
+              "target": [
+                0.9612282197714476,
+                0.6250339611165676
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 4400,
+        "staffs": [{
+          "a": [
+            0.54152772985931,
+            0.4265068816199709
+          ],
+          "b": [
+            0.8158212660839862,
+            0.26169469764875386
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9888433653750208,
+              0.6367558949712459
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "patch": {"scale": 0.35},
+        "time": 4500,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.9888433653750208,
+              0.6367558949712459
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 4600,
+        "operation": "start",
+        "staffs": [{
+          "a": [
+            0.8034225616379125,
+            0.17782330129164586
+          ],
+          "b": [
+            0.6666666666666665,
+            0.5
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 400,
+          "targets": [[
+            [
+              0.9888433653750208,
+              0.6367558949712459
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 5200,
+        "staffs": [{
+          "a": [
+            0.9730749153717073,
+            0.630062585054179
+          ],
+          "b": [
+            0.6244067710395964,
+            0.5995580750924983
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9888433653750208,
+              0.6367558949712459
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 45.38442607258648,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.7191666666666666,
+                0.5
+              ],
+              "error": 43.195733121578925,
+              "axis": "horizontal",
+              "target": [
+                0.9888433653750208,
+                0.6367558949712459
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.5824107716954208,
+                0.8221766987083541
+              ],
+              "error": 47.57311902359403,
+              "axis": "vertical",
+              "target": [
+                0.6666666666666666,
+                0.5
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 5600,
+        "staffs": [{
+          "a": [
+            0.7191666666666666,
+            0.5
+          ],
+          "b": [
+            0.5824107716954208,
+            0.8221766987083541
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.05,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9730749153717071,
+              0.630062585054179
+            ],
+            [
+              0.6244067710395963,
+              0.5995580750924986
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 46.468625943672066,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.5366040816124876,
+                0.8064082487050407
+              ],
+              "error": 32.10197609601033,
+              "axis": "vertical",
+              "target": [
+                0.6244067710395963,
+                0.5995580750924986
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.5671085915741684,
+                0.4577401043729298
+              ],
+              "error": 63.00367553350499,
+              "axis": "horizontal",
+              "target": [
+                0.9730749153717071,
+                0.630062585054179
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0.1,
+          "onTargetPercent": 0
+        },
+        "time": 5700,
+        "staffs": [{
+          "a": [
+            0.5366040816124876,
+            0.8064082487050407
+          ],
+          "b": [
+            0.5671085915741684,
+            0.4577401043729298
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9888433653750208,
+              0.6367558949712459
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6501,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9888433653750208,
+              0.6367558949712459
+            ],
+            [
+              0.6666666666666666,
+              0.5
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6400,
+        "staffs": [{
+          "a": [
+            0.4772959545336203,
+            0.4196169017718432
+          ],
+          "b": [
+            0.7773045097793598,
+            0.23935357555332454
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      }
+    ],
+    "height": 480
+  },
+  {
+    "width": 640,
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 30,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "same",
+      "staffCount": 1,
+      "mode": "antispin",
+      "symmetry": true,
+      "pacerEnabled": true,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 90,
+      "pacerDirection": "ccw",
+      "calibrationImageAspect": 1.3333333333333333,
+      "timing": "tog-same",
+      "rotation": 23,
+      "pacerCountdown": 1,
+      "fps": 60,
+      "planeCorners": [
+        [
+          0.12,
+          0.1
+        ],
+        [
+          0.87,
+          0.16
+        ],
+        [
+          0.91,
+          0.9
+        ],
+        [
+          0.08,
+          0.81
+        ]
+      ],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    },
+    "steps": [
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 0,
+        "staffs": [{
+          "a": [
+            0.7424223514936334,
+            0.4145363679582205
+          ],
+          "b": [
+            0.41281121252679587,
+            0.3724530656209497
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 100,
+        "operation": "start",
+        "staffs": [{
+          "a": [
+            0.34925236339098753,
+            0.3638765336691838
+          ],
+          "b": [
+            0.6518620689655171,
+            0.4735661283282409
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 600,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 1100,
+        "staffs": [{
+          "a": [
+            0.9679372407809174,
+            0.5881366686630227
+          ],
+          "b": [
+            0.6518620689655171,
+            0.4735661283282409
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": true
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.125,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.8739139536726526,
+              0.5540552229544757
+            ],
+            [
+              0.743391580437181,
+              0.3321151638079677
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 7.4999999999999805,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.9255326246664287,
+                0.5577728043089903
+              ],
+              "error": 7.499999999999972,
+              "axis": "horizontal",
+              "target": [
+                0.8739139536726526,
+                0.5540552229544757
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.7931066358138632,
+                0.3353856039435226
+              ],
+              "error": 7.4999999999999885,
+              "axis": "vertical",
+              "target": [
+                0.743391580437181,
+                0.3321151638079677
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.25,
+          "onTargetPercent": 0
+        },
+        "time": 1350,
+        "staffs": [{
+          "a": [
+            0.9255326246664287,
+            0.5577728043089903
+          ],
+          "b": [
+            0.7931066358138632,
+            0.3353856039435226
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.175,
+          "onTarget": true,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.7936349218415245,
+              0.5249557780293387
+            ],
+            [
+              0.7666577195004306,
+              0.29615935285427014
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 3.7500000000000067,
+          "feedback": [
+            {
+              "onTarget": true,
+              "tip": [
+                0.7936349218415244,
+                0.5249557780293386
+              ],
+              "error": 4.9065389333867976E-14,
+              "axis": "horizontal",
+              "target": [
+                0.7936349218415245,
+                0.5249557780293387
+              ]
+            },
+            {
+              "onTarget": true,
+              "tip": [
+                0.7666577195004306,
+                0.29615935285427014
+              ],
+              "error": 1.734723475976807E-14,
+              "axis": "vertical",
+              "target": [
+                0.7666577195004306,
+                0.29615935285427014
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 66.66666666666666,
+          "state": "running",
+          "elapsedSeconds": 0.35,
+          "onTargetPercent": 50
+        },
+        "patch": {
+          "pacerDotSize": 24,
+          "trails": false
+        },
+        "time": 1450,
+        "staffs": [{
+          "a": [
+            0.7936349218415244,
+            0.5249557780293386
+          ],
+          "b": [
+            0.7666577195004306,
+            0.29615935285427014
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ],
+            [
+              0.7803448527486888,
+              0.2750070690896722
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1600,
+        "operation": "pause",
+        "staffs": [{
+          "a": [
+            0.7803448527486888,
+            0.2750070690896722
+          ],
+          "b": [
+            0.6518620689655171,
+            0.4735661283282409
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ],
+            [
+              0.7803448527486888,
+              0.2750070690896722
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "paused",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 1900,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ],
+            [
+              0.7803448527486888,
+              0.2750070690896722
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2000,
+        "operation": "resume",
+        "staffs": [{
+          "a": [
+            0.41281121252679587,
+            0.3724530656209497
+          ],
+          "b": [
+            0.7424223514936334,
+            0.4145363679582205
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [[
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ],
+            [
+              0.7803448527486888,
+              0.2750070690896722
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 2500,
+        "staffs": [{
+          "a": [
+            0.5233206717020542,
+            0.6722157696445221
+          ],
+          "b": [
+            0.5569536014617881,
+            0.43916382351640026
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.25,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ],
+            [
+              0.7803448527486888,
+              0.2750070690896722
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 0,
+          "state": "running",
+          "elapsedSeconds": 0.5,
+          "onTargetPercent": null
+        },
+        "time": 3000,
+        "staffs": [{
+          "a": [
+            0.9521404360305771,
+            0.5824106622658275
+          ],
+          "b": [
+            0.6107983259351539,
+            0.5370266009677762
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": true
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.4365413223517084,
+              0.39551692837639985
+            ],
+            [
+              0.743391580437181,
+              0.33211516380796774
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 49.44489913629564,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.9328058248047233,
+                0.5754022761196271
+              ],
+              "error": 56.87470057385438,
+              "axis": "vertical",
+              "target": [
+                0.743391580437181,
+                0.33211516380796774
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.7110093504443329,
+                0.38215910692705385
+              ],
+              "error": 42.015097698736895,
+              "axis": "horizontal",
+              "target": [
+                0.4365413223517084,
+                0.39551692837639985
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [{
+          "a": [
+            0.9328058248047233,
+            0.5754022761196271
+          ],
+          "b": [
+            0.7110093504443329,
+            0.38215910692705385
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.375,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.4365413223517084,
+              0.39551692837639985
+            ],
+            [
+              0.743391580437181,
+              0.33211516380796774
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 49.44489913629564,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": 50,
+          "state": "running",
+          "elapsedSeconds": 0.75,
+          "onTargetPercent": 0
+        },
+        "time": 3250,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3300,
+        "operation": "stop",
+        "staffs": [{
+          "a": [
+            0.9064902979153058,
+            0.5658634562319458
+          ],
+          "b": [
+            0.7281785098527533,
+            0.35562565209620145
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3400,
+        "operation": "restart",
+        "staffs": [{
+          "a": [
+            0.8359579900951912,
+            0.5402969918633707
+          ],
+          "b": [
+            0.7563116691366821,
+            0.31214828122717614
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 500,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 3900,
+        "staffs": [{
+          "a": [
+            0.7281785098527533,
+            0.35562565209620145
+          ],
+          "b": [
+            0.40604565926777014,
+            0.384462897851551
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9679372407809174,
+              0.5881366686630227
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 39.90817533645966,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.5220081778128919,
+                0.4119215812577323
+              ],
+              "error": 22.67563392474568,
+              "axis": "vertical",
+              "target": [
+                0.6518620689655171,
+                0.4735661283282409
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.5943431198357793,
+                0.6457832816243263
+              ],
+              "error": 57.14071674817364,
+              "axis": "horizontal",
+              "target": [
+                0.9679372407809174,
+                0.5881366686630227
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 4400,
+        "staffs": [{
+          "a": [
+            0.5220081778128919,
+            0.4119215812577323
+          ],
+          "b": [
+            0.5943431198357793,
+            0.6457832816243263
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9982918833585129,
+              0.5991395822478184
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "patch": {"scale": 0.35},
+        "time": 4500,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 1000,
+          "targets": [[
+            [
+              0.9982918833585129,
+              0.5991395822478184
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 4600,
+        "operation": "start",
+        "staffs": [{
+          "a": [
+            0.503471015485693,
+            0.7028917010687751
+          ],
+          "b": [
+            0.6518620689655171,
+            0.4735661283282409
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 400,
+          "targets": [[
+            [
+              0.9982918833585129,
+              0.5991395822478184
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "countdown",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 5200,
+        "staffs": [{
+          "a": [
+            0.9809436372132879,
+            0.5928512112780163
+          ],
+          "b": [
+            0.6960275787495138,
+            0.405312142733552
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9982918833585129,
+              0.5991395822478184
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 48.287276194420144,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.70709670819046,
+                0.4774393199267428
+              ],
+              "error": 43.195733121578925,
+              "axis": "horizontal",
+              "target": [
+                0.9982918833585129,
+                0.5991395822478184
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.8459859344354262,
+                0.2603299227808958
+              ],
+              "error": 53.37881926726137,
+              "axis": "vertical",
+              "target": [
+                0.6518620689655171,
+                0.4735661283282409
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0,
+          "onTargetPercent": 0
+        },
+        "time": 5600,
+        "staffs": [{
+          "a": [
+            0.70709670819046,
+            0.4774393199267428
+          ],
+          "b": [
+            0.8459859344354262,
+            0.2603299227808958
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0.05,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9809436372132879,
+              0.5928512112780163
+            ],
+            [
+              0.6960275787495138,
+              0.40531214273355176
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": 47.920051004588906,
+          "feedback": [
+            {
+              "onTarget": false,
+              "tip": [
+                0.7853762862153836,
+                0.2672314226851364
+              ],
+              "error": 32.10197609601034,
+              "axis": "vertical",
+              "target": [
+                0.6960275787495138,
+                0.40531214273355176
+              ]
+            },
+            {
+              "onTarget": false,
+              "tip": [
+                0.5481209075164756,
+                0.4359621594561899
+              ],
+              "error": 63.003675533504996,
+              "axis": "horizontal",
+              "target": [
+                0.9809436372132879,
+                0.5928512112780163
+              ]
+            }
+          ],
+          "valid": true,
+          "measuredPercent": 100,
+          "state": "running",
+          "elapsedSeconds": 0.1,
+          "onTargetPercent": 0
+        },
+        "time": 5700,
+        "staffs": [{
+          "a": [
+            0.7853762862153836,
+            0.2672314226851364
+          ],
+          "b": [
+            0.5481209075164756,
+            0.4359621594561899
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9982918833585129,
+              0.5991395822478184
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6501,
+        "staffs": [null]
+      },
+      {
+        "output": {
+          "phase": 0,
+          "onTarget": false,
+          "countdownMs": 0,
+          "targets": [[
+            [
+              0.9982918833585129,
+              0.5991395822478184
+            ],
+            [
+              0.6518620689655171,
+              0.4735661283282409
+            ]
+          ]],
+          "enabled": true,
+          "rpm": 30,
+          "meanError": null,
+          "feedback": [],
+          "valid": false,
+          "measuredPercent": null,
+          "state": "ready",
+          "elapsedSeconds": 0,
+          "onTargetPercent": null
+        },
+        "time": 6400,
+        "staffs": [{
+          "a": [
+            0.4558260694465385,
+            0.4025072398335893
+          ],
+          "b": [
+            0.5324776255045596,
+            0.6580644874339429
+          ],
+          "confidence": 0.9,
+          "occluded": false,
+          "blurred": false
+        }]
+      }
+    ],
+    "height": 480
+  }
+]

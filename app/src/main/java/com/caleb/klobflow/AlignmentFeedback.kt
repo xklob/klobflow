@@ -37,31 +37,40 @@ private fun describeIssue(issue:Pair<String,Int>,count:Int):BoxText {
 /** Presentation hysteresis never changes scores or makes uncertain observations valid. */
 class AlignmentFeedback {
     private var time=-1L;private var key="";private var lastIssue:Pair<String,Int>?=null
+    private var lastPacerElapsed:Double?=null
     private data class Sample(val time:Long,val valid:Boolean,val on:Boolean,val horizontal:Double?=null,val vertical:Double?=null)
     private val samples=ArrayList<Sample>()
     private var onSince=arrayOfNulls<Long>(4);private var on=BooleanArray(4);private var alignedSince:Long?=null
     private fun clear(){onSince=arrayOfNulls(4);on=BooleanArray(4);alignedSince=null}
-    fun update(t:Long,staffs:List<Segment?>,guide:Guide,background:BackgroundStatus=BackgroundStatus()):Coaching {
-        val c=guide.config;val nextKey="${c.mode}/${c.staffCount}/${c.tolerance}/${c.planeCorners}/${c.cx}/${c.cy}/${c.scale}/${c.rotation}/${c.circleSeparation}/${guide.width}/${guide.height}/${c.staffColors}/${c.threshold}/${c.minLength}/${c.led}/${c.facing}/${c.mirror}/${c.zoom}"
-        if(t<time||nextKey!=key){clear();lastIssue=null;samples.clear()}
+    fun update(t:Long,staffs:List<Segment?>,guide:Guide,background:BackgroundStatus=BackgroundStatus(),pacer:PacerFrame?=null):Coaching {
+        val c=guide.config
+        val following=c.pacerEnabled && c.mode in listOf("circles","antispin")
+        val idle=following && (pacer?.enabled!=true || pacer.state!="running")
+        val nextKey="${c.mode}/${c.staffCount}/${c.tolerance}/${c.planeCorners}/${c.cx}/${c.cy}/${c.scale}/${c.rotation}/${c.circleSeparation}/${guide.width}/${guide.height}/${c.staffColors}/${c.threshold}/${c.minLength}/${c.led}/${c.facing}/${c.mirror}/${c.zoom}/$following/${if(following)pacer?.state else null}/${c.pacerRpm}/${c.pacerDirection}/${c.pacerPattern}/${c.pacerOffset}/${c.pacerCountdown}"
+        val restarted=following && !idle && lastPacerElapsed?.let {pacer!!.elapsedSeconds<it}==true
+        if(t<time||nextKey!=key||restarted){clear();lastIssue=null;samples.clear()}
         time=t;key=nextKey
-        val count=c.staffCount;val free=c.mode=="free";val cues=guide.cues(staffs)
-        val issue=trackingIssue(staffs,count) ?: if(!free&&cues.size!=count*2)"outside" to -1 else null
+        lastPacerElapsed=if(following&&!idle)pacer!!.elapsedSeconds else null
+        val count=c.staffCount;val free=c.mode=="free";val cues=if(following)pacer?.feedback.orEmpty()else guide.cues(staffs)
+        val issue=if(idle)null else trackingIssue(staffs,count) ?: if(!free&&(cues.size!=count*2 || following && pacer?.valid!=true))"outside" to -1 else null
         if(issue!=null){clear();lastIssue=issue}
         // While the background snapshot runs the staves must stay out of view: never ask for them back.
         val snapshot=background.state=="countdown"||background.state=="capturing"
         // The tracker already confirms consecutive observations. Do not add a text-delay gate to scores.
-        val confirmed=issue==null&&!snapshot
+        val confirmed=issue==null&&!snapshot&&!idle
         samples.removeAll {t-it.time>5000||it.time==t}
-        if(snapshot)samples.clear() else samples.add(Sample(t,confirmed,confirmed&&cues.size==count*2&&cues.all {it.error<=c.tolerance},if(confirmed)cues.find {it.axis=="horizontal"}?.error else null,if(confirmed)cues.find {it.axis=="vertical"}?.error else null))
+        if(snapshot||idle)samples.clear() else samples.add(Sample(t,confirmed,confirmed&&cues.size==count*2&&cues.all {it.error<=c.tolerance},if(confirmed)cues.find {it.axis=="horizontal"}?.error else null,if(confirmed)cues.find {it.axis=="vertical"}?.error else null))
         val measured=samples.filter {it.valid};val recent=measured.size>=3&&t-measured.last().time<=(if(issue?.first=="hidden")1500 else 1000)
         val coverage=(measured.size*100.0/max(1,samples.size)).roundToInt()
         val onPercent=if(measured.isEmpty())0 else (measured.count {it.on}*100.0/measured.size).roundToInt()
         val tolerance=if(c.tolerance%1.0==0.0)c.tolerance.toInt().toString()else c.tolerance.toString()
-        val axisDetail=if(c.mode=="antispin"&&recent)"Horizontal tip: %.1f%% drift · Vertical tip: %.1f%% drift. ".format(measured.mapNotNull {it.horizontal}.average(),measured.mapNotNull {it.vertical}.average())else ""
-        val summary=if(recent&&!free&&!snapshot)BoxText(if(onPercent>=80)"ok" else "warn","$onPercent% ON TARGET",axisDetail+"Of measured frames in the last 5 seconds. Tolerance: $tolerance% of guide width. Unclear frames are excluded.")else null
+        val axisDetail=if(c.mode=="antispin"&&recent)"Horizontal tip: %.1f%% ${if(following)"gap"else"drift"} · Vertical tip: %.1f%% ${if(following)"gap"else"drift"}. ".format(measured.mapNotNull {it.horizontal}.average(),measured.mapNotNull {it.vertical}.average())else ""
+        val summary=if(recent&&!free&&!snapshot)BoxText(if(onPercent>=80)"ok" else "warn","$onPercent% ${if(following)"WITH DOTS"else"ON TARGET"}",axisDetail+"Of measured frames in the last 5 seconds. "+(if(following)"Both tips must follow the moving blue dots. "else"")+"Tolerance: $tolerance% of guide width. Unclear frames are excluded.")else null
+        val idleTitle=when(pacer?.state){"countdown"->"GET READY";"paused"->"GUIDE DOTS PAUSED";else->"GUIDE DOTS READY"}
+        val idleDetail=when(pacer?.state){"countdown"->"Place your tips on the blue dots. Scoring starts when they move.";"paused"->"Resume to continue from these dot positions. Scores are paused.";else->"Set your speed, then press Start dots. Match both tips to the blue dots."}
         val tracking=when{
             snapshot->BoxText("wait","BACKGROUND SNAPSHOT","Move your staves out of view and keep the phone still.")
+            idle->BoxText("wait",idleTitle,idleDetail)
             recent->BoxText(if(coverage>=80)"ok" else "warn","$coverage% MEASURED","Frames with both ends located, over the last 5 seconds. Unclear frames pause live scores and rings.")
             confirmed->BoxText("ok","CLEAR",if(count==1)"Your staff and both of its ends are sharp." else "Both staves and all four ends are sharp.")
             // StableText holds and fades text independently of current measurements.
@@ -70,6 +79,7 @@ class AlignmentFeedback {
         fun result(state:String,title:String,detail:String,tips:List<TipCue> = emptyList(),cues:Boolean=false)=Coaching(state,title,detail,tips,tracking,confirmed,cues,summary)
         if(free)return result("free","FREE FLOW",if(c.trails)"No alignment score here. Faint curves show where each tip traveled." else "No alignment score here. Choose Grid, Circles or Cube for targets.")
         if(snapshot)return result("paused","PRECISION PAUSED","Scores resume after the background snapshot.")
+        if(idle)return result("practice",if(idleTitle=="GUIDE DOTS READY")"READY TO FOLLOW"else idleTitle,idleDetail)
         if(!confirmed)return result("paused","PRECISION PAUSED","No current measurement. Keep both ends lit and in view; unclear frames are excluded.")
         val tips=cues.mapIndexed {i,cue->
             if(cue.error>c.tolerance){on[i]=false;onSince[i]=null}
@@ -78,10 +88,10 @@ class AlignmentFeedback {
         }
         if(tips.all {it.onTarget}){if(alignedSince==null)alignedSince=t}else alignedSince=null
         val aligned=alignedSince?.let {t-it>=1200}==true
-        if(aligned)return result("aligned","ON GUIDE","Every tip is within tolerance. Keep tracing the guide.",tips)
+        if(aligned)return result("aligned",if(following)"WITH THE DOTS"else"ON GUIDE",if(following)"Both tips are following the moving blue dots. Keep the same pace."else"Every tip is within tolerance. Keep tracing the guide.",tips)
         // Every tip is inside tolerance but not yet confirmed: no correction marks are drawn, so name none.
-        if(tips.all {it.error<=c.tolerance})return result("settling","TIPS ON TARGET","Every tip is within tolerance. Keep tracing the guide to confirm ON GUIDE.",tips)
-        return result("adjust","OFF GUIDE",if(c.showFeedback)"Move each amber-ringed tip along its arrow into the white TARGET ring." else "Some tips are outside tolerance. Turn on Alignment cues to see where to move.",tips,c.showFeedback)
+        if(tips.all {it.error<=c.tolerance})return result("settling",if(following)"TIPS WITH DOTS"else"TIPS ON TARGET",if(following)"Both tips are within tolerance. Keep following the blue dots."else"Every tip is within tolerance. Keep tracing the guide to confirm ON GUIDE.",tips)
+        return result("adjust",if(following)"FOLLOW THE DOTS"else"OFF GUIDE",if(following)"Bring both tips onto the moving blue dots and keep their pace."else if(c.showFeedback)"Move each amber-ringed tip along its arrow into the white TARGET ring." else "Some tips are outside tolerance. Turn on Alignment cues to see where to move.",tips,c.showFeedback)
     }
 }
 

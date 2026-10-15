@@ -94,6 +94,7 @@ test("code-free connection, phone controls, session downloads and disconnect", a
   assert.deepEqual(await (await fetch(url+"/api/clock")).json(),{time:123456});
   for(const action of ["fit","syncBeat","audioStart","audioStop"]){assert.equal((await post(url+"/api/control",{action})).status,200);assert.equal(controls.at(-1).action,action);}
   for(const mode of ["capture","cancel","clear"]){const command={action:"background",mode};assert.equal((await post(url+"/api/control",command)).status,200);assert.deepEqual(controls.at(-1),command);}
+  for(const operation of ["start","pause","resume","restart","stop"]){const command={action:"pacer",operation};assert.equal((await post(url+"/api/control",command)).status,200);assert.deepEqual(controls.at(-1),command);}
   const tempo={action:"audioTempo",bpm:120,origin:123400,confidence:.9,level:.23,historySeconds:6.4,candidateBpm:120,holding:true,holdRemainingMs:14500,ageMs:25,running:true};
   assert.equal((await post(url+"/api/control",tempo)).status,200);assert.deepEqual(controls.at(-1),tempo);
   assert.equal(
@@ -145,7 +146,7 @@ test("local app rejects hostile origin, host, non-JSON and oversized control bod
   );
   assert.equal((await fetch(url + "/server.mjs")).status, 404);
   assert.equal((await fetch(url + "/")).status, 200);
-  for (const asset of ["cap-evidence.mjs", "cap-occlusion.mjs", "selected-color-recovery.mjs"])
+  for (const asset of ["cap-evidence.mjs", "cap-occlusion.mjs", "selected-color-recovery.mjs", "pacer.mjs"])
     assert.equal((await fetch(url + "/" + asset)).status, 200);
 });
 test("upstream redirect is never followed", async (t) => {

@@ -370,6 +370,19 @@ select {
 }
 .quick-actions { display:flex; flex-wrap:wrap; gap:.4rem; margin:0 0 .6rem; }
 .quick-actions button { flex:1 1 auto; }
+.pacer-settings { margin:.8rem 0; padding:.7rem; border:1px solid #386477; border-radius:.5rem; background:#10202a; }
+.pacer-settings summary { cursor:pointer; color:#b9eaff; font-weight:700; }
+.pacer-bar { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.5rem .8rem; padding:.55rem .7rem; margin-bottom:.55rem; border:1px solid #3e758e; border-radius:.5rem; background:#10202a; flex:none; }
+.pacer-bar[hidden],.pacer-settings[hidden],#pacer-options[hidden],#pacer-second-staff[hidden] { display:none; }
+.pacer-reading { min-width:0; flex:1 1 18rem; }
+.pacer-reading strong,.pacer-reading span,.pacer-reading small { display:block; }
+.pacer-reading strong { color:#b9eaff; font-size:1rem; letter-spacing:.03em; }
+.pacer-reading span { color:#eef8ff; font-size:.85rem; line-height:1.35; margin:.1rem 0; }
+.pacer-reading small { color:#b8c9d3; font-size:.7rem; }
+.pacer-actions { display:flex; flex-wrap:nowrap; gap:.35rem; }
+.pacer-actions button { padding:.45rem .65rem; font-size:.8rem; }
+.pacer-actions button[hidden] { display:none; }
+.pacer-bar[data-state="countdown"] .pacer-reading strong { font-size:1.25rem; }
 .fullscreen-bar { display:none; }
 #practice-view:fullscreen .fullscreen-bar { display:flex; align-items:center; justify-content:space-between; gap:1rem; flex:none; }
 .legend-help { margin-top:.6rem; padding:.6rem; border:1px solid var(--line); border-radius:.5rem; }
@@ -1378,6 +1391,10 @@ input[type="number"] {
   #practice-view:fullscreen .status-box { min-height:0; padding:.4rem .45rem; }
   #practice-view:fullscreen .status-box .fade-stack { min-height:0; }
   #practice-view:fullscreen .status-box strong { font-size:.95rem; letter-spacing:0; }
+  #practice-view:fullscreen .pacer-bar { gap:.35rem; padding:.45rem .55rem; margin:0; }
+  #practice-view:fullscreen .pacer-reading small { display:none; }
+  #practice-view:fullscreen .pacer-reading span { font-size:.8rem; }
+  #practice-view:fullscreen .pacer-actions button { padding:.4rem .55rem; }
   #practice-view:fullscreen .box-head { font-size:.6rem; letter-spacing:.04em; gap:.25rem; }
   #practice-view:fullscreen:not(.show-focus-details) #tracking-detail,
   #practice-view:fullscreen:not(.show-focus-details) #coaching-detail,
@@ -1397,5 +1414,22 @@ input[type="number"] {
   #practice-view:fullscreen #antispin-footer { grid-column:2; grid-row:3; }
   #practice-view:fullscreen #antispin-footer .streak-hud { min-width:0; font-size:.65rem; }
   #practice-view:fullscreen #antispin-footer .streak-hud strong { font-size:.65rem; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) { grid-template-columns:minmax(0,1fr) minmax(14rem,40%); grid-template-rows:auto auto minmax(0,1fr) auto; }
+  #practice-view:fullscreen #pacer-bar { grid-column:2; grid-row:2; margin:0; padding:.4rem; gap:.35rem; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) #stage { grid-row:2 / 5; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) .status-row { grid-row:3; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) #antispin-footer { grid-row:4; }
+  #practice-view:fullscreen .pacer-reading { flex-basis:100%; }
+  #practice-view:fullscreen .pacer-reading strong { font-size:.8rem; }
+  #practice-view:fullscreen .pacer-reading span { font-size:.7rem; }
+  #practice-view:fullscreen .pacer-reading small { display:none; }
+  #practice-view:fullscreen .pacer-actions button { font-size:.7rem; padding:.35rem .4rem; }
+  /* The dot strip already shows following, gap and tracking coverage. Details restores
+     the longer coaching cards in the same sidebar without clipping the camera. */
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])):not(.show-focus-details) .status-row { display:none; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])).show-focus-details #antispin-footer { display:none; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) #antispin-footer { flex-direction:column; align-items:stretch; gap:.25rem; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) #stage-badge { font-size:.55rem; padding:.2rem .35rem; }
+  #practice-view:fullscreen:has(#pacer-bar:not([hidden])) #antispin-footer .streak-hud { flex:none; width:100%; padding:.3rem .4rem; }
   #practice-view:fullscreen.show-focus-details .status-row { max-height:none; }
 }

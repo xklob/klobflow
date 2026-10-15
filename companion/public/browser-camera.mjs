@@ -51,6 +51,7 @@ export class BrowserCamera {
         if(data.id){const p=this.pending.get(data.id);this.pending.delete(data.id);if(p){clearTimeout(p.timer);data.type==="error"?p.reject(Error(data.error)):p.resolve(data);}}
         if(data.type==="fit"&&data.revision===this.configRevision)this.command({action:"config",config:data.config,fromFit:true}).catch(e=>this.onStatus(e.message));
         if(data.type==="error"){if(data.frame)this.busy=false;this.onStatus(data.error);}
+        if(data.type==="frameSkipped")this.busy=false;
         if(data.type==="frame"){
           if(this.track&&(!this.settingsAt||performance.now()-this.settingsAt>1000)){this.settings=this.track.getSettings();this.settingsAt=performance.now();}
           this.busy=false;const f={...data.frame,cameraReady:this.active,recording:this.recording,finalizing:this.finalizing,elapsedMs:this.recording?Math.max(0,data.frame.time-this.recordingStarted):0,status:this.status,zoom:this.zoom,cameraFps:this.cameraFps||this.profile.measuredFps};
@@ -129,6 +130,7 @@ export class BrowserCamera {
     if(command.action==="background"){++this.configRevision;await this.request("background",{mode:command.mode||"capture",time:performance.now()});}
     else if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly,revision:++this.configRevision});
     else if(command.action==="syncBeat")await this.request("syncBeat",{time:performance.now()});
+    else if(command.action==="pacer")await this.request("pacer",{operation:command.operation,time:performance.now()});
     else if(command.action==="seed")await this.request("seed",{points:command.points,time:performance.now()});
     else if(command.action==="reset")this.worker.postMessage({type:"reset"});
     else if(command.action==="record")await this.startRecording();

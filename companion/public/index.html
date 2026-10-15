@@ -123,6 +123,23 @@
               step="0.02"
               value="1"
           /></label>
+          <section id="pacer-settings" class="pacer-settings" aria-label="Moving guide dots" hidden>
+            <label class="toggle"><input type="checkbox" data-config="pacerEnabled"><span>Follow moving dots</span></label>
+            <p id="pacer-help" class="small-note">Match both staff ends to the blue dots. Start when you are ready.</p>
+            <details id="pacer-options" hidden><summary>Pace settings</summary>
+              <label class="range-label">Speed <output for="pacer-rpm">20 cycles/min</output><input id="pacer-rpm" data-config="pacerRpm" type="range" min="5" max="120" step="1" value="20"></label>
+              <p class="small-note">One cycle is a full turn. This speed is independent of music and BPM.</p>
+              <label class="select-label">Direction on screen <select data-config="pacerDirection"><option value="cw">Clockwise</option><option value="ccw">Counterclockwise</option></select></label>
+              <label class="range-label">Get-ready countdown <output for="pacer-countdown">3 s</output><input id="pacer-countdown" data-config="pacerCountdown" type="range" min="0" max="10" step="1" value="3"></label>
+              <label class="range-label">Dot size <output for="pacer-dot-size">16</output><input id="pacer-dot-size" data-config="pacerDotSize" type="range" min="8" max="28" step="1" value="16"></label>
+              <div id="pacer-second-staff">
+                <label class="select-label">Staff B direction <select data-config="pacerPattern"><option value="opposite">Opposite to A</option><option value="same">Same as A</option></select></label>
+                <label class="range-label">Staff B phase offset <output for="pacer-offset">0°</output><input id="pacer-offset" data-config="pacerOffset" type="range" min="0" max="180" step="5" value="0"></label>
+                <p class="small-note">90° starts the staves perpendicular. Either end can follow either dot in its pair.</p>
+              </div>
+              <p class="small-note">Size, center, rotation and Target tolerance also apply. Changing pace or guide geometry stops the exercise; dot size only changes visibility.</p>
+            </details>
+          </section>
           <label class="range-label">Plane width ÷ height <input id="plane-aspect" type="number" min="0.25" max="4" step="0.01" value="1"></label>
           <button id="calibrate" class="subtle" disabled>Calibrate viewing angle</button>
           <button id="clear-calibration" class="subtle" disabled>Clear calibration</button>
@@ -220,6 +237,10 @@
           </div>
           <div id="practice-view">
             <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="focus-details" class="subtle" aria-expanded="false" aria-controls="tracking-detail coaching-detail beat-hits">Details</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
+            <section id="pacer-bar" class="pacer-bar" aria-label="Follow moving dots" hidden>
+              <div class="pacer-reading"><strong id="pacer-title" role="status">READY TO FOLLOW</strong><span id="pacer-stats">Press Start dots when you are ready.</span><small id="pacer-note">Speed is independent of the beat.</small></div>
+              <div class="pacer-actions"><button id="pacer-start" class="primary">Start dots</button><button id="pacer-pause" class="primary" aria-label="Pause dots" hidden>Pause</button><button id="pacer-resume" class="primary" aria-label="Resume dots" hidden>Resume</button><button id="pacer-restart" class="subtle" hidden>Restart</button><button id="pacer-stop" class="subtle" aria-label="Stop dots" hidden>Stop</button></div>
+            </section>
             <div class="status-row">
               <section id="tracking-box" class="status-box" data-tone="idle" role="status" aria-label="Tracking">
                 <div class="box-head"><i class="tone-dot"></i><span class="focus-full-label">Tracking</span><span id="tracking-short-label" class="focus-short">Tracking</span></div>

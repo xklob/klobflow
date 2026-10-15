@@ -10,6 +10,7 @@ data class StreakFrame(val state:String="ready",val seconds:Double=0.0,val bestS
         "held"->"STREAK HELD · reacquiring tips"
         "recovering"->"STREAK HELD · return to the guide"
         "paused"->"STREAK PAUSED · waiting for clear tips"
+        "practice"->"STREAK PAUSED · guide dots are stopped"
         "off"->"STREAK EFFECTS OFF"
         "ready"->"BUILD YOUR STREAK · keep every tip on the guide"
         else->"FLOW STREAK · %.1fs · ".format(seconds)+if(progress>=1.0)"MAX POWER"else"GLOW ${floor(progress*100).toInt()}%"
@@ -20,17 +21,20 @@ class FlowStreak {
     private var time:Long?=null;private var key="";private var ms=0L;private var best=0L;private var energy=0.0
     private var previousGood=false;private var interruptedSince:Long?=null;private var interruptionLimit=Long.MAX_VALUE
     fun reset(clearBest:Boolean=true){time=null;key="";ms=0;if(clearBest)best=0;energy=0.0;previousGood=false;interruptedSince=null;interruptionLimit=Long.MAX_VALUE}
-    fun update(t:Long,staffs:List<Segment?>,g:Guide):StreakFrame {
+    fun update(t:Long,staffs:List<Segment?>,g:Guide,pacer:PacerFrame?=null):StreakFrame {
         val c=g.config
-        val nextKey=listOf(c.mode,c.staffCount,c.tolerance,c.trackingGraceMs,c.alignmentGraceMs,c.cx,c.cy,c.scale,c.rotation,c.cubeDepth,c.circleSeparation,c.planeCorners,c.planeAspect,c.calibrationRotation,c.calibrationImageAspect,c.diagonals,c.facing,c.mirror,c.zoom,c.streakEffects,c.staffColors,c.led,c.threshold,c.minLength).toString()
+        val following=c.pacerEnabled && c.mode in listOf("circles","antispin")
+        val running=following && pacer?.enabled==true && pacer.state=="running"
+        val nextKey=listOf(c.mode,c.staffCount,c.tolerance,c.trackingGraceMs,c.alignmentGraceMs,c.cx,c.cy,c.scale,c.rotation,c.cubeDepth,c.circleSeparation,c.planeCorners,c.planeAspect,c.calibrationRotation,c.calibrationImageAspect,c.diagonals,c.facing,c.mirror,c.zoom,c.streakEffects,c.staffColors,c.led,c.threshold,c.minLength,c.pacerEnabled,c.pacerRpm,c.pacerDirection,c.pacerPattern,c.pacerOffset,c.pacerCountdown).toString()
         if(nextKey!=key||time?.let {t<it}==true)reset()
         else if(time?.let {t-it>250}==true)reset(false)
         val dt=time?.let {(t-it).coerceAtLeast(0)}?:0;time=t;key=nextKey
-        val cues=g.cues(staffs)
-        val clear=staffs.take(c.staffCount).size==c.staffCount&&staffs.take(c.staffCount).all {it!=null&&!it.blurred&&!it.occluded&&it.confidence>=.55}&&cues.size==c.staffCount*2
+        val cues=if(following){if(running)pacer!!.feedback else emptyList()}else g.cues(staffs)
+        val clear=(!following || running && pacer!!.valid)&&staffs.take(c.staffCount).size==c.staffCount&&staffs.take(c.staffCount).all {it!=null&&!it.blurred&&!it.occluded&&it.confidence>=.55}&&cues.size==c.staffCount*2
         val good=clear&&cues.all {it.error.isFinite()&&it.error<=c.tolerance}
         val state=when {
             c.mode=="free"||!c.streakEffects->{ms=0;energy=0.0;previousGood=false;interruptedSince=null;interruptionLimit=Long.MAX_VALUE;if(c.mode=="free")"free"else"off"}
+            following&&!running->{ms=0;energy=0.0;previousGood=false;interruptedSince=null;interruptionLimit=Long.MAX_VALUE;"practice"}
             !good->{
                 if(interruptedSince==null)interruptedSince=t
                 // Changing interruption type cannot keep restarting the grace clock.

@@ -138,6 +138,25 @@ Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start bea
 
 Timing uses interpolated crossings in the measured practice plane. It does not infer musical phrasing or VTG patterns, and display/capture latency still matters. Identical staff ends can swap after occlusion, so use a fresh sync after ambiguous tracking. Browser and Android recordings include beat observations in JSONL alongside ordinary alignment scores.
 
+## Follow moving dots
+
+In **Circles** or **Antispin**, enable **Follow moving dots**, adjust the guide to your practice area, then press **Start dots** when ready. A configurable countdown gives you time to place your staff ends on the blue dots. Each staff has two targets; match both ends and keep their pace.
+
+- **Circles:** two opposite dots travel around each circle. With two staves, choose the second staff's direction and phase offset. A 90° offset makes the staves perpendicular; 180° repeats the same pair of positions because the ends are interchangeable.
+- **Antispin:** the H dot moves along the horizontal axis and the V dot along the vertical axis. Their combined motion keeps a constant staff length between them. One full cycle visits all four outer turnarounds. This exercise supports one staff.
+- **Pace settings:** choose 5–120 cycles per minute, clockwise/counterclockwise direction, a 0–10 second countdown, and dot size. Existing center, size, rotation, circle separation, perspective calibration, and target tolerance still apply.
+- **Pause** holds the dot positions. **Resume** uses the countdown before continuing; **Restart** returns to the starting phase; **Stop** returns to the ready state. Setup changes and camera interruptions require an explicit new start. Reopening the app never resumes the exercise automatically.
+
+The preview reports **WITH DOTS**, the average tip-to-dot gap, and how much tracking was measurable over the last five seconds. Gap is a percentage of the full guide width. Unclear or hidden tips are excluded, and the dots remain visible so you can rejoin. While following dots, streaks require both tips of every selected staff to match their moving targets. Existing short tracking/alignment grace applies. Ordinary geometric measurements remain available separately.
+
+Dot speed is independent of the beat/audio controls. Fixed beat targets are hidden during this exercise; turn off **Follow moving dots** to return to beat practice. Reduced motion freezes decorative glow accents, while the exercise dots keep moving until you pause them. Frame exports retain the target positions and exercise state for replay.
+
+![Follow both staff ends around their circles using blue moving dots and configurable pace controls](docs/screenshots/web-moving-dots.png)
+
+![Large-text fullscreen antispin with horizontal and vertical moving dots and pause controls](docs/screenshots/web-moving-antispin.png)
+
+<img src="docs/screenshots/android-moving-dots.png" alt="Android fullscreen antispin with moving guide dots and following feedback" width="340">
+
 ## Alignment streaks
 
 Keep **every tip** of the selected one or two staves within the guide tolerance to build a flow streak. Circles reward staying on the circumference, Grid rewards staying on its lines, Cube rewards holding its projected vertices, and Antispin rewards keeping one tip on each assigned axis. The timer, power bar, and best streak show the result in both Android and browser practice.

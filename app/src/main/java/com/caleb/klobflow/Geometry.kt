@@ -42,11 +42,15 @@ data class Config(
     val planeCorners: List<P> = emptyList(), val planeAspect: Double=1.0,
     val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0,
     val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true,
-    val trackingGraceMs:Int=1500, val alignmentGraceMs:Int=200
+    val trackingGraceMs:Int=1500, val alignmentGraceMs:Int=200,
+    val pacerEnabled:Boolean=false, val pacerRpm:Double=20.0, val pacerDirection:String="cw", val pacerPattern:String="opposite",
+    val pacerOffset:Double=0.0, val pacerCountdown:Int=3, val pacerDotSize:Double=16.0
 ) {
     fun json() = JSONObject().apply {
         put("streakEffects",streakEffects);put("tempoSource",tempoSource);put("audioRate",audioRate);put("audioOffsetMs",audioOffsetMs)
         put("trackingGraceMs",trackingGraceMs);put("alignmentGraceMs",alignmentGraceMs)
+        put("pacerEnabled",pacerEnabled);put("pacerRpm",pacerRpm);put("pacerDirection",pacerDirection);put("pacerPattern",pacerPattern)
+        put("pacerOffset",pacerOffset);put("pacerCountdown",pacerCountdown);put("pacerDotSize",pacerDotSize)
         put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
         put("mode",mode);put("led",led);put("threshold",threshold);put("minLength",minLength);put("staffColors",JSONArray(staffColors))
         put("cx",cx);put("cy",cy);put("scale",scale);put("rotation",rotation);put("cubeDepth",cubeDepth)
@@ -64,6 +68,10 @@ data class Config(
         fun choice(k: String,v: String,allowed: List<String>) = (if(j.has(k)) j.getString(k) else v).also { require(it in allowed) { "Invalid $k" } }
         fun grace(k:String,v:Int,maximum:Int)=num(k,v.toDouble(),0.0,maximum.toDouble()).also {require(it%1.0==0.0){"$k must be whole milliseconds"}}.toInt()
         fun flag(k: String,v: Boolean) = if(j.has(k)) j.getBoolean(k) else v
+        fun pacerNumber(k:String,v:Double,lo:Double,hi:Double):Double {
+            require(!j.has(k)||j.get(k) is Number){"$k must be a number"};return num(k,v,lo,hi)
+        }
+        require(!j.has("pacerEnabled")||j.get("pacerEnabled") is Boolean){"Invalid pacerEnabled"}
         val nextFacing=choice("facing",facing,listOf("front","back"))
         val nextZoom=num("zoom",zoom,0.0,100.0)
         val nextMirror=flag("mirror",mirror)
@@ -77,6 +85,10 @@ data class Config(
         val nextCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt()
         val nextMode=choice("mode",mode,listOf("grid","circles","cube","free","antispin"))
         return copy(streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
+            pacerEnabled=flag("pacerEnabled",pacerEnabled),pacerRpm=pacerNumber("pacerRpm",pacerRpm,5.0,120.0),
+            pacerDirection=choice("pacerDirection",pacerDirection,listOf("cw","ccw")),pacerPattern=choice("pacerPattern",pacerPattern,listOf("same","opposite")),
+            pacerOffset=pacerNumber("pacerOffset",pacerOffset,0.0,180.0),pacerCountdown=pacerNumber("pacerCountdown",pacerCountdown.toDouble(),0.0,10.0).also {require(it%1.0==0.0){"pacerCountdown must be whole seconds"}}.toInt(),
+            pacerDotSize=pacerNumber("pacerDotSize",pacerDotSize,8.0,28.0),
             staffColors=colors,threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),

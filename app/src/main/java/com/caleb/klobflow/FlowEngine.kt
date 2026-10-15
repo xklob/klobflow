@@ -39,10 +39,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.math.*
 
-data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="",val audio:AudioTempo=AudioTempo(),val streak:StreakFrame=StreakFrame(),val averagedMetrics:Metrics=metrics,val background:BackgroundStatus=BackgroundStatus()) {
+data class Frame(val time:Long,val width:Int,val height:Int,val staffs:List<Segment?>,val metrics:Metrics,val guide:Guide,val analysisFps:Double,val source:String,val beat:BeatFrame=BeatFrame(),val fitStatus:String="",val audio:AudioTempo=AudioTempo(),val streak:StreakFrame=StreakFrame(),val averagedMetrics:Metrics=metrics,val background:BackgroundStatus=BackgroundStatus(),val pacer:PacerFrame=PacerFrame()) {
     fun json()=JSONObject().put("time",time).put("width",width).put("height",height)
         .put("staffs",JSONArray(staffs.map {it?.json() ?: JSONObject.NULL})).put("metrics",metrics.json())
-        .put("feedback",JSONArray(guide.cues(staffs).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus).put("audio",audio.json()).put("streak",streak.json()).put("averagedMetrics",averagedMetrics.json()).put("background",background.json())
+        .put("feedback",JSONArray((if(pacer.enabled)pacer.feedback else guide.cues(staffs)).map {it.json()})).put("guide",guide.json()).put("config",guide.config.json()).put("analysisFps",analysisFps).put("source",source).put("beat",beat.json()).put("fitStatus",fitStatus).put("audio",audio.json()).put("streak",streak.json()).put("averagedMetrics",averagedMetrics.json()).put("background",background.json()).put("pacer",pacer.json())
 }
 data class FlowUi(val config:Config=Config(),val bitmap:Bitmap?=null,val frame:Frame?=null,
     val status:String="Ready when you are",val cameraReady:Boolean=false,val demo:Boolean=false,
@@ -73,9 +73,10 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private val backgroundFilter=BackgroundFilter();private val detector=StaffDetector();private val tracker=StaffTracker();private val scorer=Scorer()
     @Volatile private var pcAudio=AudioTempo()
     private var fitRevision=0
-    private val rollingErrors=RollingErrors();private val streakCoach=FlowStreak();private val timingCoach=TimingCoach();private val fit=FitHelper()
+    private val rollingErrors=RollingErrors();private val streakCoach=FlowStreak();private val timingCoach=TimingCoach();private val pacerCoach=MovingPacer();private val fit=FitHelper()
     private val processing=Any();private val sessionLock=Any()
     private var lastTime=0L;private var fps=0.0
+    private var pacerCommandTime=Long.MIN_VALUE
     @Volatile private var packet="{}"
     @Volatile private var demo=false
     @Volatile private var closed=false
@@ -93,7 +94,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         check(Looper.myLooper()==Looper.getMainLooper())
         if(closed)return
         camera?.cameraInfo?.zoomState?.removeObservers(owner)
-        synchronized(processing){fitRevision++;fit.cancel();backgroundFilter.clear()}
+        synchronized(processing){fitRevision++;fit.cancel();backgroundFilter.clear();pacerCoach.reset();streakCoach.reset()}
         demo=false;active=true;generation++;val currentGeneration=generation
         mutable.update {it.copy(config=config,demo=false,cameraReady=false,frame=null,bitmap=null,error=null,status="Opening ${config.facing} camera…")}
         val future=ProcessCameraProvider.getInstance(context)
@@ -146,6 +147,9 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         synchronized(processing) {
             // A source may have changed while this frame waited for a reset/configuration lock.
             if(closed || !active || streamGeneration!=generation)return
+            // A converted camera frame can wait behind a newer transport command.
+            // Drop that old observation instead of rewinding the exercise clock.
+            if(now<pacerCommandTime)return
             val c=config
             val scale=384.0/max(bitmap.width,bitmap.height)
             val small=Bitmap.createScaledBitmap(bitmap,max(2,(bitmap.width*scale).toInt()),max(2,(bitmap.height*scale).toInt()),true)
@@ -164,7 +168,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             val ready=c.tempoSource=="manual" || audio.usable(now.toDouble())
             val beat=timingCoach.update(now,staffs,guide,if(c.tempoSource=="manual")c.bpm else (audio.bpm ?: c.bpm)*c.audioRate,if(c.tempoSource=="manual")null else audio.origin+c.audioOffsetMs,ready)
             val metrics=scorer.score(now,staffs,guide)
-            val frame=Frame(now,bitmap.width,bitmap.height,staffs,metrics,guide,fps,source,beat,fit.status,audio,streakCoach.update(now,staffs,guide),rollingErrors.update(now,metrics,c),backgroundFilter.status)
+            val pacer=pacerCoach.update(now,staffs,guide)
+            val frame=Frame(now,bitmap.width,bitmap.height,staffs,metrics,guide,fps,source,beat,fit.status,audio,streakCoach.update(now,staffs,guide,pacer),rollingErrors.update(now,metrics,c),backgroundFilter.status,pacer)
             if(!active || streamGeneration!=generation)return
             val elapsed=if(recordingStarted>0)now-recordingStarted else 0L
             mutable.update {it.copy(bitmap=bitmap,frame=frame,elapsed=elapsed)}
@@ -220,14 +225,14 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
             if(!fromFit){fitRevision++;fit.cancel()}
             if(next.staffCount!=config.staffCount || next.staffColors!=config.staffColors || next.led!=config.led || zoomChange)tracker.reset()
             if(cameraChange || zoomChange)backgroundFilter.clear()
-            timingCoach.reconfigure(config,next);config=next;scorer.reset()
+            timingCoach.reconfigure(config,next);pacerCoach.reconfigure(config,next);config=next;scorer.reset()
         }
         preferences.edit().putString("config",next.json().toString()).apply()
         mutable.update {it.copy(config=next)}
         if(cameraChange && !demo && active)bindCamera()
         else if(zoomChange && !demo && active)applyZoom()
     }
-    fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();timingCoach.reset();streakCoach.reset();rollingErrors.reset();lastTime=0;fps=0.0}}
+    fun resetTracking(){synchronized(processing){tracker.reset();scorer.reset();timingCoach.reset();pacerCoach.reset();pacerCommandTime=Long.MIN_VALUE;streakCoach.reset();rollingErrors.reset();lastTime=0;fps=0.0}}
     fun seed(points:List<P>) {
         require(points.size==config.staffCount*2 && points.all {it.x.isFinite() && it.y.isFinite() && it.x in 0.0..1.0 && it.y in 0.0..1.0}){"Tap both endpoints of each selected staff."}
         val f=ui.value.frame ?: error("Wait for camera frames")
@@ -235,7 +240,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         val p=points.map {P(it.x*g.aspectX,it.y*g.aspectY)}
         val segments=(0 until config.staffCount).map {Segment(p[it*2],p[it*2+1])}
         require(segments.all {it.length>=0.08}){"Staff endpoints are too close together."}
-        synchronized(processing){tracker.seed(segments,SystemClock.elapsedRealtime());scorer.reset();streakCoach.reset();rollingErrors.reset()}
+        synchronized(processing){tracker.seed(segments,SystemClock.elapsedRealtime());scorer.reset();pacerCoach.reset();streakCoach.reset();rollingErrors.reset()}
     }
     fun startRecording() {
         require(!demo && ui.value.cameraReady){"Open the camera to record a real practice session."}
@@ -305,6 +310,17 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     fun command(j:JSONObject) {
         when(j.optString("action")) {
             "config"->updateConfig(j.getJSONObject("config"))
+            "pacer"->synchronized(processing){
+                val operation=j.getString("operation")
+                require(operation in listOf("start","pause","resume","restart","stop")){"Choose start, pause, resume, restart or stop"}
+                val frame=ui.value.frame
+                require(operation=="stop" || active && frame!=null){"Start the camera or demo before using guide dots"}
+                require(operation in listOf("pause","stop") || backgroundFilter.status.state !in listOf("countdown","capturing")){"Finish the background snapshot before starting guide dots"}
+                val commandTime=SystemClock.elapsedRealtime()
+                pacerCoach.command(operation,commandTime,Guide(config,frame?.width ?: 640,frame?.height ?: 480))
+                pacerCommandTime=commandTime
+                streakCoach.reset()
+            }
             "calibrate"->{
                 val f=ui.value.frame ?: error("Wait for camera frames")
                 val corners=j.getJSONArray("points")

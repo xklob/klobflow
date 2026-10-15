@@ -1,4 +1,4 @@
-import { defaults, demoFrame } from "./demo.mjs";
+import { defaults, demoFrame, demoPacerCommand, resetDemoPacer } from "./demo.mjs";
 import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
 import {SystemAudio} from "./system-audio.mjs";
@@ -66,11 +66,11 @@ const inactive=state=>state==='paused'||state==='idle';
 // Compact fullscreen keeps the coverage value legible without splitting MEASURED across lines.
 function syncTrackingBrief(){const title=$('tracking-title').textContent,coverage=title.match(/^(\d+)% MEASURED$/);$('tracking-brief').textContent=coverage?coverage[1]+'%':title;$('tracking-short-label').textContent=coverage?'Measured':'Tracking';}
 new MutationObserver(syncTrackingBrief).observe($('tracking-title'),{childList:true,subtree:true,characterData:true});syncTrackingBrief();
-const trackingBox=new FadeBox('tracking-box',{urgent:(shown,next)=>shown.tone==='ok'&&next.tone!=='ok'||next.snapshot!==shown.snapshot});
+const trackingBox=new FadeBox('tracking-box',{urgent:(shown,next)=>shown.pacerState!==next.pacerState||shown.tone==='ok'&&next.tone!=='ok'||next.snapshot!==shown.snapshot});
 // Text that names drawn arrows/targets must appear and disappear with them, never fade over absent marks.
-const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.mode!==next.mode||shown.cues&&!next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
+const coachingBox=new FadeBox('coaching',{urgent:(shown,next)=>shown.pacerState!==next.pacerState||shown.mode!==next.mode||shown.cues&&!next.cues||shown.state==='aligned'&&next.state!=='aligned'||inactive(next.state)&&!inactive(shown.state)});
 const timingBox=new FadeBox('beat-feedback',{urgent:(shown,next)=>shown.paused!==next.paused||Math.abs(shown.bpm-next.bpm)>3});
-const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.state==='building'&&next.state!=='building'||['held','recovering'].includes(shown.state)&&['paused','ready'].includes(next.state)||['off','free'].includes(next.state)});
+const streakBox=new FadeBox('streak-hud',{urgent:(shown,next)=>shown.pacerState!==next.pacerState||shown.state==='building'&&next.state!=='building'||['held','recovering'].includes(shown.state)&&['paused','ready'].includes(next.state)||['off','free'].includes(next.state)});
 const canvas = $("view"),
   ctx = canvas.getContext("2d"),
   chart = $("chart"),
@@ -226,6 +226,43 @@ $('quick-fit').onclick=()=>$('fit-guide').click();
 $('quick-background').onclick=()=>backgroundCommand(['countdown','capturing'].includes(current?.background?.state)?'cancel':'capture');
 $('quick-lights').onclick=()=>{const colors=$('staff-colors');colors.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});colors.querySelector('button:not(:disabled)')?.focus({preventScroll:true});};
 $('quick-audio').onclick=()=>{const audio=$('audio-controls');audio.scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});audio.focus({preventScroll:true});};
+const pacerSupported=c=>['circles','antispin'].includes(c.mode);
+let pacerBusy=false,pacerReadingAt=0,pacerReadingState='';
+function showPacer(f=current){
+  const enabled=pacerSupported(config)&&config.pacerEnabled,p=f?.pacer;
+  $('pacer-settings').hidden=!pacerSupported(config);$('pacer-options').hidden=!enabled;
+  $('pacer-second-staff').hidden=config.mode!=='circles'||config.staffCount!==2;
+  $('pacer-bar').hidden=!enabled;
+  setText('pacer-help',config.mode==='antispin'?'Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length.':'Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.');
+  if(!enabled)return;
+  const state=p?.enabled&&p.state!=='off'?p.state:'ready',stalled=sourceStalled&&!replay;
+  $('pacer-bar').dataset.state=stalled?'stalled':state;
+  setText('pacer-title',stalled?'CAMERA PAUSED':state==='running'?'FOLLOW THE DOTS':state==='countdown'?`START IN ${Math.max(1,Math.ceil(p.countdownMs/1000))}`:state==='paused'?'DOTS PAUSED':'READY TO FOLLOW');
+  const key=`${state}|${!!p?.valid}|${stalled}`;
+  if(key!==pacerReadingState||performance.now()-pacerReadingAt>=500){
+    pacerReadingAt=performance.now();pacerReadingState=key;
+    const pct=v=>Number.isFinite(v)?Math.round(v)+'%':'…',gap=Number.isFinite(p?.meanError)?p.meanError.toFixed(1)+'%':'…';
+    setText('pacer-stats',stalled?'Waiting for fresh frames. Start again when the camera returns.':state==='running'?p.valid?`Last 5s · ${pct(p.onTargetPercent)} with dots · ${gap} gap · ${pct(p.measuredPercent)} measured`:`Tips unclear · scores paused · ${pct(p.measuredPercent)} measured`:state==='countdown'?'Get into position. Scoring begins when the dots move.':state==='paused'?'Phase is held. Resume when you are ready.':'Press Start dots when you are ready.');
+  }
+  setText('pacer-note',`${Number(config.pacerRpm||20).toFixed(0)} cycles/min · ${config.pacerDirection==='ccw'?'counterclockwise':'clockwise'} · independent of the beat`);
+  const available=(demo||paired||localMode&&localCamera.active)&&!replay&&!pacerBusy;
+  for(const operation of ['start','pause','resume','restart','stop']){
+    const button=$('pacer-'+operation);
+    button.hidden=operation==='start'?state!=='ready':operation==='pause'?!['running','countdown'].includes(state):operation==='resume'?state!=='paused':state==='ready';
+    button.disabled=!available||(operation!=='stop'&&(stalled||!f||capturingBackground(f)));
+  }
+}
+async function pacerCommand(operation){
+  if(pacerBusy)return;pacerBusy=true;showPacer();
+  try{
+    await configChain;
+    if(demo){demoPacerCommand(operation,performance.now(),config);acceptFrame(demoFrame(config,performance.now()));}
+    else await api('/api/control',{action:'pacer',operation});
+    message('');
+  }catch(e){message(e.message);}finally{pacerBusy=false;showPacer();}
+}
+for(const operation of ['start','pause','resume','restart','stop'])$('pacer-'+operation).onclick=()=>pacerCommand(operation);
+new ResizeObserver(()=>fitStage()).observe($('pacer-bar'));
 let backgroundShown={state:'off',readyAt:0};
 function showBackground(f){
   const state=f.background?.state||'off',remaining=f.background?.remainingMs||0,snapshot=state==='countdown'||state==='capturing',now=performance.now();
@@ -389,6 +426,7 @@ function enableControls() {
   $("quick-background").disabled=!live;
   setText("quick-background",snapshot?"Cancel background capture":bg==="ready"?"Recapture · 5s":"Background · 5s");
   for(const chip of document.querySelectorAll("#staff-colors .chip"))chip.disabled=!(available||demo)||!!replay||config.led===false;
+  showPacer();
 }
 let controlEditRevision = 0;
 const controlEdits = new WeakMap();
@@ -457,8 +495,11 @@ function rangeLabel(el) {
   const output = document.querySelector(`output[for="${el.id}"]`);
   if (output)
     output.textContent =
-      key === "rotation"
+      key === "rotation" || key === "pacerOffset"
         ? `${value}°`
+        : key === "pacerRpm" ? `${value} cycles/min`
+        : key === "pacerCountdown" ? `${value} s`
+        : key === "pacerDotSize" ? `${value}`
         : key === "threshold"
           ? `${value}`
           : key === "tolerance"
@@ -566,6 +607,7 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
+  resetDemoPacer();$('pacer-bar').hidden=true;pacerReadingState='';
   sourceStalled = false;
   fallbackStreak.reset();$('streak-hud').hidden=true;streakBox.reset();
   alignmentFeedback.reset();displayedFeedback={tips:[],state:'paused'};legacyRolling=null;cueMemory.clear();
@@ -590,6 +632,7 @@ function resetView() {
   drawChart();
 }
 $("demo-start").onclick = async () => {
+  resetDemoPacer();
   systemAudio.stop();
   await localCamera.stop(); localMode = false; updateSourceControls();
   demo = true;
@@ -712,7 +755,7 @@ function drawEmpty() {
   }
 }
 function render(frame, image) {
-  if (sourceStalled && !replay) frame = {...frame,beat:null,config:{...frame.config,showFeedback:false,streakEffects:false}};
+  if (sourceStalled && !replay) frame = {...frame,beat:null,pacer:null,config:{...frame.config,showFeedback:false,streakEffects:false}};
   // Detection runs at a small image size; display overlays use screen resolution so glyphs stay crisp.
   $("stage").style.setProperty("--stage-aspect", String(frame.width / frame.height));
   const fit = viewBox.width && viewBox.height ? Math.min(viewBox.width / frame.width, viewBox.height / frame.height) : 1;
@@ -876,7 +919,22 @@ function render(frame, image) {
     if(c.showGuide)g.lines.forEach((s,i)=>{const color=i?'#b5a3ff':'#6dd8ff';line(s.a,s.b,color,2.5*k);const [x,y]=at(s.a);tag(i?'VERTICAL':'HORIZONTAL',{ink:color,size:13,candidates:[beside(x,y,0,-1,12*k),beside(x,y,1,0,12*k)]});});
     if(c.showFeedback)for(const cue of displayedFeedback.tips||[]){const [x,y]=at(cue.tip);tag(cue.axis==='horizontal'?'H TIP':'V TIP',{ink:cue.axis==='horizontal'?'#6dd8ff':'#b5a3ff',size:13,candidates:[beside(x,y,0,-1,20*k),beside(x,y,1,0,20*k),beside(x,y,-1,0,20*k)]});}
   }
-  if(frame.beat?.enabled){
+  const pacer=frame.pacer?.enabled?frame.pacer:null,pacerDot=Math.max(8*k,(c.pacerDotSize||16)*Math.max(.6,Math.min(1.5,u/480)));
+  if(pacer){
+    // Solid blue targets stay distinct from hollow measured-tip rings, even with no detections.
+    // Their movement is the exercise itself, so reduced-motion does not freeze them.
+    const dot=pacerDot;
+    pacer.targets.forEach((pair,i)=>pair.forEach((p,j)=>{
+      const [x,y]=at(p),label=c.mode==='antispin'?(j?'V':'H'):'AB'[i];
+      ctx.beginPath();ctx.arc(x,y,dot,0,Math.PI*2);ctx.fillStyle='#123d59';ctx.fill();ctx.lineWidth=5*k;ctx.strokeStyle='#050b12';ctx.stroke();ctx.lineWidth=2.4*k;ctx.strokeStyle='#73d9ff';ctx.stroke();
+      ctx.font=`800 ${Math.max(12*k,dot*.95)}px system-ui, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e9faff';ctx.fillText(label,x,y);
+      placed.push({x:x-dot-3*k,y:y-dot-3*k,w:dot*2+6*k,h:dot*2+6*k});
+    }));
+    ctx.textAlign='start';ctx.textBaseline='alphabetic';
+    // Keep actual observed endpoints visible above the moving target disks.
+    frame.staffs.forEach((s,i)=>{if(s&&!s.occluded&&!s.blurred&&s.confidence>=.55)for(const p of [s.a,s.b])ring(p[0]*u,p[1]*u,6*k,i?'#b5a3ff':'#b6f36b',1.8*k);});
+  }
+  if(frame.beat?.enabled&&!pacer){
     const on=frame.beat.phase<.18,grow=on&&!reducedMotion.matches;
     ctx.font=`700 ${14*k}px system-ui, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
     frame.beat.targets.forEach((targets,i)=>targets.forEach((p,j)=>{
@@ -899,8 +957,8 @@ function render(frame, image) {
       ctx.lineWidth=2.3*k;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(bx-3.4*k,by+.2*k);ctx.lineTo(bx-.9*k,by+2.8*k);ctx.lineTo(bx+3.6*k,by-2.6*k);ctx.stroke();ctx.lineCap='butt';
       cueMemory.delete(i);return;
     }
-    const tipR=14*k,targetR=17*k,ux=dist?dx/dist:0,uy=dist?dy/dist:-1;
-    ring(gx,gy,targetR,'#ffffff',3.2*k);ctx.fillStyle='#000000c0';ctx.beginPath();ctx.arc(gx,gy,5*k,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(gx,gy,3*k,0,Math.PI*2);ctx.fill();
+    const tipR=14*k,targetR=pacer?pacerDot+2*k:17*k,ux=dist?dx/dist:0,uy=dist?dy/dist:-1;
+    if(!pacer){ring(gx,gy,targetR,'#ffffff',3.2*k);ctx.fillStyle='#000000c0';ctx.beginPath();ctx.arc(gx,gy,5*k,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(gx,gy,3*k,0,Math.PI*2);ctx.fill();}
     if(dist>tipR+targetR+8*k){
       const sx=tx+ux*(tipR+2*k),sy=ty+uy*(tipR+2*k),ex=gx-ux*(targetR+3*k),ey=gy-uy*(targetR+3*k),head=Math.min(15*k,Math.hypot(ex-sx,ey-sy)*.65);
       const shaft=()=>{ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex-ux*head*.7,ey-uy*head*.7);ctx.stroke();};
@@ -916,11 +974,12 @@ function render(frame, image) {
   });
   // Instructions first, then TARGET names, so crowded scenes keep the most useful words.
   for(const l of labels)tag(l.tip,{stroke:'#ffb45e',ink:'#ffd29e',size:16,candidates:[beside(l.tx,l.ty,-l.ux,-l.uy,l.tipR),beside(l.tx,l.ty,-l.uy,l.ux,l.tipR),beside(l.tx,l.ty,l.uy,-l.ux,l.tipR)]});
-  for(const l of labels)tag('TARGET',{stroke:'#ffffff',size:13,candidates:[beside(l.gx,l.gy,l.ux,l.uy,l.targetR),beside(l.gx,l.gy,-l.uy,l.ux,l.targetR),beside(l.gx,l.gy,l.uy,-l.ux,l.targetR)]});
+  if(!pacer)for(const l of labels)tag('TARGET',{stroke:'#ffffff',size:13,candidates:[beside(l.gx,l.gy,l.ux,l.uy,l.targetR),beside(l.gx,l.gy,-l.uy,l.ux,l.targetR),beside(l.gx,l.gy,l.uy,-l.ux,l.targetR)]});
   for (const p of picks) ring(p[0]*w,p[1]*h,9*k,'#ffffff',2.5*k);
 }
 const cueMemory=new Map();let sizeReading=null;
 function showBeat(f){
+ if(f.pacer?.enabled){$('beat-feedback').hidden=true;$('beat-legend').hidden=true;timingBox.reset();return;}
  const beat=f.beat,immediate=!!replay,paused=!beat?.enabled&&f.config.tempoEnabled&&f.config.tempoSource!=='manual',visible=!!beat?.enabled||paused;
  $('beat-legend').hidden=!f.config.tempoEnabled;
  if($('beat-feedback').hidden===visible){$('beat-feedback').hidden=!visible;timingBox.reset();}
@@ -953,11 +1012,11 @@ function setCoaching(f,reason='idle') {
     coachingBox.show({key:'idle',state:'idle',mode:config.mode,cues:false,tone:'idle',render(){$('coaching-title').textContent='WAITING';$('coaching-detail').textContent='Alignment feedback appears when your staves are tracked.';}},{immediate:!stalled});
     return;
   }
-  const feedback=displayedFeedback,t=feedback.tracking,summary=feedback.summary;
-  trackingBox.show({key:`${t.key}|${t.detail}`,tone:t.tone,snapshot:capturingBackground(f),render(){$('tracking-title').textContent=t.title;$('tracking-detail').textContent=t.detail;}},{immediate});
+  const feedback=displayedFeedback,t=feedback.tracking,summary=feedback.summary,pacerState=f.pacer?.enabled?f.pacer.state:'off';
+  trackingBox.show({key:`${pacerState}|${t.key}|${t.detail}`,pacerState,tone:t.tone,snapshot:capturingBackground(f),render(){$('tracking-title').textContent=t.title;$('tracking-detail').textContent=t.detail;}},{immediate});
   const tone=feedback.state==='aligned'||feedback.state==='settling'?'ok':feedback.state==='adjust'?'warn':feedback.state==='free'?'idle':'wait';
   const alignment=summary||{...feedback,tone},state=summary?'recent':feedback.state;
-  coachingBox.show({key:`${state}|${alignment.title}|${alignment.detail}`,state,mode:f.config.mode,cues:!summary&&!!feedback.cues,tone:alignment.tone,render(){$('coaching-title').textContent=alignment.title;$('coaching-detail').textContent=alignment.detail;}},{immediate});
+  coachingBox.show({key:`${pacerState}|${state}|${alignment.title}|${alignment.detail}`,pacerState,state,mode:f.config.mode,cues:!summary&&!!feedback.cues,tone:alignment.tone,render(){$('coaching-title').textContent=alignment.title;$('coaching-detail').textContent=alignment.detail;}},{immediate});
 }
 // Alignment errors show 5-second averages of clear samples. Any current uncertainty pauses them at once,
 // and live scores return on confirmed observations without waiting for the text fade.
@@ -1028,18 +1087,20 @@ function acceptFrame(f, image = null) {
   if(!f.streak)f={...f,streak:fallbackStreak.update(f)};
   if(!replay){if(current&&(f.time<current.time||f.source!==current.source))legacyRolling=null;legacyRolling=averageLegacy(f,legacyRolling);}
   // During a background snapshot the capture instruction is the only prompt on the stage.
-  const flow=f.streak,hud=$('streak-hud');hud.hidden=f.config.streakEffects===false||capturingBackground(f);
+  const flow=f.streak,hud=$('streak-hud'),pacerState=f.pacer?.enabled?f.pacer.state:'off';hud.hidden=f.config.streakEffects===false||capturingBackground(f);
+  const flowLabel=()=>f.pacer?.enabled?streakText(flow).replaceAll('the guide','the moving dots'):streakText(flow);
   // The streak state label is held like the status boxes; the counter ticks live within the shown state.
   if(hud.hidden)streakBox.reset();
   else{
-    streakBox.show({key:flow.state,state:flow.state,render(){$('streak-title').textContent=streakText(flow);$('streak-title').style.color=flow.state==='recovering'?'var(--slate)':'';hud.dataset.state=flow.state;}},{immediate:!!replay});
-    if(streakBox.shown?.state===flow.state)$('streak-title').textContent=streakText(flow);
+    streakBox.show({key:`${pacerState}|${flow.state}`,pacerState,state:flow.state,render(){$('streak-title').textContent=flowLabel();$('streak-title').style.color=flow.state==='recovering'?'var(--slate)':'';hud.dataset.state=flow.state;}},{immediate:!!replay});
+    if(streakBox.shown?.state===flow.state)$('streak-title').textContent=flowLabel();
   }
   $('streak-power').style.width=`${flow.progress*100}%`;$('streak-power').parentElement.setAttribute('aria-valuenow',Math.min(30,flow.seconds).toFixed(1));
   $('streak-power').parentElement.setAttribute('aria-valuetext',`${Math.round(flow.progress*100)}% power · ${Math.min(30,flow.seconds).toFixed(1)} of 30 seconds`);
   $('streak-detail').textContent=flow.state==='free'?'Choose a guide to earn alignment streaks.':`Best ${flow.bestSeconds.toFixed(1)}s · full power at 30s`;
   displayedFeedback=alignmentFeedback.update(f);
   current = f;
+  showPacer(f);
   if (lastImage && lastImage !== image) lastImage.close?.();
   lastImage = image;
   $("empty-state").hidden = true;
@@ -1199,6 +1260,7 @@ async function loadAnalysis(text) {
   // Older exports have raw samples only; average them in order so scrubbing shows consistent values.
   await rollingReady;
   let rolling=null;for(const f of frames)rolling=averageLegacy(f,rolling);
+  resetDemoPacer();
   stopStream();
   replay = frames;
   updateSourceControls();
@@ -1311,7 +1373,7 @@ function loop() {
   updateAudioStatus();
   if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
   if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
-  if ((paired || (localMode && localCamera.active)) && !replay && Date.now() - lastArrival > 2000) {
+  if ((paired || (localMode && localCamera.active)) && !replay && Date.now() - lastArrival > (current?.pacer?.enabled?750:2000)) {
     pauseLiveFeedback(); enableControls();
     $("tracking-label").textContent = "Waiting for fresh camera frames…";
     $("source-label").textContent = "CAMERA PAUSED";

@@ -26,21 +26,23 @@ function describeIssue(issue,count){
 }
 export class AlignmentFeedback {
  constructor(){this.reset();}
- reset(){this.time=-1;this.key='';this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=null;this.samples=[];}
+ reset(){this.time=-1;this.key='';this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=null;this.samples=[];this.pacerElapsed=null;}
  update(frame){
-  const {time,config,staffs}=frame,key=JSON.stringify([config.mode,config.staffCount,config.tolerance,config.planeCorners,config.cx,config.cy,config.scale,config.rotation,config.circleSeparation,frame.width,frame.height,config.staffColors,config.threshold,config.minLength,config.led,config.facing,config.mirror,config.zoom]);
-  if(time<this.time||key!==this.key)this.reset();this.time=time;this.key=key;
-  const cues=frame.feedback||[],count=config.staffCount||2,free=config.mode==='free';
-  const issue=trackingIssue(staffs,count)??(!free&&cues.length!==count*2?{kind:'outside',staff:-1}:null);
+  const {time,config,staffs}=frame,following=!!config.pacerEnabled&&['circles','antispin'].includes(config.mode),pacer=following?frame.pacer:null;
+  const idle=following&&(!pacer?.enabled||pacer.state!=='running');
+  const key=JSON.stringify([config.mode,config.staffCount,config.tolerance,config.planeCorners,config.cx,config.cy,config.scale,config.rotation,config.circleSeparation,frame.width,frame.height,config.staffColors,config.threshold,config.minLength,config.led,config.facing,config.mirror,config.zoom,following,pacer?.state,config.pacerRpm,config.pacerDirection,config.pacerPattern,config.pacerOffset,config.pacerCountdown]);
+  if(time<this.time||key!==this.key||pacer?.state==='running'&&this.pacerElapsed!==null&&pacer.elapsedSeconds<this.pacerElapsed)this.reset();this.time=time;this.key=key;this.pacerElapsed=pacer?.elapsedSeconds??null;
+  const cues=following?(pacer?.feedback||[]):frame.feedback||[],count=config.staffCount||2,free=config.mode==='free';
+  const issue=trackingIssue(staffs,count)??(!free&&!idle&&(cues.length!==count*2||following&&!pacer.valid)?{kind:'outside',staff:-1}:null);
   if(issue){this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=issue;}
   const snapshot=capturingBackground(frame),confirmed=!issue&&!snapshot;
   this.samples=this.samples.filter(s=>time-s.time<=5000&&s.time!==time);
-  if(snapshot)this.samples=[];else this.samples.push({time,valid:confirmed,on:confirmed&&cues.length===count*2&&cues.every(c=>c.error<=config.tolerance),horizontal:confirmed?cues.find(c=>c.axis==='horizontal')?.error:null,vertical:confirmed?cues.find(c=>c.axis==='vertical')?.error:null});
+  if(snapshot||idle)this.samples=[];else this.samples.push({time,valid:confirmed,on:confirmed&&cues.length===count*2&&cues.every(c=>c.error<=config.tolerance),horizontal:confirmed?cues.find(c=>c.axis==='horizontal')?.error:null,vertical:confirmed?cues.find(c=>c.axis==='vertical')?.error:null});
   const measured=this.samples.filter(s=>s.valid),recent=measured.length>=3&&time-measured.at(-1).time<=(issue?.kind==='hidden'?1500:1000);
   const coverage=Math.round(measured.length/Math.max(1,this.samples.length)*100),onPercent=measured.length?Math.round(measured.filter(s=>s.on).length/measured.length*100):0;
   const average=axis=>{const values=measured.map(s=>s[axis]).filter(Number.isFinite);return values.length?(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1):'–';};
-  const axisDetail=config.mode==='antispin'&&recent?`Horizontal tip: ${average('horizontal')}% drift · Vertical tip: ${average('vertical')}% drift. `:'';
-  const summary=recent&&!free&&!snapshot?{tone:onPercent>=80?'ok':'warn',title:`${onPercent}% ON TARGET`,detail:axisDetail+`Of measured frames in the last 5 seconds. Tolerance: ${config.tolerance}% of guide width. Unclear frames are excluded.`}:null;
+  const axisDetail=config.mode==='antispin'&&recent?`Horizontal tip: ${average('horizontal')}% ${following?'gap':'drift'} · Vertical tip: ${average('vertical')}% ${following?'gap':'drift'}. `:'';
+  const summary=recent&&!free&&!snapshot?{tone:onPercent>=80?'ok':'warn',title:`${onPercent}% ${following?'WITH DOTS':'ON TARGET'}`,detail:axisDetail+`Of measured frames in the last 5 seconds. ${following?'Both tips must follow the moving blue dots. ':''}Tolerance: ${config.tolerance}% of guide width. Unclear frames are excluded.`}:null;
   // Text changes are held and faded by StableText, independently of current measurements.
   const shown=snapshot?{tone:'wait',title:'BACKGROUND SNAPSHOT',detail:'Move your staves out of view and keep the camera still.'}:confirmed?{tone:'ok',title:'CLEAR',detail:count===1?'Your staff and both of its ends are sharp.':'Both staves and all four ends are sharp.'}:describeIssue(issue??this.lastIssue??{kind:'starting'},count);
   if(recent&&!snapshot){shown.tone=coverage>=80?'ok':'warn';shown.title=`${coverage}% MEASURED`;shown.detail='Frames with both ends located, over the last 5 seconds. Unclear frames pause live scores and rings.';}
@@ -49,6 +51,12 @@ export class AlignmentFeedback {
   const result=(state,title,detail,tips=[],cues=false)=>({state,title,detail,tips,tracking,cues,summary});
   if(free)return result('free','FREE FLOW',config.trails===false?'No alignment score here. Choose Grid, Circles or Cube for targets.':'No alignment score here. Faint curves show where each tip traveled.');
   if(snapshot)return result('paused','PRECISION PAUSED','Scores resume after the background snapshot.');
+  if(idle){
+   const state=pacer?.state||'ready';
+   const title=state==='countdown'?'GET READY':state==='paused'?'GUIDE DOTS PAUSED':'READY TO FOLLOW',detail=state==='countdown'?'Place your tips on the blue dots. Scoring starts when they move.':state==='paused'?'Resume to continue from these dot positions. Scores are paused.':'Set your speed, then press Start dots. Match both tips to the blue dots.';
+   Object.assign(tracking,{tone:'wait',title:state==='ready'?'GUIDE DOTS READY':title,detail,key:`practice|${state}`,valid:false,confirmed:false});
+   return result('practice',title,detail);
+  }
   if(!confirmed)return result('paused','PRECISION PAUSED','No current measurement. Keep both ends lit and in view; unclear frames are excluded.');
   const tips=cues.map((cue,i)=>{
    if(cue.error>config.tolerance){this.on[i]=false;this.onSince[i]=null;}
@@ -57,10 +65,10 @@ export class AlignmentFeedback {
   });
   if(tips.every(t=>t.onTarget))this.alignedSince??=time;else this.alignedSince=null;
   const aligned=this.alignedSince!==null&&time-this.alignedSince>=1200,cuesShown=config.showFeedback!==false;
-  if(aligned)return result('aligned','ON GUIDE','Every tip is within tolerance. Keep tracing the guide.',tips);
+  if(aligned)return result('aligned',following?'WITH THE DOTS':'ON GUIDE',following?'Both tips are following the moving blue dots. Keep the same pace.':'Every tip is within tolerance. Keep tracing the guide.',tips);
   // Every tip is inside tolerance but not yet confirmed: no correction marks are drawn, so name none.
-  if(tips.every(t=>t.error<=config.tolerance))return result('settling','TIPS ON TARGET','Every tip is within tolerance. Keep tracing the guide to confirm ON GUIDE.',tips);
-  return result('adjust','OFF GUIDE',cuesShown?'Move each amber-ringed tip along its arrow into the white TARGET ring.':'Some tips are outside tolerance. Turn on Alignment cues to see where to move.',tips,cuesShown);
+  if(tips.every(t=>t.error<=config.tolerance))return result('settling',following?'TIPS WITH DOTS':'TIPS ON TARGET',following?'Both tips are within tolerance. Keep following the blue dots.':'Every tip is within tolerance. Keep tracing the guide to confirm ON GUIDE.',tips);
+  return result('adjust',following?'FOLLOW THE DOTS':'OFF GUIDE',following?'Bring both tips onto the moving blue dots and keep their pace.':cuesShown?'Move each amber-ringed tip along its arrow into the white TARGET ring.':'Some tips are outside tolerance. Turn on Alignment cues to see where to move.',tips,cuesShown);
  }
 }
 // Rate-limits text changes so rapid events never restart a fade each frame. Urgent changes show at once;

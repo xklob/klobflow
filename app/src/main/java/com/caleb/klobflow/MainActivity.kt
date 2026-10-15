@@ -38,7 +38,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -52,7 +54,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.DateFormat
@@ -114,10 +119,14 @@ class MainActivity:ComponentActivity() {
     val request=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){granted->permission=granted;if(granted)engine.bindCamera()else message="Camera permission is needed to track your practice. You can still try the demo."}
     fun run(block:()->Unit){try{block()}catch(e:Exception){message=e.message ?: "Action failed"}}
     fun patch(key:String,value:Any)=run{engine.updateConfig(JSONObject().put(key,value))}
+    val lifecycleOwner=LocalLifecycleOwner.current
+    var freshnessNow by remember {mutableLongStateOf(SystemClock.elapsedRealtime())}
+    LaunchedEffect(lifecycleOwner,ui.config.pacerEnabled){if(ui.config.pacerEnabled)lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){while(true){freshnessNow=SystemClock.elapsedRealtime();delay(150)}}}
+    val pacerStale=ui.frame?.let {it.pacer.enabled&&max(freshnessNow,SystemClock.elapsedRealtime())-it.time>750} ?: false
     // One coach for the status boxes and the overlay, so text and drawn cues always agree.
     val coach=remember {AlignmentFeedback()}
-    val feedback=remember(ui.frame?.time){ui.frame?.let {coach.update(it.time,it.staffs,it.guide,it.background)}}
-    if(focus)PracticeFocus(ui,engine,feedback,{focus=false}){message=it}
+    val feedback=remember(ui.frame?.time,ui.frame?.pacer,pacerStale){if(pacerStale)Coaching("paused","CAMERA PAUSED","Wait for fresh frames, then start the dots again.",tracking=BoxText("wait","NO FRESH FRAMES","Moving dots and scores are paused."))else ui.frame?.let {coach.update(it.time,it.staffs,it.guide,it.background,it.pacer)}}
+    if(focus)PracticeFocus(ui,engine,feedback,{focus=false},pacerStale=pacerStale){message=it}
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){permission=ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED}
     Column(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
         Row(Modifier.fillMaxWidth().padding(horizontal=20.dp,vertical=15.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -140,6 +149,7 @@ class MainActivity:ComponentActivity() {
                     FlowRow(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free","antispin" to "Antispin").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
                     Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(enabled=ui.config.mode!="antispin" || count==1,selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
                     ModeTutorial(ui.config.mode)
+                    PacerSettings(ui,engine){message=it}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         OutlinedButton(enabled=ui.frame!=null,onClick={run{engine.command(JSONObject().put("action","fit").put("zoom",true))}},modifier=Modifier.weight(1f)){Text("Auto-fit")}
                         OutlinedButton(enabled=ui.frame!=null,onClick={focus=true},modifier=Modifier.weight(1f)){Text("Full screen")}
@@ -155,7 +165,7 @@ class MainActivity:ComponentActivity() {
                         BackgroundControls(ui,engine){message=it}
                         FitControls(ui,engine)
                     }
-                    if(!focus)CameraPanel(ui,engine,feedback){message=it}
+                    if(!focus){PacerTransport(ui,engine,stale=pacerStale){message=it};CameraPanel(ui,engine,feedback,pacerStale=pacerStale){message=it}}
                     if(ui.cameraReady && ui.zoomMax>ui.zoomMin){
                         var zoomDraft by remember(ui.zoomRatio){mutableFloatStateOf(ui.zoomRatio)}
                         Row(verticalAlignment=Alignment.CenterVertically){Text("Zoom · %.2f×".format(ui.zoomRatio),Modifier.weight(1f),color=Lime,fontSize=15.sp);TextButton(onClick={patch("zoom",0.0)}){Text("Widest")}}
@@ -272,8 +282,75 @@ class MainActivity:ComponentActivity() {
         NavigationBar(containerColor=Background,tonalElevation=0.dp){listOf("Practice","Adjust","Sessions","Guide").forEachIndexed {i,label->NavigationBarItem(selected=page==i,onClick={page=i},icon={Text(listOf("◎","⊞","▤","◇")[i],fontSize=20.sp)},label={Text(label)})}}
     }
 }
+@Composable private fun PacerSettings(ui:FlowUi,engine:FlowEngine,onError:(String)->Unit) {
+    if(ui.config.mode !in listOf("circles","antispin"))return
+    val c=ui.config
+    var expanded by remember {mutableStateOf(false)}
+    fun patch(key:String,value:Any){try{engine.updateConfig(JSONObject().put(key,value))}catch(e:Exception){onError(e.message ?: "Could not change dot settings")}}
+    Surface(color=Color(0xff10202a),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Color(0xff386477)),modifier=Modifier.fillMaxWidth().padding(vertical=8.dp)){
+        Column(Modifier.padding(12.dp)){
+            Toggle("Follow moving dots",c.pacerEnabled){patch("pacerEnabled",it)}
+            Text(if(c.mode=="antispin")"Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length."else"Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+            if(c.pacerEnabled){
+                TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Close pace settings"else"Pace settings")}
+                if(expanded){
+                    ControlSlider("Speed",c.pacerRpm.toFloat(),5f..120f,steps=114,valueLabel={"${it.roundToInt()} cycles/min"}){patch("pacerRpm",it.roundToInt())}
+                    Text("One cycle is a full turn. This speed is independent of music and BPM.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    Text("Direction on screen",color=Ink,fontSize=15.sp,modifier=Modifier.padding(top=8.dp))
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("cw" to "Clockwise","ccw" to "Counterclockwise").forEach {(key,label)->FilterChip(selected=c.pacerDirection==key,onClick={patch("pacerDirection",key)},label={Text(label)})}}
+                    ControlSlider("Get-ready countdown",c.pacerCountdown.toFloat(),0f..10f," s",steps=9){patch("pacerCountdown",it.roundToInt())}
+                    ControlSlider("Dot size",c.pacerDotSize.toFloat(),8f..28f,steps=19){patch("pacerDotSize",it.roundToInt())}
+                    if(c.mode=="circles"&&c.staffCount==2){
+                        Text("Staff B direction",color=Ink,fontSize=15.sp,modifier=Modifier.padding(top=8.dp))
+                        FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("opposite" to "Opposite to A","same" to "Same as A").forEach {(key,label)->FilterChip(selected=c.pacerPattern==key,onClick={patch("pacerPattern",key)},label={Text(label)})}}
+                        ControlSlider("Staff B phase offset",c.pacerOffset.toFloat(),0f..180f,"°",steps=35){patch("pacerOffset",it.roundToInt())}
+                        Text("90° starts the staves perpendicular. Either end can follow either dot in its pair.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    }
+                    Text("Size, center, rotation and Target tolerance also apply. Changing pace or guide geometry stops the exercise; dot size only changes visibility.",color=Muted,fontSize=14.sp,lineHeight=19.sp,modifier=Modifier.padding(top=6.dp))
+                }
+            }
+        }
+    }
+}
+@Composable private fun PacerTransport(ui:FlowUi,engine:FlowEngine,compact:Boolean=false,stale:Boolean=false,onError:(String)->Unit) {
+    if(!ui.config.pacerEnabled||ui.config.mode !in listOf("circles","antispin"))return
+    val pacer=ui.frame?.pacer
+    val state=pacer?.takeIf {it.enabled&&it.state!="off"}?.state ?: "ready"
+    val enabled=ui.frame!=null&&(ui.demo||ui.cameraReady)&&ui.frame.background.state !in listOf("countdown","capturing")
+    fun command(operation:String){try{engine.command(JSONObject().put("action","pacer").put("operation",operation))}catch(e:Exception){onError(e.message ?: "Could not control moving dots")}}
+    val stats=remember(state,pacer?.valid,stale,(ui.frame?.time ?: 0L)/500){
+        fun pct(value:Double?)=value?.let {"${it.roundToInt()}%"} ?: "…"
+        if(stale)"Waiting for fresh frames. Start again when the camera returns."else when(state){
+            "running"->if(pacer?.valid==true)"Last 5s · ${pct(pacer.onTargetPercent)} with dots · ${pacer.meanError?.let {"%.1f%%".format(it)} ?: "…"} gap · ${pct(pacer.measuredPercent)} measured"else"Tips unclear · scores paused · ${pct(pacer?.measuredPercent)} measured"
+            "countdown"->"Get into position. Scoring begins when the dots move."
+            "paused"->"Phase is held. Resume when you are ready."
+            else->"Press Start dots when you are ready."
+        }
+    }
+    Surface(color=Color(0xff10202a),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Color(0xff3e758e)),modifier=Modifier.fillMaxWidth().padding(bottom=8.dp)){
+        Column(Modifier.padding(if(compact)8.dp else 12.dp)){
+            Text(if(stale)"CAMERA PAUSED"else when(state){"running"->"FOLLOW THE DOTS";"countdown"->"START IN ${max(1,ceil((pacer?.countdownMs?.toDouble() ?: 0.0)/1000).toInt())}";"paused"->"DOTS PAUSED";else->"READY TO FOLLOW"},color=Color(0xffb9eaff),fontSize=if(compact)16.sp else 20.sp,fontWeight=FontWeight.Bold)
+            Text(stats,color=Ink,fontSize=if(compact)13.sp else 15.sp,lineHeight=18.sp)
+            if(!compact)Text("${ui.config.pacerRpm.roundToInt()} cycles/min · ${if(ui.config.pacerDirection=="ccw")"counterclockwise"else"clockwise"} · independent of the beat",color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                when(state){
+                    "ready"->Button(enabled=enabled&&!stale,onClick={command("start")}){Text("Start dots")}
+                    "paused"->Button(enabled=enabled&&!stale,onClick={command("resume")}){Text("Resume dots")}
+                    else->Button(enabled=enabled&&!stale,onClick={command("pause")}){Text("Pause dots")}
+                }
+                if(state!="ready"){
+                    OutlinedButton(enabled=enabled&&!stale,onClick={command("restart")}){Text("Restart")}
+                    OutlinedButton(enabled=enabled,onClick={command("stop")}){Text("Stop dots")}
+                }
+            }
+        }
+    }
+}
 /** Tracking validity and the alignment explanation live in separate fixed boxes. */
-@Composable private fun StatusBoxes(feedback:Coaching?,compact:Boolean=false,horizontal:Boolean=false) {
+@Composable private fun StatusBoxes(feedback:Coaching?,compact:Boolean=false,horizontal:Boolean=false,pacerState:String?=null) {
+    // Explicit exercise actions change instructions immediately. Ordinary tip fluctuations
+    // retain their existing hold and fade within the same exercise state.
+    key(pacerState){
     val tracking=feedback?.tracking ?: BoxText("idle","NO CAMERA YET","Open the camera or try the demo.")
     val alignment=if(feedback==null)BoxText("idle","WAITING","Alignment feedback appears when your staves are tracked.")
         else feedback.summary ?: BoxText(when(feedback.state){"aligned","settling"->"ok";"adjust"->"warn";"free"->"idle";else->"wait"},feedback.title,feedback.detail,cues=feedback.cues)
@@ -288,8 +365,9 @@ class MainActivity:ComponentActivity() {
         StatusBox("Tracking",trackingText,trackingUrgent,Modifier.padding(bottom=8.dp),compact=compact)
         StatusBox("Alignment",alignmentText,alignmentUrgent,Modifier.padding(bottom=8.dp),compact=compact)
     }
+    }
 }
-@Composable private fun PracticeFocus(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,onClose:()->Unit,onError:(String)->Unit) {
+@Composable private fun PracticeFocus(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,onClose:()->Unit,pacerStale:Boolean=false,onError:(String)->Unit) {
     Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false,decorFitsSystemWindows=false)){
         Surface(Modifier.fillMaxSize(),color=Background){
             Column(Modifier.fillMaxSize().safeDrawingPadding().padding(12.dp)){
@@ -300,20 +378,21 @@ class MainActivity:ComponentActivity() {
                 ui.error?.let {Text(it,color=Amber,fontSize=15.sp)}
                 BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()){
                     if(maxWidth>maxHeight){
-                        val previewHeight=(maxHeight-58.dp).coerceAtLeast(96.dp)
+                        val previewHeight=maxHeight
                         val feedbackWidth=minOf(300.dp,maxWidth*.45f)
                         Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                            Column(Modifier.weight(1f).fillMaxHeight(),verticalArrangement=Arrangement.Center){CameraPanel(ui,engine,feedback,focus=true,previewMaxHeight=previewHeight,onError=onError)}
-                            Column(Modifier.width(feedbackWidth).fillMaxHeight().verticalScroll(rememberScrollState())){StatusBoxes(feedback,compact=true,horizontal=true);BeatFeedback(ui,compact=true)}
+                            Column(Modifier.weight(1f).fillMaxHeight(),verticalArrangement=Arrangement.Center){CameraPanel(ui,engine,feedback,focus=true,previewMaxHeight=previewHeight,pacerStale=pacerStale,onError=onError)}
+                            Column(Modifier.width(feedbackWidth).fillMaxHeight().verticalScroll(rememberScrollState())){PacerTransport(ui,engine,compact=true,stale=pacerStale,onError=onError);StatusBoxes(feedback,compact=true,horizontal=true,pacerState=if(pacerStale)"stalled"else ui.frame?.pacer?.takeIf{it.enabled}?.state);if(ui.frame?.pacer?.enabled!=true)BeatFeedback(ui,compact=true)}
                         }
                     }else{
                         Column(Modifier.fillMaxSize()){
                             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(),contentAlignment=Alignment.Center){
-                                val previewHeight=(maxHeight-58.dp).coerceAtLeast(96.dp)
-                                Column{CameraPanel(ui,engine,feedback,focus=true,previewMaxHeight=previewHeight,onError=onError)}
+                                val previewHeight=maxHeight
+                                Column{CameraPanel(ui,engine,feedback,focus=true,previewMaxHeight=previewHeight,pacerStale=pacerStale,onError=onError)}
                             }
-                            StatusBoxes(feedback,compact=true)
-                            BeatFeedback(ui,compact=true)
+                            PacerTransport(ui,engine,compact=true,stale=pacerStale,onError=onError)
+                            StatusBoxes(feedback,compact=true,pacerState=if(pacerStale)"stalled"else ui.frame?.pacer?.takeIf{it.enabled}?.state)
+                            if(ui.frame?.pacer?.enabled!=true)BeatFeedback(ui,compact=true)
                         }
                     }
                 }
@@ -321,7 +400,7 @@ class MainActivity:ComponentActivity() {
         }
     }
 }
-@Composable private fun CameraPanel(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,focus:Boolean=false,previewMaxHeight:Dp=Dp.Infinity,onError:(String)->Unit) {
+@Composable private fun CameraPanel(ui:FlowUi,engine:FlowEngine,feedback:Coaching?,focus:Boolean=false,previewMaxHeight:Dp=Dp.Infinity,pacerStale:Boolean=false,onError:(String)->Unit) {
     var identifying by remember {mutableStateOf(false)}
     var calibrating by remember {mutableStateOf(false)}
     var planeAspect by remember {mutableStateOf("1.0")}
@@ -329,6 +408,13 @@ class MainActivity:ComponentActivity() {
     val cueSectors=remember {IntArray(4){-1}}
     val labelPaint=remember {android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {typeface=android.graphics.Typeface.DEFAULT_BOLD;textAlign=android.graphics.Paint.Align.CENTER}}
     val backgroundState=ui.frame?.background?.state ?: "off"
+    val density=LocalDensity.current
+    var streakHeight by remember {mutableStateOf(0.dp)}
+    val showStreak=ui.config.streakEffects&&!pacerStale&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing"&&ui.frame!=null
+    LaunchedEffect(showStreak){if(!showStreak)streakHeight=0.dp}
+    // Fullscreen allocates the HUD's actual wrapped height before sizing the camera.
+    // The HUD measures at its natural height, rather than being clipped by space left over.
+    val cameraMaxHeight=if(focus)(previewMaxHeight-streakHeight).coerceAtLeast(0.dp)else previewMaxHeight
     // New detection filters or a new background snapshot invalidate old, possibly false, trails.
     val trails=remember(ui.frame?.source,ui.frame?.width,ui.frame?.height,ui.config.facing,ui.config.mirror,ui.config.zoom,ui.config.staffCount,ui.config.staffColors,ui.config.led,backgroundState) {mutableStateListOf<Pair<Long,List<Segment?>>>()}
     LaunchedEffect(ui.frame?.time){ui.frame?.let {f->trails.add(f.time to f.staffs);while(trails.isNotEmpty() && (f.time-trails.first().first>4200 || trails.size>512))trails.removeAt(0)}}
@@ -337,7 +423,7 @@ class MainActivity:ComponentActivity() {
     LaunchedEffect(backgroundState){if(backgroundState=="ready" && (previousBackground=="countdown" || previousBackground=="capturing"))savedAt=SystemClock.uptimeMillis();previousBackground=backgroundState}
     val aspect=ui.bitmap?.let {it.width.toFloat()/it.height} ?: (4f/3f)
     BoxWithConstraints(Modifier.fillMaxWidth()){
-    Box(Modifier.width(minOf(maxWidth,previewMaxHeight*aspect)).aspectRatio(aspect).align(Alignment.TopCenter).background(Color(0xff080b08),RoundedCornerShape(16.dp)).semantics{contentDescription="Practice camera preview"}
+    Box(Modifier.width(minOf(maxWidth,cameraMaxHeight*aspect)).aspectRatio(aspect).align(Alignment.TopCenter).background(Color(0xff080b08),RoundedCornerShape(16.dp)).semantics{contentDescription="Practice camera preview"}
         .pointerInput(identifying,calibrating,ui.config.staffCount,planeAspect,ui.frame?.width,ui.frame?.height){if(identifying || calibrating)detectTapGestures {pos->
             picks=picks+P((pos.x/size.width).toDouble(),(pos.y/size.height).toDouble())
             if(picks.size==(if(calibrating)4 else ui.config.staffCount*2)){try{if(calibrating)engine.command(JSONObject().put("action","calibrate").put("points",JSONArray(picks.map {it.json()})).put("aspect",planeAspect.toDouble()))else engine.seed(picks)}catch(e:Exception){onError(e.message ?: "Could not apply selection")};picks=emptyList();identifying=false;calibrating=false}
@@ -354,7 +440,7 @@ class MainActivity:ComponentActivity() {
             val outline=Color.Black.copy(alpha=.72f)
             fun ring(center:Offset,radius:Float,color:Color,width:Float){drawCircle(outline,radius,center,style=Stroke(width+3.5f*k));drawCircle(color,radius,center,style=Stroke(width))}
             // Match the browser aura in camera space. Guides and measured cues draw above it.
-            val power=if(ui.config.streakEffects)f.streak.energy.toFloat().coerceIn(0f,1f)else 0f
+            val power=if(ui.config.streakEffects&&!pacerStale)f.streak.energy.toFloat().coerceIn(0f,1f)else 0f
             if(power>0f){
                 val scale=(unit/480).coerceIn(.6f,1.5f);val heat=power*power
                 val phase=if(android.animation.ValueAnimator.areAnimatorsEnabled())(f.time/3600.0).toFloat()else(-PI/2).toFloat()
@@ -462,7 +548,21 @@ class MainActivity:ComponentActivity() {
                     tag(if(horizontal)"H TIP" else "V TIP",13.sp.toPx(),Background,if(horizontal)Cyan else Lavender,null,listOf(beside(pos,0f,-1f,20f*k),beside(pos,1f,0f,20f*k),beside(pos,-1f,0f,20f*k)))
                 }
             }
-            if(f.beat.enabled){
+            val pacer=f.pacer.takeIf {it.enabled&&!pacerStale}
+            val pacerDot=max(8f*k,ui.config.pacerDotSize.toFloat()*(unit/480).coerceIn(.6f,1.5f))
+            if(pacer!=null){
+                // Blue disks are task targets, distinct from hollow observed-tip rings.
+                // Exercise motion remains active when decorative motion is disabled.
+                pacer.targets.forEachIndexed {i,pair->pair.forEachIndexed {j,target->
+                    val pos=p(target);val label=if(ui.config.mode=="antispin"){if(j==0)"H" else "V"}else if(i==0)"A" else "B"
+                    drawCircle(Color(0xff123d59),pacerDot,pos);drawCircle(Color(0xff050b12),pacerDot,pos,style=Stroke(5f*k));drawCircle(Color(0xff73d9ff),pacerDot,pos,style=Stroke(2.4f*k))
+                    labelPaint.style=android.graphics.Paint.Style.FILL;labelPaint.color=Color(0xffe9faff).toArgb();labelPaint.alpha=255;labelPaint.textSize=max(12.sp.toPx(),pacerDot*.95f)
+                    drawContext.canvas.nativeCanvas.drawText(label,pos.x,pos.y-(labelPaint.ascent()+labelPaint.descent())/2,labelPaint)
+                    placed.add(Rect(pos.x-pacerDot-3f*k,pos.y-pacerDot-3f*k,pos.x+pacerDot+3f*k,pos.y+pacerDot+3f*k))
+                }}
+                f.staffs.forEachIndexed {i,s->if(s!=null&&!s.occluded&&!s.blurred&&s.confidence>=.55)listOf(s.a,s.b).forEach {ring(p(it),6f*k,if(i==0)Lime else Lavender,1.8f*k)}}
+            }
+            if(f.beat.enabled&&!f.pacer.enabled){
                 val on=f.beat.phase<.18;val grow=on&&android.animation.ValueAnimator.areAnimatorsEnabled()
                 f.beat.targets.forEachIndexed {i,points->points.forEachIndexed {j,target->
                     val pos=p(target);val r=(if(grow)10f else 8f)*k
@@ -496,8 +596,8 @@ class MainActivity:ComponentActivity() {
                     if(i<cueSectors.size)cueSectors[i]=-1
                     return@forEachIndexed
                 }
-                val tipR=14f*k;val targetR=17f*k;val ux=if(dist>0f)dx/dist else 0f;val uy=if(dist>0f)dy/dist else -1f
-                ring(target,targetR,Color.White,3.2f*k);drawCircle(outline,5f*k,target);drawCircle(Color.White,3f*k,target)
+                val tipR=14f*k;val targetR=if(pacer!=null)pacerDot+2f*k else 17f*k;val ux=if(dist>0f)dx/dist else 0f;val uy=if(dist>0f)dy/dist else -1f
+                if(pacer==null){ring(target,targetR,Color.White,3.2f*k);drawCircle(outline,5f*k,target);drawCircle(Color.White,3f*k,target)}
                 if(dist>tipR+targetR+8f*k){
                     val start=Offset(tip.x+ux*(tipR+2f*k),tip.y+uy*(tipR+2f*k));val end=Offset(target.x-ux*(targetR+3f*k),target.y-uy*(targetR+3f*k))
                     val head=min(15f*k,hypot(end.x-start.x,end.y-start.y)*.65f);val shaftEnd=Offset(end.x-ux*head*.7f,end.y-uy*head*.7f)
@@ -511,13 +611,13 @@ class MainActivity:ComponentActivity() {
                 val (sector,words)=direction(dx.toDouble(),dy.toDouble(),if(i<cueSectors.size)cueSectors[i] else -1)
                 if(i<cueSectors.size)cueSectors[i]=sector
                 tipLabels.add {tag("TIP $words",15.sp.toPx(),Color(0xf20b0f0b),Color(0xffffd29e),Amber,listOf(beside(tip,-ux,-uy,tipR),beside(tip,-uy,ux,tipR),beside(tip,uy,-ux,tipR)))}
-                targetLabels.add {tag("TARGET",12.sp.toPx(),Color(0xf20b0f0b),Color.White,Color.White,listOf(beside(target,ux,uy,targetR),beside(target,-uy,ux,targetR),beside(target,uy,-ux,targetR)))}
+                if(pacer==null)targetLabels.add {tag("TARGET",12.sp.toPx(),Color(0xf20b0f0b),Color.White,Color.White,listOf(beside(target,ux,uy,targetR),beside(target,-uy,ux,targetR),beside(target,uy,-ux,targetR)))}
             }
             // Instructions first, then TARGET names, so crowded scenes keep the most useful words.
             tipLabels.forEach {it()};targetLabels.forEach {it()}
             picks.forEach {ring(Offset((it.x*size.width).toFloat(),(it.y*size.height).toFloat()),9f*k,Color.White,2.5f*k)}
         }
-        if(ui.demo)Text("SYNTHETIC DEMO",Modifier.align(Alignment.TopStart).padding(12.dp).background(Background).padding(6.dp),color=Lavender,fontSize=12.sp)
+        if(ui.demo)Text(if(focus)"DEMO"else"SYNTHETIC DEMO",Modifier.align(Alignment.TopStart).padding(12.dp).background(Background).padding(6.dp),color=Lavender,fontSize=12.sp)
         if(calibrating)Text("Tap "+listOf("top left","top right","bottom right","bottom left")[picks.size],Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime,fontSize=16.sp)
         if(identifying)Text("Tap ${if(picks.size<2)"staff A" else "staff B"}, end ${picks.size%2+1}",Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime,fontSize=16.sp)
         // A steady countdown over the live preview: only the numeral changes, once per second.
@@ -533,13 +633,15 @@ class MainActivity:ComponentActivity() {
             }
     }
     }
-    if(ui.config.streakEffects&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing")ui.frame?.streak?.let {flow->
+    if(showStreak)ui.frame?.streak?.let {flow->
         // The state label holds like the status boxes; the counter ticks live within the shown state.
-        val streakText=remember {StableText<String>()}
+        val streakText=remember(ui.frame?.pacer?.takeIf{it.enabled}?.state) {StableText<String>()}
         val shownState=streakText.update(SystemClock.uptimeMillis(),flow.state){a,b->a=="building" && b!="building" || (a=="held" || a=="recovering") && (b=="paused" || b=="ready") || b=="off" || b=="free"}
-        Surface(color=Color(0xee0b140f),shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth().padding(top=6.dp)){
+        val hudSize=if(focus)Modifier.wrapContentHeight(unbounded=true).onSizeChanged{streakHeight=with(density){it.height.toDp()}}else Modifier
+        Surface(color=Color(0xee0b140f),shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth().then(hudSize).padding(top=6.dp)){
             Column(Modifier.padding(10.dp)){
-                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused"||shownState=="held"||shownState=="recovering")Slate else Color(0xfffff1bf),fontSize=14.sp,fontWeight=FontWeight.Bold)
+                val label=if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label
+                Text(if(ui.frame?.pacer?.enabled==true)label.replace("the guide","the moving dots")else label,color=if(shownState=="paused"||shownState=="held"||shownState=="recovering")Slate else Color(0xfffff1bf),fontSize=14.sp,fontWeight=FontWeight.Bold)
                 LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Color(0xffffe28d),trackColor=Color(0xff28332a))
                 if(!focus)Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · full power at 30s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
             }
@@ -547,8 +649,8 @@ class MainActivity:ComponentActivity() {
     }
     if(focus)return
     Spacer(Modifier.height(8.dp))
-    StatusBoxes(feedback)
-    BeatFeedback(ui)
+    StatusBoxes(feedback,pacerState=if(pacerStale)"stalled"else ui.frame?.pacer?.takeIf{it.enabled}?.state)
+    if(ui.frame?.pacer?.enabled!=true)BeatFeedback(ui)
     Text(detectionSummary(ui.config,backgroundState),color=Ink,fontSize=14.sp,modifier=Modifier.padding(top=8.dp))
     var showLegend by remember {mutableStateOf(false)}
     TextButton(onClick={showLegend=!showLegend}){Text(if(showLegend)"Hide line & ring explanations" else "What do the lines and rings mean?")}

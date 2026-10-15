@@ -17,6 +17,85 @@ import java.net.URL
 
 @RunWith(AndroidJUnit4::class)
 class FlowDeviceTest {
+    @Test fun movingDotsTransportScoringAndLifecycleUseTheRealFramePipeline(){
+        val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
+        context.getSharedPreferences("practice",0).edit().putString("config",Config(mode="circles",staffCount=1,scale=.22,pacerEnabled=true,pacerCountdown=1).json().toString()).putBoolean("sharingEnabled",false).commit()
+        context.getSharedPreferences("tutorials",0).edit().putBoolean("circles",true).putBoolean("antispin",true).commit()
+        ActivityScenario.launch(MainActivity::class.java).use {scenario->
+            lateinit var engine:FlowEngine;scenario.onActivity {engine=it.engine;engine.startDemo()}
+            await {engine.ui.value.frame?.let {it.pacer.state=="ready" && it.metrics.deviation!=null}==true}
+            fun transport(operation:String,state:String):Frame {
+                val before=engine.ui.value.frame!!.time
+                scenario.onActivity {engine.command(JSONObject().put("action","pacer").put("operation",operation))}
+                await {engine.ui.value.frame?.let {it.time>before && it.pacer.state==state}==true}
+                return engine.ui.value.frame!!
+            }
+            val ready=engine.ui.value.frame!!
+            assertEquals("practice",ready.streak.state);assertFalse(ready.pacer.valid)
+            assertEquals(0,ready.json().getJSONArray("feedback").length())
+            assertNotNull("Raw circle geometry stays available before starting",ready.metrics.deviation)
+            val countdown=transport("start","countdown")
+            assertFalse(countdown.pacer.valid);assertTrue(countdown.pacer.feedback.isEmpty())
+            await {engine.ui.value.frame?.pacer?.state=="running"}
+            val first=engine.ui.value.frame!!
+            await {engine.ui.value.frame!!.pacer.elapsedSeconds>first.pacer.elapsedSeconds+.25}
+            assertTrue(kotlin.math.abs(first.pacer.phase-engine.ui.value.frame!!.pacer.phase)>.001)
+            val paused=transport("pause","paused")
+            await {engine.ui.value.frame!!.time>paused.time+350}
+            assertEquals(paused.pacer.phase,engine.ui.value.frame!!.pacer.phase,0.0)
+            assertFalse(engine.ui.value.frame!!.pacer.valid);assertEquals(0.0,engine.ui.value.frame!!.streak.seconds,0.0)
+            assertEquals(0,engine.ui.value.frame!!.json().getJSONArray("feedback").length())
+            val resumed=transport("resume","countdown")
+            assertEquals(paused.pacer.phase,resumed.pacer.phase,0.0)
+            await {engine.ui.value.frame?.pacer?.state=="running"}
+            val restarted=transport("restart","countdown")
+            assertEquals(0.0,restarted.pacer.phase,0.0);assertEquals(0.0,restarted.pacer.elapsedSeconds,0.0)
+            transport("stop","ready")
+            scenario.onActivity {engine.updateConfig(JSONObject().put("mode","antispin").put("scale",.3))}
+            await {engine.ui.value.frame?.let {it.guide.config.mode=="antispin" && it.metrics.deviation!=null && it.pacer.state=="ready"}==true}
+            transport("start","countdown")
+            await {engine.ui.value.frame?.let {it.pacer.state=="running" && it.pacer.valid}==true}
+            val antispin=engine.ui.value.frame!!
+            assertEquals(1,antispin.pacer.targets.size);assertEquals(2,antispin.pacer.targets.single().size)
+            assertEquals(setOf("horizontal","vertical"),antispin.pacer.feedback.map {it.axis}.toSet())
+            assertEquals(2,antispin.json().getJSONArray("feedback").length())
+            val device=androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+            device.findObject(androidx.test.uiautomator.By.text("Full screen")).click()
+            assertTrue(device.wait(androidx.test.uiautomator.Until.hasObject(androidx.test.uiautomator.By.text("Exit full screen")),5000))
+            assertTrue(device.wait(androidx.test.uiautomator.Until.hasObject(androidx.test.uiautomator.By.text("FOLLOW THE DOTS")),5000))
+            val screenshot=instrumentation.uiAutomation.takeScreenshot()
+            java.io.File(context.getExternalFilesDir(null),"practice-moving-dots.png").outputStream().use {screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};screenshot.recycle()
+            device.findObject(androidx.test.uiautomator.By.text("Exit full screen")).click()
+            scenario.moveToState(Lifecycle.State.CREATED)
+            assertNull(engine.ui.value.frame);assertNull(engine.ui.value.bitmap)
+            scenario.moveToState(Lifecycle.State.RESUMED)
+            await {engine.ui.value.frame?.let {it.source=="demo" && it.pacer.state=="ready"}==true}
+            assertEquals(0.0,engine.ui.value.frame!!.pacer.elapsedSeconds,0.0)
+            assertFalse(engine.ui.value.frame!!.pacer.valid)
+
+            // Freeze synthetic capture, then exercise exactly the same private frame boundary
+            // used by CameraX. A pre-command frame must not cancel a new start.
+            val timer=FlowEngine::class.java.getDeclaredField("demoTimer").apply {isAccessible=true}.get(engine) as java.util.concurrent.ScheduledExecutorService
+            timer.shutdownNow();assertTrue(timer.awaitTermination(5,java.util.concurrent.TimeUnit.SECONDS))
+            scenario.onActivity {
+                engine.updateConfig(JSONObject().put("pacerCountdown",0))
+                engine.command(JSONObject().put("action","pacer").put("operation","start"))
+            }
+            val commandTime=FlowEngine::class.java.getDeclaredField("pacerCommandTime").apply {isAccessible=true}.getLong(engine)
+            val generation=FlowEngine::class.java.getDeclaredField("generation").apply {isAccessible=true}.getInt(engine)
+            val process=FlowEngine::class.java.getDeclaredMethod("process",android.graphics.Bitmap::class.java,java.lang.Long.TYPE,String::class.java,java.lang.Integer.TYPE).apply {isAccessible=true}
+            val blank=android.graphics.Bitmap.createBitmap(640,480,android.graphics.Bitmap.Config.ARGB_8888)
+            val previous=engine.ui.value.frame
+            process.invoke(engine,blank,commandTime-1,"demo",generation)
+            assertSame("Queued pre-command observations must be discarded",previous,engine.ui.value.frame)
+            process.invoke(engine,blank,commandTime+1,"demo",generation)
+            val missing=engine.ui.value.frame!!
+            assertEquals("running",missing.pacer.state);assertFalse(missing.pacer.valid)
+            assertEquals(1,missing.pacer.targets.size);assertTrue(missing.pacer.feedback.isEmpty())
+            assertEquals(0,missing.json().getJSONArray("feedback").length())
+            assertNull(missing.metrics.deviation);assertEquals(0.0,missing.streak.seconds,0.0)
+        }
+    }
     @Test fun antispinModeTracksTwoAxesAndShowsItsTutorial(){
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
         context.getSharedPreferences("practice",0).edit().putString("config",Config(mode="antispin",staffCount=1,scale=.3,tempoEnabled=true,beatPoints=8).json().toString()).putBoolean("sharingEnabled",false).commit()
