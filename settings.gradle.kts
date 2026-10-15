@@ -5,3 +5,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "klobflow"
 include(":app")
+include(":motion-phone")

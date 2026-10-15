@@ -12,3 +12,8 @@ review/
 
 companion/test-results/
 companion/playwright-report/
+__pycache__/
+*.pyc
+.venv-motion
+motion/test-results/
+motion/playwright-report/
