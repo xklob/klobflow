@@ -79,17 +79,22 @@ class StaffShape:
                     target_center = observed.mean(0)
                     positions = observed
                 else:
-                    if tip_scorer is not None:
+                    distances = np.linalg.norm(observed-positions, axis=1)
+                    anchor = int(np.argmin(distances))
+                    # Out-of-image boundaries have no actual candidate pixel.
+                    # Do not rank image content against crop padding.
+                    candidates_in_image = (observed >= 0).all() and (observed < [self.width,self.height]).all()
+                    if tip_scorer is not None and candidates_in_image:
                         # A staff-specific learned ranking distinguishes the
                         # physical cap from a body/occlusion boundary. Absolute
                         # scores are not calibrated visibility probabilities.
                         tip_scores = np.asarray(tip_scorer(observed, length), float)
                         if tip_scores.shape != (2,) or not np.isfinite(tip_scores).all():
                             raise ValueError("Invalid learned tip scores")
-                        anchor = int(np.argmax(tip_scores)) if tip_scores[0] != tip_scores[1] else int(np.argmin(np.linalg.norm(observed-positions, axis=1)))
-                    else:
-                        distances = np.linalg.norm(observed-positions, axis=1)
-                        anchor = int(np.argmin(distances))
+                        # If neither crop classifies as a cap, the model has no
+                        # positive proposal. Preserve continuity, as for a tie.
+                        if tip_scores.max() > 0 and tip_scores[0] != tip_scores[1]:
+                            anchor = int(np.argmax(tip_scores))
                     visible[anchor] = True
                     sign = -1 if anchor == 0 else 1
                     target_center = observed[anchor] - sign*measured_axis*length/2

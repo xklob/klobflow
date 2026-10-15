@@ -85,9 +85,10 @@ def test_learned_tip_ranking_can_override_the_wrong_motion_anchor():
     assert result['ends'][1]['state']=='inferred'
     assert result['midpoint']['state']=='inferred'
     assert result['tipScores']==[90.,80.]
-    tied=StaffShape(seed,300,200)
-    tied.update(mask((60,100),(240,100)),0)
-    assert tied.update(partial,.125,tip_scorer=lambda *args:[0.,0.])['ends'][1]['state']=='visible'
+    for scores in ([0.,0.],[-.02,-.19]):
+        tied=StaffShape(seed,300,200)
+        tied.update(mask((60,100),(240,100)),0)
+        assert tied.update(partial,.125,tip_scorer=lambda *args:scores)['ends'][1]['state']=='visible'
     # Never consult the classifier for a complete shape or an empty mask.
     trained.update(mask((60,100),(240,100)),.25,tip_scorer=lambda *args:pytest.fail('full span'))
     trained.update(np.zeros((200,300),np.uint8),.5,tip_scorer=lambda *args:pytest.fail('empty mask'))
@@ -98,6 +99,13 @@ def test_bad_tip_scores_are_rejected():
     tracker.update(mask((60,100),(240,100)),0)
     with pytest.raises(ValueError,match='tip scores'):
         tracker.update(mask((150,100),(240,100)),.1,tip_scorer=lambda *args:[np.nan,1])
+
+
+def test_out_of_image_boundary_is_not_ranked_against_padding():
+    tracker=StaffShape([[.1,.5],[.9,.5]],300,200)
+    result=tracker.update(mask((150,100),(300,230)),0,tip_scorer=lambda *args:pytest.fail('padded candidate'))
+    assert any(p[1]>=1 or p[0]>=1 for p in result['visibleExtent'])
+    assert result['tipScores'] is None
 
 
 def test_training_and_checkpoint_roundtrip_need_no_network(tmp_path,monkeypatch):

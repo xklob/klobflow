@@ -15,6 +15,8 @@ This is a small transfer-learning experiment, not a new general-purpose detector
 
 The helper is used as a **relative ranking**, not a calibrated confidence percentage. On the held-out diagnostic examples it ranked the true cap above the false boundary in all 18 eligible pairs, but five of the 18 false boundaries still received positive binary classifications and three visible caps received negative classifications. That is why it does not decide whether every apparent end is visible. Full masks and empty masks retain the base tracker behavior. There is no new precision score.
 
+The ranker only compares boundaries whose candidate points are both inside the image. An out-of-frame point would compare image content against padded pixels. If neither candidate classifies as a cap, or their scores tie, it abstains and preserves the existing motion anchor. This avoids making a new measurement claim from an unsupported ranking; it does not establish the prior as ground truth.
+
 An initial two-scale model passed those labeled comparisons but picked the wrong end near a raised hand in an unannotated frame. Visual inspection caught it. Removing the wider context crop and training the pairwise decision corrected that diagnostic case. These recordings informed the architecture choice; their results are diagnostic cross-validation, not an untouched final test set.
 
 ## Replay results
