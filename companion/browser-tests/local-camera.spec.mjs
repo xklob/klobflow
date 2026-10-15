@@ -104,8 +104,9 @@ test('a transient source-start failure retries, while an occupied webcam stays r
  expect(await page.evaluate(()=>window.openAttempts)).toBe(3);await expect(page.locator('#local-open')).toBeEnabled();await expect(page.locator('#record')).toBeDisabled();
 });
 
-test('PC system-audio pipeline detects a beat, pauses on silence, and preserves manual tempo',async({page})=>{
+test('PC system-audio pipeline qualifies a held beat, expires on silence, and preserves manual tempo',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{set onmessage(handler){super.onmessage=event=>{if(event.data.type==='frame'&&window.pauseCameraFrames){window.releaseCameraFrame=()=>handler(event);return;}handler(event);};}};});
  await page.addInitScript(()=>{navigator.mediaDevices.getDisplayMedia=async()=>{
   const ctx=new AudioContext(),destination=ctx.createMediaStreamDestination(),buffer=ctx.createBuffer(1,ctx.sampleRate*4,ctx.sampleRate),samples=buffer.getChannelData(0);
   for(let i=0;i<samples.length;i++){const t=i/ctx.sampleRate;samples[i]=.65*Math.sin(2*Math.PI*70*t)*Math.exp(-(t%.5)/.035);}
@@ -114,14 +115,60 @@ test('PC system-audio pipeline detects a beat, pauses on silence, and preserves 
   window.audioFixture={ctx,source};return new MediaStream([...destination.stream.getAudioTracks(),...video.getVideoTracks()]);
  };});
  await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
- await page.locator('#audio-pc').click();await expect(page.locator('#audio-status')).toContainText(/(?:118|119|120|121|122) BPM.*confidence/,{timeout:25000});
+ await page.locator('#audio-pc').click();await expect(page.locator('#audio-progress')).toContainText('Collecting audio');
+ await expect.poll(async()=>Number(await page.locator('#audio-level').getAttribute('aria-valuenow'))).toBeGreaterThan(0);
+ await expect(page.locator('#audio-status')).toContainText(/(?:118|119|120|121|122) BPM.*confidence/,{timeout:25000});await expect(page.locator('#audio-progress')).toHaveText('Beat locked');
  // Real AudioWorklet scheduling and the displayed message hold allow small estimator jitter.
  const bpmError=async(target)=>Math.abs(Number((await page.locator('#beat-pulse').textContent()).match(/^(\d+) BPM/)?.[1]??NaN)-target);
  await expect.poll(()=>bpmError(120)).toBeLessThanOrEqual(2);
  await page.locator('[data-config="audioRate"]').selectOption('0.5');await expect.poll(()=>bpmError(60)).toBeLessThanOrEqual(1);
- await page.evaluate(()=>window.audioFixture.source.stop());await expect(page.locator('#audio-status')).toContainText('No shared audio',{timeout:6000});await expect(page.locator('#beat-pulse')).toHaveText('Beat timing paused');
+ await page.evaluate(()=>window.pauseCameraFrames=true);await expect(page.locator('#source-label')).toHaveText('CAMERA PAUSED');
+ await expect(page.locator('#audio-progress')).toHaveText('Beat locked');await expect.poll(async()=>Number(await page.locator('#audio-confidence').getAttribute('aria-valuenow'))).toBeGreaterThanOrEqual(60);
+ // Give the real estimator three continuous seconds of confidence to qualify its bounded hold.
+ await page.waitForTimeout(3300);
+ await page.evaluate(()=>window.audioFixture.source.stop());await expect(page.locator('#audio-progress')).toContainText('Holding tempo',{timeout:6000});await expect(page.locator('#audio-confidence-heading')).toHaveText('Last beat confidence');await expect(page.locator('#audio-level-label')).toHaveText('Quiet');await expect(page.locator('#beat-feedback')).toBeHidden();
+ await page.evaluate(()=>{window.pauseCameraFrames=false;window.releaseCameraFrame?.();});await expect.poll(()=>bpmError(60)).toBeLessThanOrEqual(1);await expect(page.locator('#beat-feedback')).toBeVisible();
+ await expect(page.locator('#audio-status')).toContainText('No shared audio',{timeout:18000});await expect(page.locator('#audio-confidence-label')).toHaveText('0%');await expect(page.locator('#audio-confidence-heading')).toHaveText('Beat confidence');await expect(page.locator('#beat-pulse')).toHaveText('Beat timing paused');
  await page.locator('#audio-manual').click();await expect(page.locator('#audio-status')).toContainText('Manual tempo');await expect(page.locator('#beat-pulse')).toContainText('120 BPM');
  await page.evaluate(()=>window.audioFixture.ctx.close());expect(errors).toEqual([]);
+});
+test('audio meters show an unlocked estimate and clear stale or manual input',async({page})=>{
+ await page.route('**/system-audio.mjs',route=>route.fulfill({contentType:'text/javascript',body:`export class SystemAudio {
+  constructor(update){this.update=update;window.testAudio=this;this.state=null;}
+  send(state){this.state={running:true,bpm:null,origin:0,confidence:0,level:.02,historySeconds:0,candidateBpm:null,status:'Listening',...state,at:performance.now()};this.update(this.state);}
+  async start(){this.active=true;this.send({historySeconds:.7,confidence:.25});}
+  stop(){this.active=false;this.send({running:false,level:0,confidence:0,status:'Audio stopped.'});}
+ }`}));
+ await page.goto('/');await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA');
+ await page.locator('#audio-pc').click();await expect(page.locator('#audio-progress')).toHaveText('Collecting audio · 0.7 / 2.4 s minimum');await expect(page.locator('#audio-confidence-label')).toHaveText('25%');
+ await page.evaluate(()=>window.testAudio.send({historySeconds:4,confidence:.53,candidateBpm:118}));
+ await expect(page.locator('#audio-confidence-label')).toHaveText('53%');await expect(page.locator('#audio-progress')).toHaveText('Possible 118 BPM · not locked');
+ await expect(page.locator('#audio-lock-note')).toContainText('Locks at 60%');
+ await expect(page.locator('#audio-level-label')).toHaveText('No signal',{timeout:4000});await expect(page.locator('#audio-confidence-label')).toHaveText('0%');await expect(page.locator('#audio-progress')).toContainText('Waiting for fresh audio');
+ await page.evaluate(()=>window.testAudio.send({historySeconds:8,confidence:.8,candidateBpm:120,bpm:120}));await expect(page.locator('#audio-progress')).toHaveText('Beat locked');
+ // Older senders have no history/candidate fields and may report a quiet instant between beats.
+ await page.evaluate(()=>window.testAudio.send({historySeconds:undefined,level:0,confidence:.8,bpm:120}));await expect(page.locator('#audio-progress')).toHaveText('Beat locked');await expect(page.locator('#audio-confidence-label')).toHaveText('80%');
+ await page.evaluate(()=>window.testAudio.send({holding:true,holdRemainingMs:1000,level:0,confidence:.8,bpm:120,status:'No shared audio'}));
+ await expect(page.locator('#audio-progress')).toHaveText('Holding tempo · 1s left');await expect(page.locator('#audio-confidence-heading')).toHaveText('Last beat confidence');await expect(page.locator('#audio-level-label')).toHaveText('Quiet');
+ await expect(page.locator('#audio-progress')).toHaveText('Waiting for a new beat',{timeout:1500});await expect(page.locator('#audio-confidence-label')).toHaveText('0%');await expect(page.locator('#audio-level-label')).toHaveText('Quiet');
+ await page.evaluate(()=>{window.testAudio.send({holding:true,holdRemainingMs:15000,confidence:.8,bpm:120});window.testAudio.state.at-=2500;});await expect(page.locator('#audio-level-label')).toHaveText('No signal');await expect(page.locator('#audio-confidence-label')).toHaveText('0%');
+ await page.evaluate(()=>window.testAudio.send({holding:true,holdRemainingMs:15000,level:0,confidence:.8,bpm:120}));await expect(page.locator('#audio-progress')).toContainText('Holding tempo');
+ await page.locator('#audio-manual').click();await expect(page.locator('#audio-level-label')).toHaveText('Off');await expect(page.locator('#audio-confidence-label')).toHaveText('0%');await expect(page.locator('#audio-level')).toHaveAttribute('aria-valuenow','0');
+});
+for(const source of ['demo','PC camera'])test(`Large text keeps audio reachable and preserves the visible meters with ${source}`,async({page})=>{
+ await page.goto('/');await page.locator(source==='demo'?'#demo-start':'#local-open').click();
+ await expect(page.locator('#source-label')).toHaveText(source==='demo'?'DEMO · GENERATED MOTION':'LIVE FROM YOUR PC CAMERA');
+ for(const viewport of [{width:1920,height:1080},{width:1440,height:900},{width:844,height:390}]){
+  await page.setViewportSize(viewport);await page.locator('#ui-size').selectOption('comfortable');
+  await page.locator('.controls').evaluate(el=>el.scrollTop=0);await page.locator('#ui-size').selectOption('large');
+  expect(await page.locator('.controls').evaluate(el=>el.scrollTop)).toBe(0);
+  await page.locator('#quick-audio').click();await expect(page.locator('#audio-controls')).toBeFocused();
+  await expect(page.locator('#audio-manual')).toBeInViewport();await page.locator('#audio-manual').click();await expect(page.locator('#audio-status')).toContainText('Manual tempo');
+  await page.locator('#ui-size').selectOption('comfortable');await page.locator('.audio-meters').scrollIntoViewIfNeeded();await expect(page.locator('.audio-meters')).toBeInViewport({ratio:.9});
+  await page.locator('#ui-size').selectOption('large');await expect(page.locator('.audio-meters')).toBeInViewport({ratio:.9});
+  await expect(page.locator('#audio-confidence-label')).toHaveText('0%');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
 });
 test('a shared screen without audio explains the missing track and cleans up',async({page})=>{
  await page.addInitScript(()=>{navigator.mediaDevices.getDisplayMedia=async()=>{const c=document.createElement('canvas');c.width=16;c.height=16;const stream=c.captureStream(1);window.noAudioTrack=stream.getVideoTracks()[0];return stream;};});
@@ -132,6 +179,9 @@ test('a shared screen without audio explains the missing track and cleans up',as
 
 test('PC audio is clock-synchronized before forwarding tempo to an Android companion',async({page})=>{
  const http=await import('node:http'),{demoFrame,defaults}=await import('../public/demo.mjs');let config={...defaults},commands=[],audio=null;
+ await page.addInitScript(()=>{const OriginalWorker=window.Worker;window.Worker=class extends OriginalWorker{set onmessage(handler){super.onmessage=event=>{
+  if(window.forceHeldAudio&&event.data.running!==undefined&&!event.data.type){const at=performance.now();handler({data:{...event.data,bpm:120,origin:at-14500,at,confidence:.8,holding:true,holdRemainingMs:15000}});}else handler(event);
+ };}};});
  await page.addInitScript(()=>{navigator.mediaDevices.getDisplayMedia=async()=>{
   const ctx=new AudioContext(),dest=ctx.createMediaStreamDestination(),buffer=ctx.createBuffer(1,ctx.sampleRate*4,ctx.sampleRate),p=buffer.getChannelData(0);
   for(let i=0;i<p.length;i++){const t=i/ctx.sampleRate;p[i]=.65*Math.sin(2*Math.PI*70*t)*Math.exp(-(t%.5)/.035);}
@@ -143,15 +193,22 @@ test('PC audio is clock-synchronized before forwarding tempo to an Android compa
   if(req.url==='/api/live')return res.end(JSON.stringify({protocol:2,version:'0.5.0'}));
   if(req.url==='/api/clock')return res.end(JSON.stringify({time:clock()}));
   if(req.url==='/api/sessions')return res.end('{"sessions":[]}');
-  if(req.url==='/api/control'){let body='';for await(const c of req)body+=c;const command=JSON.parse(body);commands.push(command);if(command.config)config={...config,...command.config};if(command.action==='audioTempo')audio=command;return res.end(JSON.stringify({ok:true,config}));}
-  if(req.url==='/api/stream'){res.writeHead(200,{'Content-Type':'application/x-klobflow-stream'});const timer=setInterval(()=>{const time=clock(),frame={...demoFrame(config,time),source:'camera',cameraReady:true,audio:audio?{...audio,at:time,status:'Following PC system audio'}:null},json=Buffer.from(JSON.stringify(frame)),head=Buffer.alloc(8);head.writeUInt32BE(json.length);head.writeUInt32BE(jpeg.length,4);res.write(Buffer.concat([head,json,jpeg]));},50);res.on('close',()=>clearInterval(timer));return;}res.writeHead(404);res.end();
+  if(req.url==='/api/control'){let body='';for await(const c of req)body+=c;const command=JSON.parse(body);commands.push({...command,receivedAt:clock()});if(command.config)config={...config,...command.config};if(command.action==='audioTempo')audio=command;return res.end(JSON.stringify({ok:true,config}));}
+  if(req.url==='/api/stream'){res.writeHead(200,{'Content-Type':'application/x-klobflow-stream'});const timer=setInterval(()=>{const time=clock(),frame={...demoFrame(config,time),source:'camera',cameraReady:true,audio:audio?{...audio,at:audio.at??time,status:audio.status||'Following PC system audio'}:null},json=Buffer.from(JSON.stringify(frame)),head=Buffer.alloc(8);head.writeUInt32BE(json.length);head.writeUInt32BE(jpeg.length,4);res.write(Buffer.concat([head,json,jpeg]));},50);res.on('close',()=>clearInterval(timer));return;}res.writeHead(404);res.end();
  });
  await new Promise(resolve=>phone.listen(0,'127.0.0.1',resolve));
  try{
   await page.locator('#pair-open').click();await page.locator('#transport').selectOption('lan');await page.locator('#phone-address').fill(`127.0.0.1:${phone.address().port}`);await page.locator('#pair-submit').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PHONE');
   await page.locator('#audio-pc').click();await expect.poll(()=>commands.some(c=>c.action==='audioTempo'&&c.bpm===120),{timeout:25000}).toBe(true);
-  const sample=commands.filter(c=>c.action==='audioTempo'&&c.bpm===120).at(-1);expect(Math.abs(sample.origin-clock())).toBeLessThan(1500);expect(sample.ageMs).toBeLessThan(2000);expect(sample.confidence).toBeGreaterThanOrEqual(.6);
+  const sample=commands.filter(c=>c.action==='audioTempo'&&c.bpm===120).at(-1);expect(Math.abs(sample.origin-clock())).toBeLessThan(1500);expect(sample.ageMs).toBeLessThan(2000);expect(sample.confidence).toBeGreaterThanOrEqual(.6);expect(sample.historySeconds).toBeGreaterThanOrEqual(2.4);expect(sample.candidateBpm).toBe(120);expect(sample.holding).toBe(false);expect(sample.holdRemainingMs).toBe(0);
+  await page.evaluate(()=>window.forceHeldAudio=true);await expect.poll(()=>commands.some(c=>c.holding)).toBe(true);
+  const held=commands.filter(c=>c.holding).at(-1),mappedAge=held.receivedAt-held.ageMs-held.origin;expect(held.holdRemainingMs).toBe(15000);expect(mappedAge).toBeGreaterThan(0);expect(mappedAge).toBeLessThan(1000);
+  for(const rate of [.5,1,2]){const expected=14500*120*rate/60000%1,actual=mappedAge*120*rate/60000%1,delta=Math.abs(expected-actual);expect(Math.min(delta,1-delta)).toBeLessThan(.08);}
   await expect(page.locator('#audio-status')).toContainText('clock ±');await page.locator('#audio-manual').click();await expect.poll(()=>config.tempoSource).toBe('manual');
+  config={...config,tempoSource:'phone'};audio={running:true,bpm:null,confidence:.45,level:.02,historySeconds:4,candidateBpm:108,at:clock(),status:'Listening'};
+  await expect(page.locator('#audio-progress')).toHaveText('Possible 108 BPM · not locked');await expect(page.locator('#audio-confidence-label')).toHaveText('45%');
+  await expect(page.locator('#audio-level-label')).toHaveText('No signal',{timeout:4000});await expect(page.locator('#audio-confidence-label')).toHaveText('0%');await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PHONE');
+  config={...config,tempoSource:'manual'};await expect(page.locator('#audio-level-label')).toHaveText('Off');
   await page.evaluate(()=>window.audioFixture.ctx.close());
  }finally{await page.request.post('/api/disconnect',{data:{}});phone.closeAllConnections();await new Promise(resolve=>phone.close(resolve));}
 });

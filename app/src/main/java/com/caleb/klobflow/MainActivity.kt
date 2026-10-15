@@ -224,7 +224,7 @@ class MainActivity:ComponentActivity() {
                     Toggle("Show guide",ui.config.showGuide){patch("showGuide",it)}
                     Toggle("Diagonal grid lines",ui.config.diagonals){patch("diagonals",it)}
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
-                    Text("Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.",color=Muted,fontSize=14.sp)
+                    Text("The newest tip cycles through the full rainbow every 4.2 seconds. Each segment keeps its color while fading; brighter segments are newer. Subtle highlights mark clear detections.",color=Muted,fontSize=14.sp)
                     Toggle("Streak glow and particles",ui.config.streakEffects){patch("streakEffects",it)}
                     Text("Keep every tip on the guide. Glow builds at 2, 5 and 10 seconds.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     Label("STREAK FORGIVENESS")
@@ -368,7 +368,8 @@ class MainActivity:ComponentActivity() {
                 fun visible(s:Segment?)=s!=null&&!s.occluded&&(s.confidence>=.55||s.blurred)
                 fun fade(time:Long)=(1-(f.time-time)/4200f).coerceIn(0f,1f)
                 trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(visible(s)){
-                    val staff=s!!;val color=Color.hsl(180f+(1-fade(entry.first))*150f,1f,.7f)
+                    // One rainbow turn per trail lifetime. A sample keeps its hue as it fades.
+                    val staff=s!!;val color=Color.hsl(Math.floorMod(entry.first,4200L)*360f/4200f,1f,.7f)
                     val previous=trails.getOrNull(index-1);val old=previous?.second?.getOrNull(i)
                     if(previous!=null&&visible(old)&&entry.first-previous.first in 1..150&&
                         max(old!!.a.distance(staff.a),old.b.distance(staff.b))<=min(old.length,staff.length)*.6){

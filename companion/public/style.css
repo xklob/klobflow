@@ -1072,6 +1072,35 @@ details summary {
 .timing-controls strong {
   font-size: 1rem;
 }
+.audio-meters {
+  margin: .7rem 0;
+  padding: .7rem;
+  background: #101913;
+  border: 1px solid #3e5148;
+  border-radius: .6rem;
+}
+.audio-meter-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .25rem .6rem;
+  font-size: .95rem;
+}
+.audio-meter-heading strong { color: var(--cyan); font-variant-numeric: tabular-nums; }
+.audio-meter-heading > span { flex: 1; min-width: 0; }
+.audio-meter {
+  position: relative;
+  height: .6rem;
+  margin: .4rem 0 .9rem;
+  background: #2b3935;
+  border-radius: .3rem;
+  overflow: hidden;
+}
+.audio-meter > span { display: block; width: 0; height: 100%; background: var(--cyan); transition: width 80ms linear; }
+.audio-lock-marker { position: absolute; left: 60%; top: 0; bottom: 0; width: 2px; background: var(--text); }
+.audio-meter-note { margin: -.45rem 0 .65rem; color: var(--muted); font-size: .8rem; line-height: 1.4; }
+.audio-meter-progress { min-height: 2.8em; margin: 0; font-size: .95rem; line-height: 1.4; }
+@media (prefers-reduced-motion: reduce) { .audio-meter > span { transition: none; } }
 input[type="number"] {
   display: block;
   margin-top: 0.3rem;

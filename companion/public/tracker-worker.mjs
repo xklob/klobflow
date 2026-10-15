@@ -33,7 +33,7 @@ self.onmessage=({data})=>{
     const detected=detector.detect(background.apply(argb,width,height,time,`${config.facing}:${config.mirror}:${config.zoom}`),width,height,config,tracker.hints(time,config.staffCount)),staffs=tracker.update(detected,time,config.staffCount),g=new Guide(config,width,height);
     if(previous&&time>previous)fps=fps?fps*.85+1000/(time-previous)*.15:1000/(time-previous);previous=time;
     const fitPatch=fit.update(time,staffs,g,zoom.min,zoom.max,zoom.ratio);if(fitPatch)self.postMessage({type:"fit",config:fitPatch,revision});
-    const ready=config.tempoSource==="manual"||(audio.running&&audio.bpm&&audio.confidence>=.6&&time-audio.at>=-100&&time-audio.at<2000);
+    const ready=config.tempoSource==="manual"||(audio.running&&audio.bpm&&audio.confidence>=.6&&time-audio.at>=-100&&time-audio.at<2000&&(!audio.holding||time-audio.at<audio.holdRemainingMs));
     const metrics=scorer.score(time,staffs,g);
     lastFrame={background:background.status,averagedMetrics:rollingErrors.update(time,metrics,config),streak:streakCoach.update({time,config,staffs,feedback:g.cues(staffs)}),audio,beat:timingCoach.update(time,staffs,g,config.tempoSource==="manual"?config.bpm:(audio.bpm||config.bpm)*config.audioRate,config.tempoSource==="manual"?null:audio.origin+config.audioOffsetMs,ready),fitStatus:fit.status,time,width,height,staffs,config,currentConfig:config,guide:g.json(),feedback:g.cues(staffs),metrics,analysisFps:fps,source:"camera"};
     self.postMessage({type:"frame",frame:lastFrame,processingMs:performance.now()-start});

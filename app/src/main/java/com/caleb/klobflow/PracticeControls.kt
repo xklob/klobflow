@@ -21,12 +21,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.*
@@ -112,17 +117,73 @@ import kotlin.math.*
 @Composable fun AudioControls(ui:FlowUi,engine:FlowEngine) {
     val phone by PhoneAudio.state.collectAsStateWithLifecycle()
     val state=if(ui.config.tempoSource=="phone")phone else ui.frame?.audio ?: AudioTempo()
+    val owner=LocalLifecycleOwner.current
+    var now by remember {mutableDoubleStateOf(SystemClock.elapsedRealtime().toDouble())}
+    LaunchedEffect(owner){owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){while(true){now=SystemClock.elapsedRealtime().toDouble();delay(100)}}}
+    val checkedAt=max(now,SystemClock.elapsedRealtime().toDouble())
+    val manual=ui.config.tempoSource=="manual"
+    val fresh=!manual && state.running && checkedAt-state.at in -100.0..2000.0
+    val remaining=if(fresh && state.holding && state.holdRemainingMs.isFinite())max(0.0,state.holdRemainingMs.coerceIn(0.0,15000.0)-(checkedAt-state.at).coerceAtLeast(0.0))else 0.0
+    val holding=fresh && state.holding && remaining>0
+    val expiredHold=fresh && state.holding && !holding
+    val level=if(fresh && state.level.isFinite())state.level.coerceIn(0.0,1.0)else 0.0
+    val quiet=level<.001
+    val silent=fresh && !holding && (state.status.startsWith("No shared audio") || quiet && state.historySeconds<=0 && state.bpm==null && state.confidence<=0)
+    val confidence=if(fresh && !silent && !expiredHold && state.confidence.isFinite())state.confidence.coerceIn(0.0,1.0)else 0.0
+    val percent=(confidence*100).roundToInt()
+    val history=if(fresh && !silent && state.historySeconds.isFinite())state.historySeconds.coerceIn(0.0,8.0)else 0.0
+    val candidate=state.candidateBpm?.takeIf {fresh && !silent && it.isFinite()}
+    val locked=fresh && !silent && state.usable(checkedAt)
+    val soundLabel=if(manual || !state.running)"Off"else if(!fresh)"No signal"else if(quiet)"Quiet"else"Sound"
+    val soundLevel=if(level<=.001)0.0 else ((log10(level)+3)/3).coerceIn(0.0,1.0)
+    val progress=when{
+        manual->"Connect system audio to begin."
+        !state.running->state.status
+        !fresh->"Waiting for fresh audio timing."
+        expiredHold->"Waiting for a new beat"
+        holding->"Holding tempo · ${ceil(remaining/1000).toInt()}s left"
+        silent->"No shared audio. Play music and check sharing."
+        locked->"Beat locked"
+        history<2.4->"Collecting audio · %.1f / 2.4 s minimum".format(history)
+        candidate!=null->"Possible ${candidate.roundToInt()} BPM · not locked"
+        else->"Searching for a steady beat"
+    }
     Text("Tempo source",color=Lime,fontSize=16.sp,modifier=Modifier.padding(top=12.dp))
     Row {
         TextButton(onClick={engine.command(JSONObject().put("action","audioStart"))}){Text(if(phone.running)"Use phone audio"else"Connect system audio")}
         TextButton(onClick={engine.command(JSONObject().put("action","audioStop"))}){Text("Use manual / stop")}
     }
-    Text(if(ui.config.tempoSource=="manual")"Manual BPM"else if(state.usable(SystemClock.elapsedRealtime().toDouble()))"${if(ui.config.tempoSource=="phone")"Phone"else"PC"} audio · ${(state.bpm!!*ui.config.audioRate).roundToInt()} BPM · ${(state.confidence*100).roundToInt()}% confidence"else if(state.status.contains("Following"))"Waiting for fresh audio timing"else state.status,fontSize=15.sp,color=Ink)
+    val status=if(manual)"Manual BPM"else "${if(ui.config.tempoSource=="phone")"Phone"else"PC"} audio · "+when{
+        locked->"${(state.bpm!!*ui.config.audioRate).roundToInt()} BPM · "+if(holding)"holding tempo"else"$percent% confidence"
+        !state.running || !fresh || silent || expiredHold->progress
+        else->"Listening for a steady beat"
+    }
+    Text(status,fontSize=15.sp,color=Ink)
+    Surface(color=Color(0xff101913),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Color(0xff3e5148)),modifier=Modifier.fillMaxWidth().padding(vertical=10.dp)){
+        Column(Modifier.padding(12.dp)){
+            AudioMeter("Incoming sound",soundLabel,soundLevel.toFloat())
+            Spacer(Modifier.height(10.dp))
+            AudioMeter(if(holding)"Last beat confidence"else"Beat confidence","$percent%",confidence.toFloat(),lockMarker=true)
+            Text("Locks at 60% · confidence in a repeating beat",fontSize=13.sp,lineHeight=18.sp,color=Muted,modifier=Modifier.padding(top=5.dp))
+            Text(progress,fontSize=15.sp,lineHeight=20.sp,color=Ink,modifier=Modifier.padding(top=10.dp).heightIn(min=40.dp))
+        }
+    }
     Row {listOf(.5 to "Half",1.0 to "Detected",2.0 to "Double").forEach {(rate,label)->FilterChip(selected=ui.config.audioRate==rate,onClick={engine.updateConfig(JSONObject().put("audioRate",rate))},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
     var offset by remember(ui.config.audioOffsetMs){mutableFloatStateOf(ui.config.audioOffsetMs.toFloat())}
     Text("Audio offset: ${offset.toInt()} ms (positive = later)",fontSize=15.sp)
     Slider(value=offset,onValueChange={offset=it},onValueChangeFinished={engine.updateConfig(JSONObject().put("audioOffsetMs",offset.toDouble()))},valueRange=-500f..500f)
-    Text("Approve Android's sharing prompt. The source app must allow playback capture. To follow PC music, choose Use PC system audio in the companion. Silence or uncertain tempo pauses beat feedback. Audio stays local and is not recorded.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
+    Text("Approve Android's sharing prompt. The source app must allow playback capture. To follow PC music, choose Use PC system audio in the companion. After 3s of a stable beat, tempo can hold for up to 15s through a dropout. Stopping capture or choosing manual ends the hold. Audio stays local and is not recorded.",fontSize=14.sp,lineHeight=19.sp,color=Muted)
+}
+
+@Composable private fun AudioMeter(label:String,value:String,progress:Float,lockMarker:Boolean=false) {
+    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically){
+        Text(label,Modifier.weight(1f),fontSize=15.sp,color=Ink)
+        Text(value,fontSize=15.sp,color=Cyan,fontWeight=FontWeight.SemiBold)
+    }
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(top=6.dp).height(9.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xff2b3935))){
+        Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(Cyan))
+        if(lockMarker)Box(Modifier.offset(x=maxWidth*.6f).width(2.dp).fillMaxHeight().background(Ink))
+    }
 }
 
 fun toneColor(tone:String)=when(tone){"ok"->Mint;"warn"->Amber;"wait"->Slate;"timing"->Cyan;else->Color(0xff9aa591)}

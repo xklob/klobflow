@@ -21,9 +21,22 @@ function averageLegacy(f,rolling){
 }
 // Text size for viewing from across the room. Canvas labels scale with it; the canvas itself is never zoomed.
 const uiSizes={compact:.85,comfortable:1,large:1.2};
-function applyUiSize(size){
+function applyUiSize(size,{preserveScroll=false}={}){
   if(!(size in uiSizes))size='comfortable';
+  // Preserve the section being read, not its old pixel scroll offset, as the text grows.
+  const anchors=preserveScroll?[...document.querySelectorAll('.controls,.details')].flatMap(panel=>{
+    const bounds=panel.getBoundingClientRect(),top=Math.max(0,bounds.top),bottom=Math.min(innerHeight,bounds.bottom);
+    if(bottom<=top||panel.scrollTop<=0||panel.scrollHeight<=panel.clientHeight)return [];
+    const visible=el=>{const r=el.getBoundingClientRect();return r.height>0&&r.bottom>top&&r.top<bottom;};
+    const meter=panel.querySelector('.audio-meters');
+    const element=meter&&visible(meter)?meter:[...panel.children].filter(visible).sort((a,b)=>Math.abs(a.getBoundingClientRect().top-top)-Math.abs(b.getBoundingClientRect().top-top))[0];
+    return element?[{panel,element,top:element.getBoundingClientRect().top}]:[];
+  }):[];
   document.documentElement.dataset.uiSize=size;$('ui-size').value=size;
+  for(const {panel,element,top} of anchors)if(panel.scrollHeight>panel.clientHeight){
+    panel.scrollTop+=element.getBoundingClientRect().top-top;
+    if(element.classList.contains('audio-meters'))element.scrollIntoView({block:'nearest',inline:'nearest',behavior:'instant'});
+  }
   try{localStorage.setItem('klobflow.uiSize',size);}catch{}
 }
 // Fades a status box: the old text fades out, then the new text fades in, so two paragraphs never overlap.
@@ -173,7 +186,7 @@ $('tutorial-expand').onclick=()=>expandTutorial($('tutorial-expand').getAttribut
 $('show-tutorial').onclick=()=>showTutorial(true);
 $('dismiss-tutorial').onclick=()=>{try{localStorage.setItem('klobflow.tutorial.'+config.mode,'1');}catch{}$('mode-tutorial').hidden=true;};
 try{applyUiSize(localStorage.getItem('klobflow.uiSize')||'comfortable');}catch{applyUiSize('comfortable');}
-$('ui-size').onchange=()=>applyUiSize($('ui-size').value);
+$('ui-size').onchange=()=>applyUiSize($('ui-size').value,{preserveScroll:true});
 // Overlay labels are sized in screen pixels, so track how large the canvas is displayed.
 let viewBox={width:0,height:0},hudBox=null;
 // Canvas labels avoid the streak box drawn over the stage (measured after layout, not every frame).
@@ -211,6 +224,7 @@ $('background-clear').onclick=()=>backgroundCommand('clear');
 $('quick-fit').onclick=()=>$('fit-guide').click();
 $('quick-background').onclick=()=>backgroundCommand(['countdown','capturing'].includes(current?.background?.state)?'cancel':'capture');
 $('quick-lights').onclick=()=>{const colors=$('staff-colors');colors.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});colors.querySelector('button:not(:disabled)')?.focus({preventScroll:true});};
+$('quick-audio').onclick=()=>{const audio=$('audio-controls');audio.scrollIntoView({behavior:reducedMotion.matches?'instant':'smooth',block:'start'});audio.focus({preventScroll:true});};
 let backgroundShown={state:'off',readyAt:0};
 function showBackground(f){
   const state=f.background?.state||'off',remaining=f.background?.remainingMs||0,snapshot=state==='countdown'||state==='capturing',now=performance.now();
@@ -243,7 +257,10 @@ async function pushPcTempo(state){
  try{
   if(!audioClock||performance.now()-audioClock.at>20000)await syncAudioClock();
   if(config.tempoSource!=='pc'||!paired)return;
-  await api('/api/control',{action:'audioTempo',running:state.running,bpm:state.bpm,origin:state.bpm?state.origin+audioClock.offset:0,confidence:state.confidence||0,level:state.level||0,ageMs:Math.max(0,Math.min(5000,performance.now()-(state.at||performance.now())))});
+  // Two whole beats preserve phase at Half, Detected and Double rates while older phones
+  // still require an origin within their shorter validation window. Keep local phase untouched.
+  const period=state.bpm?120000/state.bpm:0,origin=state.holding&&period?state.origin+Math.floor((state.at-state.origin)/period)*period:state.origin;
+  await api('/api/control',{action:'audioTempo',running:state.running,bpm:state.bpm,origin:state.bpm?origin+audioClock.offset:0,confidence:state.confidence||0,level:state.level||0,historySeconds:state.historySeconds||0,candidateBpm:state.candidateBpm??null,holding:!!state.holding,holdRemainingMs:state.holdRemainingMs||0,ageMs:Math.max(0,Math.min(5000,performance.now()-(state.at||performance.now())))});
  }catch(e){message(e.message);}finally{audioSending=false;}
 }
 $('audio-pc').onclick=async()=>{
@@ -253,10 +270,33 @@ $('audio-pc').onclick=async()=>{
 };
 $('audio-phone').onclick=async()=>{systemAudio.stop();try{await api('/api/control',{action:'audioStart'});message('Approve system-audio capture in the Android prompt on your phone.');}catch(e){message(e.message);}};
 $('audio-manual').onclick=async()=>{systemAudio.stop();audioClock=null;if(paired)try{await api('/api/control',{action:'audioStop'});}catch(e){message(e.message);}await patch({tempoSource:'manual'});};
-function updateAudioStatus(f){
- if(f.config.tempoSource==='manual'){$('audio-status').textContent=`Manual tempo · ${f.config.bpm} BPM. Choose phone or PC system audio to detect music.`;return;}
- const audio=f.audio||{},fresh=audio.running&&f.time-audio.at<2000;
- $('audio-status').textContent=(f.config.tempoSource==='phone'?'Phone audio · ':'PC audio · ')+(fresh&&audio.bpm?`${Math.round(audio.bpm*f.config.audioRate)} BPM · ${Math.round(audio.confidence*100)}% confidence`:(fresh?audio.status:audio.status?.includes('Following')?'Waiting for fresh audio timing':audio.status||'Connect system audio to begin'))+(paired&&f.config.tempoSource==='pc'&&audioClock?` · clock ±${Math.round(audioClock.rtt/2)} ms`:'');
+function updateAudioStatus(){
+ const source=config.tempoSource,manual=source==='manual';
+ // Local capture keeps reporting even when video stops. Phone timestamps use its own clock;
+ // add wall-clock time since receipt instead of treating the last video timestamp as "now".
+ const audio=(source==='pc'?systemAudio.state:current?.config.tempoSource===source?current.audio:null)||{};
+ const age=source==='pc'?performance.now()-audio.at:Date.now()-lastArrival+Math.max(0,(current?.time??NaN)-audio.at);
+ const fresh=!manual&&!replay&&audio.running&&Number.isFinite(age)&&age>=-100&&age<=2000;
+ const bounded=(value,max=1)=>Number.isFinite(value)?Math.max(0,Math.min(max,value)):0;
+ const remaining=fresh&&audio.holding?Math.max(0,bounded(audio.holdRemainingMs,15000)-Math.max(0,age)):0;
+ const holding=fresh&&audio.holding&&remaining>0,expiredHold=fresh&&audio.holding&&!holding;
+ const level=fresh?bounded(audio.level):0,quiet=level<.001;
+ const silent=fresh&&!holding&&(audio.status?.startsWith('No shared audio')||(quiet&&!audio.historySeconds&&!audio.bpm&&!(audio.confidence>0)));
+ const confidence=fresh&&!silent&&!expiredHold?bounded(audio.confidence):0,percent=Math.round(confidence*100);
+ const history=fresh&&!silent?bounded(audio.historySeconds,8):0;
+ const candidate=fresh&&!silent&&Number.isFinite(audio.candidateBpm)?audio.candidateBpm:null;
+ const locked=fresh&&!silent&&confidence>=.6&&Number.isFinite(audio.bpm)&&audio.bpm>0;
+ const soundLabel=manual||!audio.running?'Off':!fresh?'No signal':quiet?'Quiet':'Sound';
+ const meterLevel=level<=.001?0:Math.min(1,Math.max(0,(Math.log10(level)+3)/3));
+ setText('audio-level-label',soundLabel);setText('audio-confidence-label',`${percent}%`);setText('audio-confidence-heading',holding?'Last beat confidence':'Beat confidence');
+ $('audio-confidence').setAttribute('aria-label',holding?'Last beat confidence':'Beat confidence');
+ for(const [id,value] of [['audio-level',meterLevel*100],['audio-confidence',percent]]){
+  $(id+'-fill').style.width=`${value}%`;$(id).setAttribute('aria-valuenow',String(Math.round(value)));
+ }
+ $('audio-level').setAttribute('aria-valuetext',`${soundLabel} · ${Math.round(meterLevel*100)}%`);
+ const progress=manual?'Connect system audio to begin.':replay?'Live audio meters pause during replay.':!audio.running?(audio.status||'Connect system audio to begin.'):!fresh?'Waiting for fresh audio timing.':expiredHold?'Waiting for a new beat':holding?`Holding tempo · ${Math.ceil(remaining/1000)}s left`:silent?'No shared audio. Play music and check sharing.':locked?'Beat locked':history<2.4?`Collecting audio · ${history.toFixed(1)} / 2.4 s minimum`:candidate?`Possible ${Math.round(candidate)} BPM · not locked`:'Searching for a steady beat';
+ setText('audio-progress',progress);
+ setText('audio-status',manual?`Manual tempo · ${config.bpm} BPM. Choose phone or PC system audio to detect music.`:(source==='phone'?'Phone audio · ':'PC audio · ')+(locked?`${Math.round(audio.bpm*config.audioRate)} BPM · ${holding?'holding tempo':`${percent}% confidence`}`:!audio.running||!fresh||silent||expiredHold?progress:'Listening for a steady beat')+(paired&&source==='pc'&&audioClock?` · clock ±${Math.round(audioClock.rtt/2)} ms`:''));
 }
 let sessionVideoUrl = null;
 $("close-video").onclick = () => $("video-dialog").close();
@@ -729,7 +769,7 @@ function render(frame, image) {
     ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
     trail.forEach((f,index)=>f.staffs.forEach((s,n)=>{
       if(!visible(s))return;
-      const color=`hsl(${180+(1-fade(f.time))*150} 100% 70%)`,previous=trail[index-1],old=previous?.staffs[n],dt=f.time-(previous?.time??f.time);
+      const color=`hsl(${((f.time%4200+4200)%4200)*360/4200} 100% 70%)`,previous=trail[index-1],old=previous?.staffs[n],dt=f.time-(previous?.time??f.time);
       if(visible(old)&&dt>0&&dt<=150&&Math.max(Math.hypot(old.a[0]-s.a[0],old.a[1]-s.a[1]),Math.hypot(old.b[0]-s.b[0],old.b[1]-s.b[1]))<=Math.min(length(old),length(s))*.6){
         ctx.globalAlpha=.72*fade(previous.time)*((old.blurred||s.blurred)?.55:1);
         line(old.a,s.a,color,width);line(old.b,s.b,color,width);
@@ -1021,7 +1061,6 @@ function acceptFrame(f, image = null) {
   setText('detect-summary',detectionSummary(f.config,f.background?.state));
   setPracticing(true);
   showBackground(f);
-  updateAudioStatus(f);
   showBeat(f);
   setCoaching(f);
   setMetrics(f);
@@ -1232,6 +1271,7 @@ async function receiveStream() {
   }
 }
 function loop() {
+  updateAudioStatus();
   if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
   if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
   if ((paired || (localMode && localCamera.active)) && !replay && Date.now() - lastArrival > 2000) {
