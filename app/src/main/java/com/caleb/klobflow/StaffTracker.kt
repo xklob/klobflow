@@ -7,7 +7,7 @@ class StaffDetector {
     private val angles=180
     private val cosines=DoubleArray(angles){cos(it*PI/angles)}
     private val sines=DoubleArray(angles){sin(it*PI/angles)}
-    fun detect(pixels: IntArray,w: Int,h: Int,c: Config,hints:List<Segment> = emptyList()): List<Segment> {
+    fun detect(pixels: IntArray,w: Int,h: Int,c: Config,hints:List<Segment> = emptyList(),linesOnly:Boolean=false): List<Segment> {
         require(pixels.size==w*h && w>0 && h>0)
         val original=pixels
         val argb=if(c.led)filterStaffColors(pixels,w,h,c.staffColors)else pixels
@@ -16,7 +16,7 @@ class StaffDetector {
             val recovered=recoverSelectedColorEndpoints(argb,w,h,c,found){detect(original,w,h,c.copy(staffColors=emptyList(),threshold=max(c.threshold,250)),hints)}
             return if(c.led)recovered.map {s->s.copy(capEvidence=measureCapEvidence(original,w,h,s))}else recovered
         }
-        if(c.led){
+        if(c.led && !linesOnly){
             val lights=ledRegions(argb,w,h,c,hints)
             val recovered=if(lights.second && lights.first.all {s->hints.isEmpty() || hints.any {s.length>it.length*.85}})lights.first
                 else motionCandidates(argb,w,h,c,hints,lights.first)
@@ -47,7 +47,7 @@ class StaffDetector {
             for(a in 0 until angles){val rho=(p.x*cosines[a]+p.y*sines[a]).roundToInt()+diag;votes[a*bins+rho]++}
         }
         val result=ArrayList<Segment>()
-        repeat(28) {
+        repeat(if(linesOnly)8 else 28) {
             var maxIndex=0
             for(i in votes.indices)if(votes[i]>votes[maxIndex])maxIndex=i
             val peak=votes[maxIndex];val a=maxIndex/bins;val rho=maxIndex%bins-diag
@@ -89,6 +89,7 @@ class StaffDetector {
             val s=Segment(aa*(1/short),bb*(1/short),(support*0.9+0.1*(len/(short*0.6)).coerceAtMost(1.0)).coerceIn(0.0,1.0))
             if(result.none {old->angleDifference(old.angle,s.angle)<0.14 && (distanceToSegment(s.center,old)<0.035 || distanceToSegment(old.center,s)<0.035)})result.add(s)
         }
+        if(linesOnly)return result.sortedByDescending {it.confidence*sqrt(it.length)}.take(8)
         return finish((if(c.led)motionCandidates(argb,w,h,c,hints,result)else result).sortedByDescending {it.confidence*sqrt(it.length)}.take(8))
     }
 

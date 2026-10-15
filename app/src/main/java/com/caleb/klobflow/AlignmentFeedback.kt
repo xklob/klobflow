@@ -42,7 +42,8 @@ class AlignmentFeedback {
     private val samples=ArrayList<Sample>()
     private var onSince=arrayOfNulls<Long>(4);private var on=BooleanArray(4);private var alignedSince:Long?=null
     private fun clear(){onSince=arrayOfNulls(4);on=BooleanArray(4);alignedSince=null}
-    fun update(t:Long,staffs:List<Segment?>,guide:Guide,background:BackgroundStatus=BackgroundStatus(),pacer:PacerFrame?=null):Coaching {
+    fun update(t:Long,staffs:List<Segment?>,guide:Guide,background:BackgroundStatus=BackgroundStatus(),pacer:PacerFrame?=null,gesture:GestureFrame?=null):Coaching {
+        if(gesture?.active==true){clear();samples.clear();key="";return Coaching("calibrating","ALIGNMENT SETUP",gesture.detail,tracking=BoxText("wait","SETUP IN PROGRESS","Practice scores pause while the guide is being aligned."))}
         val c=guide.config
         val following=c.pacerEnabled && c.mode in listOf("circles","antispin")
         val idle=following && (pacer?.enabled!=true || pacer.state!="running")
@@ -67,8 +68,8 @@ class AlignmentFeedback {
         val tolerance=if(c.tolerance%1.0==0.0)c.tolerance.toInt().toString()else c.tolerance.toString()
         val axisDetail=if(c.mode=="antispin"&&recent)"Horizontal ${if(count==2)"tips (A+B)"else"tip"}: %.1f%% ${if(following)"gap"else"drift"} · Vertical ${if(count==2)"tips (A+B)"else"tip"}: %.1f%% ${if(following)"gap"else"drift"}. ".format(measured.mapNotNull {it.horizontal}.average(),measured.mapNotNull {it.vertical}.average())else ""
         val summary=if(recent&&!free&&!snapshot)BoxText(if(onPercent>=80)"ok" else "warn","$onPercent% ${if(following)"WITH DOTS"else"ON TARGET"}",axisDetail+"Of measured frames in the last 5 seconds. "+(if(following)"All tips must follow the moving blue dots. "else"")+"Tolerance: $tolerance% of guide width. Unclear frames are excluded.")else null
-        val idleTitle=when(pacer?.state){"countdown"->"GET READY";"paused"->"GUIDE DOTS PAUSED";else->"GUIDE DOTS READY"}
-        val idleDetail=when(pacer?.state){"countdown"->"Place your tips on the blue dots. Scoring starts when they move.";"paused"->"Resume to continue from these dot positions. Scores are paused.";else->"Set your speed, then press Start dots. Match all tips to their blue dots."}
+        val idleTitle=when(pacer?.state){"waitingAudio"->"WAITING FOR MUSIC BEAT";"countdown"->"GET READY";"paused"->"GUIDE DOTS PAUSED";else->"GUIDE DOTS READY"}
+        val idleDetail=when(pacer?.state){"waitingAudio"->"Dots and scores pause until a reliable beat returns. Connect audio or play music.";"countdown"->"Place your tips on the blue dots. Scoring starts when they move.";"paused"->"Resume to continue from these dot positions. Scores are paused.";else->"Set your speed, then press Start dots. Match all tips to their blue dots."}
         val tracking=when{
             snapshot->BoxText("wait","BACKGROUND SNAPSHOT","Move your staves out of view and keep the phone still.")
             idle->BoxText("wait",idleTitle,idleDetail)

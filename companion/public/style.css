@@ -1433,3 +1433,28 @@ input[type="number"] {
   #practice-view:fullscreen:has(#pacer-bar:not([hidden])) #antispin-footer .streak-hud { flex:none; width:100%; padding:.3rem .4rem; }
   #practice-view:fullscreen.show-focus-details .status-row { max-height:none; }
 }
+
+/* Deliberate hands-free setup stays on the live camera in every layout. */
+.gesture-overlay {
+  position:absolute; z-index:8; top:12px; left:50%; transform:translateX(-50%);
+  width:calc(100% - 24px); max-width:44rem; padding:14px 18px;
+  border:2px solid var(--cyan, #6dd8ff); border-radius:14px;
+  color:#edf5ed; background:#081219f2; box-shadow:0 3px 18px #0009;
+  pointer-events:none; text-align:left;
+}
+.gesture-heading { display:flex; align-items:center; gap:12px; }
+.gesture-heading strong { flex:1; min-width:0; font-size:clamp(1.15rem, 2vw, 1.6rem); line-height:1.2; color:#9ae9ff; }
+.gesture-heading button { flex-shrink:0; pointer-events:auto; min-height:42px; padding:6px 12px; }
+.gesture-overlay p { margin:8px 0 0; font-size:clamp(1rem, 1.3vw, 1.15rem); line-height:1.35; }
+#gesture-compact { display:none; }
+.gesture-progress { margin-top:10px; height:6px; border-radius:5px; background:#34434c; overflow:hidden; }
+.gesture-progress span { display:block; height:100%; background:#6dd8ff; width:0; }
+@media (max-width:560px), (max-height:480px) {
+  .gesture-overlay { top:6px; width:calc(100% - 12px); padding:8px 10px; border-radius:10px; }
+  .gesture-heading { gap:8px; }
+  .gesture-heading strong { font-size:17px; line-height:1.2; }
+  .gesture-heading button { min-height:36px; padding:4px 8px; font-size:14px; }
+  .gesture-overlay p { font-size:14px; line-height:1.25; margin-top:5px; }
+  #gesture-detail { display:none; } #gesture-compact { display:block; }
+  .gesture-progress { margin-top:6px; height:4px; }
+}

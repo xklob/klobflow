@@ -41,7 +41,7 @@ data class Config(
     val timing: String="tog-same", val ratio: String="1:1", val zoom: Double=0.0, val mirror: Boolean=true,
     val planeCorners: List<P> = emptyList(), val planeAspect: Double=1.0,
     val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0,
-    val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true,
+    val gestureEnabled:Boolean=true, val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true,
     val trackingGraceMs:Int=1500, val alignmentGraceMs:Int=200,
     val pacerEnabled:Boolean=false, val pacerRpm:Double=20.0, val pacerDirection:String="cw", val pacerPattern:String="opposite",
     val pacerOffset:Double=0.0, val pacerCountdown:Int=3, val pacerDotSize:Double=16.0
@@ -51,7 +51,7 @@ data class Config(
         put("trackingGraceMs",trackingGraceMs);put("alignmentGraceMs",alignmentGraceMs)
         put("pacerEnabled",pacerEnabled);put("pacerRpm",pacerRpm);put("pacerDirection",pacerDirection);put("pacerPattern",pacerPattern)
         put("pacerOffset",pacerOffset);put("pacerCountdown",pacerCountdown);put("pacerDotSize",pacerDotSize)
-        put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
+        put("gestureEnabled",gestureEnabled);put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
         put("mode",mode);put("led",led);put("threshold",threshold);put("minLength",minLength);put("staffColors",JSONArray(staffColors))
         put("cx",cx);put("cy",cy);put("scale",scale);put("rotation",rotation);put("cubeDepth",cubeDepth)
         put("circleSeparation",circleSeparation);put("tolerance",tolerance);put("diagonals",diagonals)
@@ -71,6 +71,7 @@ data class Config(
         fun pacerNumber(k:String,v:Double,lo:Double,hi:Double):Double {
             require(!j.has(k)||j.get(k) is Number){"$k must be a number"};return num(k,v,lo,hi)
         }
+        require(!j.has("gestureEnabled")||j.get("gestureEnabled") is Boolean){"Invalid gestureEnabled"}
         require(!j.has("pacerEnabled")||j.get("pacerEnabled") is Boolean){"Invalid pacerEnabled"}
         val nextFacing=choice("facing",facing,listOf("front","back"))
         val nextZoom=num("zoom",zoom,0.0,100.0)
@@ -84,7 +85,7 @@ data class Config(
         val colors=if(j.has("staffColors")){val a=j.getJSONArray("staffColors");require(a.length()<=staffColorNames.size){"Choose valid staff colors"};(0 until a.length()).map {a.getString(it)}.also {require(it.all {color->color in staffColorNames}){"Choose valid staff colors"}}.distinct()}else staffColors
         val nextCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt()
         val nextMode=choice("mode",mode,listOf("grid","circles","cube","free","antispin"))
-        return copy(streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
+        return copy(gestureEnabled=flag("gestureEnabled",gestureEnabled),streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
             pacerEnabled=flag("pacerEnabled",pacerEnabled),pacerRpm=pacerNumber("pacerRpm",pacerRpm,5.0,120.0),
             pacerDirection=choice("pacerDirection",pacerDirection,listOf("cw","ccw")),pacerPattern=choice("pacerPattern",pacerPattern,listOf("same","opposite")),
             pacerOffset=pacerNumber("pacerOffset",pacerOffset,0.0,180.0),pacerCountdown=pacerNumber("pacerCountdown",pacerCountdown.toDouble(),0.0,10.0).also {require(it%1.0==0.0){"pacerCountdown must be whole seconds"}}.toInt(),
@@ -106,8 +107,8 @@ class Guide(val config: Config,val width: Int,val height: Int) {
     private val short=min(width,height).toDouble()
     val aspectX=width/short;val aspectY=height/short
     val calibrated=config.planeCorners.isNotEmpty()
-    private val planeX=if(calibrated)max(1.0,config.planeAspect) else aspectX
-    private val planeY=if(calibrated)max(1.0,1/config.planeAspect) else aspectY
+    val planeX=if(calibrated)max(1.0,config.planeAspect) else aspectX
+    val planeY=if(calibrated)max(1.0,1/config.planeAspect) else aspectY
     private val plane=listOf(P(0.0,0.0),P(planeX,0.0),P(planeX,planeY),P(0.0,planeY))
     private val image=config.planeCorners.map {P(it.x*aspectX,it.y*aspectY)}
     private val projection=if(calibrated)Homography.between(plane,image) else null

@@ -61,3 +61,21 @@ test('two-staff antispin passes through the actual image worker and a missing B 
  expect(result.running.pacer.valid).toBe(true);expect(result.running.pacer.targets).toHaveLength(2);expect(result.running.feedback).toHaveLength(4);
  expect(result.missing.pacer.valid).toBe(false);expect(result.missing.pacer.targets).toHaveLength(2);expect(result.missing.feedback).toEqual([]);expect(result.missing.metrics.deviation).toBeNull();
 });
+
+test('PC audio drives worker dots at a quarter cycle per beat and stale audio freezes scoring',async({page})=>{
+ await page.route('**/audio-pacer-worker-check',r=>r.fulfill({contentType:'text/html',body:'<!doctype html>'}));await page.goto('/audio-pacer-worker-check');
+ const result=await page.evaluate(async()=>{
+  const {defaults}=await import('/core.mjs'),worker=new Worker('/tracker-worker.mjs',{type:'module'});let id=0;
+  const send=(type,data={})=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Worker timeout')),5000);worker.onerror=e=>{clearTimeout(timer);reject(Error(e.message));};worker.onmessage=({data})=>{clearTimeout(timer);data.type==='error'?reject(Error(data.error)):resolve(data);};worker.postMessage({type,id:++id,...data});});
+  const frame=async time=>(await send('frame',{width:160,height:120,time,pixels:new ArrayBuffer(160*120*4)})).frame;
+  const audio=time=>worker.postMessage({type:'audio',audio:{running:true,bpm:120,confidence:.9,origin:1000+Math.floor((time-1000)/500)*500,at:time}});
+  try{
+   await send('config',{config:{...defaults,gestureEnabled:false,mode:'antispin',pacerEnabled:true,pacerCountdown:0,tempoEnabled:true,tempoSource:'pc'}});await frame(1000);await send('pacer',{operation:'start',time:1000});const waiting=await frame(1000);
+   const steps=[];for(let t=1100;t<=3100;t+=100){audio(t);const f=await frame(t);steps.push({phase:f.pacer.phase,rpm:f.pacer.rpm,state:f.pacer.state,targets:f.pacer.targets});}
+   let expired;for(let t=3200;t<=5300;t+=100)expired=await frame(t);const frozen=await frame(5400);
+   return {waiting,steps,expired,frozen};
+  }finally{worker.terminate();}
+ });
+ expect(result.waiting.pacer.state).toBe('waitingAudio');for(let i=0;i<result.steps.length;i++){const f=result.steps[i];expect(f.state).toBe('running');expect(f.rpm).toBe(30);expect(f.phase).toBeCloseTo(((i+1)/20)%1,6);expect(f.targets).toHaveLength(2);}
+ expect(result.expired.pacer.state).toBe('waitingAudio');expect(result.expired.pacer.valid).toBe(false);expect(result.expired.feedback).toEqual([]);expect(result.expired.streak.seconds).toBe(0);expect(result.frozen.pacer.phase).toBe(result.expired.pacer.phase);
+});

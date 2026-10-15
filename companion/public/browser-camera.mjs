@@ -50,6 +50,11 @@ export class BrowserCamera {
         if(generation!==this.generation)return;
         if(data.id){const p=this.pending.get(data.id);this.pending.delete(data.id);if(p){clearTimeout(p.timer);data.type==="error"?p.reject(Error(data.error)):p.resolve(data);}}
         if(data.type==="fit"&&data.revision===this.configRevision)this.command({action:"config",config:data.config,fromFit:true}).catch(e=>this.onStatus(e.message));
+        if(data.type==="gestureFit"&&data.revision===this.configRevision)this.command({action:"config",config:data.config,seeds:data.seeds,fromGesture:true}).catch(e=>{
+          if(generation!==this.generation)return;
+          this.onStatus(e.message);
+          if(data.revision===this.configRevision)this.request('gesture',{operation:'failed',time:performance.now()}).catch(()=>{});
+        });
         if(data.type==="error"){if(data.frame)this.busy=false;this.onStatus(data.error);}
         if(data.type==="frameSkipped")this.busy=false;
         if(data.type==="frame"){
@@ -110,29 +115,41 @@ export class BrowserCamera {
   }
   async exposure(choice){
     if(!this.track)throw Error('Start the PC camera first.');
-    this.settings=await setExposure(this.track,choice);this.exposureChoice=choice;this.cameraSamples=[];if(this.worker){++this.configRevision;await this.request('background',{mode:'clear'});}
+    this.settings=await setExposure(this.track,choice);this.exposureChoice=choice;this.cameraSamples=[];if(this.worker){++this.configRevision;await this.request('background',{mode:'clear',revision:this.configRevision});}
   }
   audioTempo(audio){this.worker?.postMessage({type:"audio",audio});}
   async command(command){
     if(command.action==="config"){
       if((this.recording||this.finalizing)&&["mirror","facing","fps"].some(k=>k in command.config&&command.config[k]!==this.config[k]))throw Error("Stop recording before changing camera or mirroring");
-      if(!command.fromFit)++this.configRevision;const revision=this.configRevision;
+      if(!command.fromFit&&!command.fromGesture)++this.configRevision;const revision=this.configRevision,generation=this.generation;
       const next=patchConfig(this.config,command.config),previous=this.config;
       this.config=next;
-      try{if(next.zoom!==previous.zoom)await this.applyZoom();if(command.fromFit&&revision!==this.configRevision)return {ok:true,config:this.config};await this.request("config",{config:next,fromFit:!!command.fromFit,zoom:this.zoom,revision});}
-      catch(e){this.config=previous;throw e;}
+      try{
+        if(next.zoom!==previous.zoom)await this.applyZoom();
+        if((command.fromFit||command.fromGesture)&&(revision!==this.configRevision||generation!==this.generation)){
+          // Cancel cannot undo a zoom already accepted by the camera. Keep its
+          // actual framing in sync without acknowledging or restarting the fit.
+          if(generation===this.generation&&this.config===next&&next.zoom!==previous.zoom){
+            await this.request("config",{config:next,fromFit:true,zoom:this.zoom,revision:this.configRevision});this.remember();
+          }
+          return {ok:true,config:this.config};
+        }
+        await this.request("config",{config:next,fromFit:!!command.fromFit,fromGesture:!!command.fromGesture,seeds:command.seeds,time:performance.now(),zoom:this.zoom,revision});
+      }
+      catch(e){if(this.config===next&&revision===this.configRevision)this.config=previous;throw e;}
       this.video.style.transform=next.mirror?"scaleX(-1)":"none";this.remember();return {ok:true,config:this.config};
     }
     if(command.action==="calibrate"){
       if(!this.lastFrame)throw Error("Wait for camera frames");
       return this.command({action:"config",config:{planeCorners:command.points,planeAspect:command.aspect,calibrationImageAspect:this.lastFrame.width/this.lastFrame.height}});
     }
-    if(command.action==="background"){++this.configRevision;await this.request("background",{mode:command.mode||"capture",time:performance.now()});}
+    if(command.action==="background"){++this.configRevision;await this.request("background",{mode:command.mode||"capture",time:performance.now(),revision:this.configRevision});}
+    else if(command.action==="gesture")await this.request("gesture",{operation:command.operation,time:performance.now(),revision:++this.configRevision});
     else if(command.action==="fit")await this.request("fit",{zoom:!!command.zoom,sizeOnly:!!command.sizeOnly,revision:++this.configRevision});
     else if(command.action==="syncBeat")await this.request("syncBeat",{time:performance.now()});
     else if(command.action==="pacer")await this.request("pacer",{operation:command.operation,time:performance.now()});
-    else if(command.action==="seed")await this.request("seed",{points:command.points,time:performance.now()});
-    else if(command.action==="reset")this.worker.postMessage({type:"reset"});
+    else if(command.action==="seed"){++this.configRevision;await this.request("seed",{points:command.points,time:performance.now(),revision:this.configRevision});}
+    else if(command.action==="reset"){++this.configRevision;this.worker.postMessage({type:"reset",time:performance.now(),revision:this.configRevision});}
     else if(command.action==="record")await this.startRecording();
     else if(command.action==="stop")await this.stopRecording();
     else throw Error("Unknown camera control");

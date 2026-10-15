@@ -13,7 +13,7 @@ export const defaults = {
   diagonals: true, trails: true, showGuide: true, showFeedback: true, symmetry: true,
   facing: "front", fps: 60, timing: "tog-same", ratio: "1:1", zoom: 0, mirror: true,
   tempoSource: "manual", audioRate: 1, audioOffsetMs: 0,
-  staffCount: 2, autoFit: false, tempoEnabled: false, bpm: 120, beatPoints: 4,
+  gestureEnabled: true, staffCount: 2, autoFit: false, tempoEnabled: false, bpm: 120, beatPoints: 4,
   planeCorners: [], planeAspect: 1, calibrationRotation: 0, calibrationImageAspect: 0,
 };
 export const add = (a,b) => [a[0]+b[0],a[1]+b[1]];
@@ -47,7 +47,7 @@ export function validateCorners(points) {
   if(area/2<.04) throw Error("Choose a larger practice plane");
 }
 export function patchConfig(previous,patch,{restore=false}={}) {
-  const c={trackingGraceMs:defaults.trackingGraceMs,alignmentGraceMs:defaults.alignmentGraceMs,
+  const c={gestureEnabled:defaults.gestureEnabled,trackingGraceMs:defaults.trackingGraceMs,alignmentGraceMs:defaults.alignmentGraceMs,
     pacerEnabled:defaults.pacerEnabled,pacerRpm:defaults.pacerRpm,pacerDirection:defaults.pacerDirection,pacerPattern:defaults.pacerPattern,
     pacerOffset:defaults.pacerOffset,pacerCountdown:defaults.pacerCountdown,pacerDotSize:defaults.pacerDotSize,...previous,...patch,autoFit:false}; // Legacy startup fitting is now manual only.
   if(!Array.isArray(c.staffColors)||c.staffColors.length>staffColorNames.length||c.staffColors.some(color=>!staffColorNames.includes(color)))throw Error('Choose valid staff colors');
@@ -57,7 +57,7 @@ export function patchConfig(previous,patch,{restore=false}={}) {
   for(const key of ['trackingGraceMs','alignmentGraceMs'])if(!Number.isInteger(c[key]))throw Error(`${key} must be whole milliseconds`);
   if(!Number.isInteger(c.pacerCountdown))throw Error('pacerCountdown must be whole seconds');
   for(const [key,choices] of Object.entries({pacerDirection:["cw","ccw"],pacerPattern:["same","opposite"],tempoSource:["manual","phone","pc"],audioRate:[.5,1,2],staffCount:[1,2],beatPoints:[2,4,8],mode:["grid","circles","cube","free","antispin"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
-  for(const key of ["pacerEnabled","streakEffects","autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
+  for(const key of ["gestureEnabled","pacerEnabled","streakEffects","autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
   if(!restore&&(c.facing!==previous.facing||c.zoom!==previous.zoom||c.mirror!==previous.mirror))c.planeCorners=[];
   if(!restore&&c.facing!==previous.facing)c.zoom=0;
   validateCorners(c.planeCorners);
@@ -227,7 +227,7 @@ function glowBodyEndpoints(argb,w,h,s){
 
 export class StaffDetector {
   constructor(){this.cosines=Array.from({length:180},(_,i)=>Math.cos(i*Math.PI/180));this.sines=Array.from({length:180},(_,i)=>Math.sin(i*Math.PI/180));}
-  detect(argb,w,h,c,hints=[]){
+  detect(argb,w,h,c,hints=[],linesOnly=false){
     if(argb.length!==w*h||w<1||h<1)throw Error("Invalid camera pixels");
     const original=argb;
     if(c.led)argb=filterStaffColors(argb,w,h,c.staffColors);
@@ -236,7 +236,7 @@ export class StaffDetector {
       const recovered=recoverSelectedColorEndpoints(argb,w,h,c,found,()=>this.detect(original,w,h,{...c,staffColors:[],threshold:Math.max(c.threshold,250)},hints));
       return c.led?recovered.map(s=>attachCapEvidence(original,w,h,s)):recovered;
     };
-    if(c.led){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return finish(recovered.map(s=>s.blurred?(glowBodyEndpoints(argb,w,h,s)??s):s));}
+    if(c.led&&!linesOnly){const lights=ledRegions(argb,w,h,c,hints),recovered=lights.paired&&lights.segments.every(s=>!hints.length||hints.some(p=>length(s)>length(p)*.85))?lights.segments:motionCandidates(argb,w,h,c,hints,lights.segments);if(recovered.length||c.staffCount===1||!lights.crossing)return finish(recovered.map(s=>s.blurred?(glowBodyEndpoints(argb,w,h,s)??s):s));}
     const short=Math.min(w,h),mask=new Uint8Array(w*h),value=i=>{const p=argb[i];return Math.max((p>>>16)&255,(p>>>8)&255,p&255);};
     for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){
       const i=y*w+x,p=argb[i],hi=value(i),lo=Math.min((p>>>16)&255,(p>>>8)&255,p&255);
@@ -247,7 +247,7 @@ export class StaffDetector {
     const step=Math.max(1,Math.floor((pixels.length+3499)/3500)),diag=Math.ceil(Math.hypot(w,h)),bins=2*diag+1,votes=new Int32Array(180*bins);
     for(let i=0;i<pixels.length;i+=step){const p=pixels[i];for(let a=0;a<180;a++)votes[a*bins+Math.round(p[0]*this.cosines[a]+p[1]*this.sines[a])+diag]++;}
     const result=[];
-    for(let attempt=0;attempt<28;attempt++){
+    for(let attempt=0;attempt<(linesOnly?8:28);attempt++){
       let maxIndex=0;for(let i=0;i<votes.length;i++)if(votes[i]>votes[maxIndex])maxIndex=i;
       const peak=votes[maxIndex],a=Math.floor(maxIndex/bins),rho=maxIndex%bins-diag;
       if(peak<Math.max(9,Math.trunc(c.minLength*short/step*.3)))break;
@@ -270,6 +270,7 @@ export class StaffDetector {
       const s=segment(mul(aa,1/short),mul(bb,1/short),clamp(support*.9+.1*Math.min(1,len/(short*.6)),0,1));
       if(!result.some(old=>angleDifference(angle(old),angle(s))<.14&&(distanceToSegment(center(s),old)<.035||distanceToSegment(center(old),s)<.035)))result.push(s);
     }
+    if(linesOnly)return result.sort((a,b)=>b.confidence*Math.sqrt(length(b))-a.confidence*Math.sqrt(length(a))).slice(0,8);
     return finish((c.led?motionCandidates(argb,w,h,c,hints,result):result).sort((a,b)=>b.confidence*Math.sqrt(length(b))-a.confidence*Math.sqrt(length(a))).slice(0,8));
   }
 }

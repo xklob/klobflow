@@ -234,29 +234,32 @@ function showPacer(f=current){
   $('pacer-second-staff').hidden=!pacerSupported(config)||config.staffCount!==2;
   $('pacer-bar').hidden=!enabled;
   setText('pacer-help',config.mode==='antispin'?(config.staffCount===2?'Staff A follows AH / AV; staff B follows BH / BV. H moves horizontally; V moves vertically. Each pair stays one staff length apart.':'Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length.'):'Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.');
+  const audioSynced=config.tempoEnabled&&config.tempoSource!=='manual';
+  $('pacer-rpm').disabled=audioSynced;$('pacer-rpm').closest('label').hidden=audioSynced;
+  setText('pacer-speed-help',audioSynced?'Speed follows audio: 4 beats per cycle. Each beat marks a quarter-circle or the next Antispin turnaround. Half/double tempo and audio offset also apply.':'One cycle is a full turn. Choose a speed here, or connect system audio for 4 beats per cycle.');
   if(!enabled)return;
   const state=p?.enabled&&p.state!=='off'?p.state:'ready',stalled=sourceStalled&&!replay;
   $('pacer-bar').dataset.state=stalled?'stalled':state;
-  setText('pacer-title',stalled?'CAMERA PAUSED':state==='running'?'FOLLOW THE DOTS':state==='countdown'?`START IN ${Math.max(1,Math.ceil(p.countdownMs/1000))}`:state==='paused'?'DOTS PAUSED':'READY TO FOLLOW');
+  setText('pacer-title',stalled?'CAMERA PAUSED':state==='running'?'FOLLOW THE DOTS':state==='waitingAudio'?'WAITING FOR MUSIC BEAT':state==='countdown'?`START IN ${Math.max(1,Math.ceil(p.countdownMs/1000))}`:state==='paused'?'DOTS PAUSED':'READY TO FOLLOW');
   const key=`${state}|${!!p?.valid}|${stalled}`;
   if(key!==pacerReadingState||performance.now()-pacerReadingAt>=500){
     pacerReadingAt=performance.now();pacerReadingState=key;
     const pct=v=>Number.isFinite(v)?Math.round(v)+'%':'…',gap=Number.isFinite(p?.meanError)?p.meanError.toFixed(1)+'%':'…';
-    setText('pacer-stats',stalled?'Waiting for fresh frames. Start again when the camera returns.':state==='running'?p.valid?`Last 5s · ${pct(p.onTargetPercent)} with dots · ${gap} gap · ${pct(p.measuredPercent)} measured`:`Tips unclear · scores paused · ${pct(p.measuredPercent)} measured`:state==='countdown'?'Get into position. Scoring begins when the dots move.':state==='paused'?'Phase is held. Resume when you are ready.':'Press Start dots when you are ready.');
+    setText('pacer-stats',stalled?'Waiting for fresh frames. Start again when the camera returns.':state==='running'?p.valid?`Last 5s · ${pct(p.onTargetPercent)} with dots · ${gap} gap · ${pct(p.measuredPercent)} measured`:`Tips unclear · scores paused · ${pct(p.measuredPercent)} measured`:state==='waitingAudio'?'Dots and scores pause until a reliable beat returns. Connect audio or play music.':state==='countdown'?'Get into position. Scoring begins when the dots move.':state==='paused'?'Phase is held. Resume when you are ready.':'Press Start dots when you are ready.');
   }
-  setText('pacer-note',`${Number(config.pacerRpm||20).toFixed(0)} cycles/min · ${config.pacerDirection==='ccw'?'counterclockwise':'clockwise'} · independent of the beat`);
+  setText('pacer-note',audioSynced?`4 beats per cycle${p?.rpm>0?` · ${(p.rpm*4).toFixed(0)} BPM → ${p.rpm.toFixed(1)} cycles/min`:''}${f?.audio?.holding?' · holding the last steady beat':''}`:`${Number(config.pacerRpm||20).toFixed(0)} cycles/min · ${config.pacerDirection==='ccw'?'counterclockwise':'clockwise'}`);
   const available=(demo||paired||localMode&&localCamera.active)&&!replay&&!pacerBusy;
   for(const operation of ['start','pause','resume','restart','stop']){
     const button=$('pacer-'+operation);
-    button.hidden=operation==='start'?state!=='ready':operation==='pause'?!['running','countdown'].includes(state):operation==='resume'?state!=='paused':state==='ready';
-    button.disabled=!available||(operation!=='stop'&&(stalled||!f||capturingBackground(f)));
+    button.hidden=operation==='start'?state!=='ready':operation==='pause'?!['running','countdown','waitingAudio'].includes(state):operation==='resume'?state!=='paused':state==='ready';
+    button.disabled=!available||(operation!=='stop'&&(stalled||!f||capturingBackground(f)||f.gesture?.active));
   }
 }
 async function pacerCommand(operation){
   if(pacerBusy)return;pacerBusy=true;showPacer();
   try{
     await configChain;
-    if(demo){demoPacerCommand(operation,performance.now(),config);acceptFrame(demoFrame(config,performance.now()));}
+    if(demo){demoPacerCommand(operation,performance.now(),config);acceptFrame(demoFrame(config,performance.now(),systemAudio.state));}
     else await api('/api/control',{action:'pacer',operation});
     message('');
   }catch(e){message(e.message);}finally{pacerBusy=false;showPacer();}
@@ -562,6 +565,7 @@ function openPair() {
 }
 $("pair-open").onclick = async () => {
   if (paired) {
+    await gestureControl('resume').catch(()=>{});
     systemAudio.stop();audioClock=null;
     await api("/api/disconnect", {});
     connected(false);
@@ -608,6 +612,7 @@ $("pair-form").onsubmit = async (e) => {
   }
 };
 function resetView() {
+  gestureControl("resume").catch(()=>{});$("gesture-overlay").hidden=true;
   resetDemoPacer();$('pacer-bar').hidden=true;pacerReadingState='';
   sourceStalled = false;
   fallbackStreak.reset();$('streak-hud').hidden=true;streakBox.reset();
@@ -686,7 +691,7 @@ $("record").onclick = async () => {
     enableControls();
   }
 };
-$("seed").onclick = () => {
+$("seed").onclick = async () => {
   calibrating = false;
   $("calibrate").textContent = "Calibrate viewing angle";
   seeding = !seeding;
@@ -694,13 +699,17 @@ $("seed").onclick = () => {
   $("seed").textContent = seeding ? "Cancel selection" : "Identify staves";
   $("seed-message").hidden = !seeding;
   $("seed-message").textContent = "Hold staves still. Tap staff A, end 1.";
+  try{await gestureControl(seeding?'suspend':'resume');}catch(e){message(e.message);}
+  if(current)showGesture(current);
 };
-$("calibrate").onclick = () => {
+$("calibrate").onclick = async () => {
   calibrating = !calibrating; seeding = false; picks = [];
   $("seed").textContent = "Identify staves";
   $("calibrate").textContent = calibrating ? "Cancel calibration" : "Calibrate viewing angle";
   $("seed-message").hidden = !calibrating;
   $("seed-message").textContent = "Rectangle in your movement plane: tap top left.";
+  try{await gestureControl(calibrating?'suspend':'resume');}catch(e){message(e.message);}
+  if(current)showGesture(current);
 };
 $("clear-calibration").onclick = () => patch({ planeCorners: [] });
 canvas.addEventListener("click", async (e) => {
@@ -730,6 +739,7 @@ canvas.addEventListener("click", async (e) => {
     $("calibrate").textContent = "Calibrate viewing angle";
     $("seed-message").hidden = true;
     $("seed").textContent = "Identify staves";
+    try{await gestureControl('resume');}catch(e){message(e.message);}
   } else
     $("seed-message").textContent =
       calibrating ? `Tap ${["top left", "top right", "bottom right", "bottom left"][picks.length]}.` : `Hold still. Tap staff ${picks.length < 2 ? "A" : "B"}, end ${(picks.length % 2) + 1}.`;
@@ -755,7 +765,24 @@ function drawEmpty() {
     ctx.stroke();
   }
 }
+async function gestureControl(operation){
+  if(demo||replay||!current?.gesture)return;
+  return api('/api/control',{action:'gesture',operation});
+}
+$('gesture-cancel').onclick=async()=>{try{await gestureControl('cancel');}catch(e){message(e.message);}};
+function showGesture(frame){
+  const g=frame?.gesture,overlay=$('gesture-overlay');
+  overlay.hidden=!g||g.state==='idle'||g.state==='holding'&&g.progress<.15||!!replay||sourceStalled||seeding||calibrating;
+  if(overlay.hidden)return;
+  overlay.dataset.state=g.state;setText('gesture-title',g.title);setText('gesture-detail',g.detail);
+  const compact=g.state==='countdown'?(frame.config.staffCount===1?'Put the second staff aside. Grip the midpoint; hand at the new center. Hold still.':'Uncross. Grip the midpoints; hands at the new centers. Hold still.'):g.detail;
+  setText('gesture-compact',compact);
+  $('gesture-cancel').hidden=!g.active&&g.state!=='holding';
+  const progress=$('gesture-progress');progress.hidden=!['holding','countdown','settling'].includes(g.state);
+  const percent=Math.round(Math.min(1,Math.max(0,g.progress||0))*100);progress.firstElementChild.style.width=`${percent}%`;progress.setAttribute('aria-valuenow',String(percent));
+}
 function render(frame, image) {
+  showGesture(frame);
   if (sourceStalled && !replay) frame = {...frame,beat:null,pacer:null,config:{...frame.config,showFeedback:false,streakEffects:false}};
   // Detection runs at a small image size; display overlays use screen resolution so glyphs stay crisp.
   $("stage").style.setProperty("--stage-aspect", String(frame.width / frame.height));
@@ -1099,7 +1126,7 @@ function acceptFrame(f, image = null) {
   if(!f.streak)f={...f,streak:fallbackStreak.update(f)};
   if(!replay){if(current&&(f.time<current.time||f.source!==current.source))legacyRolling=null;legacyRolling=averageLegacy(f,legacyRolling);}
   // During a background snapshot the capture instruction is the only prompt on the stage.
-  const flow=f.streak,hud=$('streak-hud'),pacerState=f.pacer?.enabled?f.pacer.state:'off';hud.hidden=f.config.streakEffects===false||capturingBackground(f);
+  const flow=f.streak,hud=$('streak-hud'),pacerState=f.pacer?.enabled?f.pacer.state:'off';hud.hidden=f.config.streakEffects===false||capturingBackground(f)||!!f.gesture?.active;
   const flowLabel=()=>f.pacer?.enabled?streakText(flow).replaceAll('the guide','the moving dots'):streakText(flow);
   // The streak state label is held like the status boxes; the counter ticks live within the shown state.
   if(hud.hidden)streakBox.reset();
@@ -1383,7 +1410,7 @@ async function receiveStream() {
 }
 function loop() {
   updateAudioStatus();
-  if (!replay && demo) acceptFrame(demoFrame(config, performance.now()));
+  if (!replay && demo) acceptFrame(demoFrame(config, performance.now(),systemAudio.state));
   if (paired && !replay && !streamController && Date.now() >= nextStreamAt) receiveStream();
   if ((paired || (localMode && localCamera.active)) && !replay && Date.now() - lastArrival > (current?.pacer?.enabled?750:2000)) {
     pauseLiveFeedback(); enableControls();

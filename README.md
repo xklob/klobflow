@@ -30,7 +30,7 @@ Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/re
 
 1. Put your phone on a stable support. Keep both staves and their full movement in frame. Use the selfie camera alone, or the rear camera with the PC companion.
 2. Turn on the LED staves. The default detector looks for bright, narrow shapes without markers. Choose the actual **Staff LED colors** to reject differently colored lights, or keep **Any / rainbow** for animated LEDs. Adjust brightness and the minimum apparent end-to-end staff length in **Adjust**. The length threshold is a percentage of the camera image's shorter edge, not physical centimeters or guide size.
-3. Choose **Grid**, **Circles**, **Cube**, **Free**, or **Antispin**. Calibrate position, size, rotation, circle separation, and cube projection depth to your practice area. Fitting starts only when you press **Auto-fit** after you are ready. It measures reliable full staves, then sets center/size and conservatively adjusts hardware zoom. The guide stays fixed afterward. Saved layout and zoom are retained on reopening, including when upgrading from settings that enabled startup fitting.
+3. Choose **Grid**, **Circles**, **Cube**, **Free**, or **Antispin**. Calibrate position, size, rotation, circle separation, and cube projection depth to your practice area. Fitting starts when you press **Auto-fit** or deliberately hold the two-staff X gesture described below. It measures reliable full staves, then sets center/size and conservatively adjusts hardware zoom. The guide stays fixed afterward. Saved layout and zoom are retained on reopening, including when upgrading from settings that enabled startup fitting.
 4. Automatic detection starts with the strongest elongated shapes. If it chooses incorrectly, hold still and use **Identify staves** to tap both ends of staff A, then both ends of staff B. **Reacquire** clears tracking history.
 5. Start slowly. Stave outlines show tracking; low confidence pauses the scores. Connected trails show the last 4.2 seconds of observed tip motion. The newest tip cycles through all 360° of hue at a constant rate, once every 4.2 seconds, so a full trail contains the whole rainbow. Each segment keeps its original color as it fades; brightness shows its age, with a slight lift at actual detections. Missing observations, long frame gaps, and large jumps break the line instead of drawing across unknown motion. A brief hidden tip keeps its staff association for up to 1.5 seconds and is explicitly labelled; precision scores pause until visible endpoints are confirmed again.
 6. **Record practice** saves a silent MP4 to `Movies/Klobflow` and per-frame analysis privately in the app. **Sessions** plays the video or exports the JSONL measurements. The overlay is live and is **not burned into the MP4**.
@@ -144,18 +144,36 @@ Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start bea
 
 Timing uses interpolated crossings in the measured practice plane. It does not infer musical phrasing or VTG patterns, and display/capture latency still matters. Identical staff ends can swap after occlusion, so use a fresh sync after ambiguous tracking. Browser and Android recordings include beat observations in JSONL alongside ordinary alignment scores.
 
+## Hands-free alignment
+
+In any mode, hold **two staves still in a diagonal X for five seconds**. Two staves are required even when **One staff** is selected. A progress prompt confirms the hold; ordinary brief crossings do not start a fit.
+
+After the X is recognized, a second **five-second countdown appears over the live camera**. Uncross the staves, grip each at its midpoint, and place your hands where the new guide centers should be. In one-staff mode, put the second staff aside. Keep every selected staff end visible and hold still for about two seconds while the app measures the pose.
+
+The fit adjusts center and guide size from those midpoints and the visible staff length. Circles and Antispin with two staves also adjust separation along the guide's existing horizontal axis; keep both hands along that axis. Grid, Cube and Free use the average grip position as their shared center. Rotation stays as set. In Antispin, each center-to-edge arm matches one full staff length.
+
+Where supported, the camera first adjusts zoom conservatively, then measures the pose again after the camera settles. Fixed-zoom webcams still fit the guide. An active viewing-angle calibration preserves its existing zoom. Size limits remain visible in the completion message. The fit never starts on app launch.
+
+Scores pause during setup. **Cancel**, changing settings, starting a manual fit, interrupted camera frames, or switching cameras stops the pending gesture. A camera zoom already applied remains in place. Identify staves and viewing-angle corner selection temporarily suspend it. Separate the staves before making another X. The **X gesture alignment** toggle disables this feature. Moving-dot exercises return to ready after fitting; press Start dots when ready.
+
+Generated test images illustrate the hold and countdown prompts:
+
+![Large-text X gesture countdown over the browser camera view](docs/screenshots/web-gesture.png)
+
+<img src="docs/screenshots/android-gesture.png" alt="Android fullscreen five-second X hold prompt with Cancel over generated camera input" width="340">
+
 ## Follow moving dots
 
 In **Circles** or **Antispin**, enable **Follow moving dots**, adjust the guide to your practice area, then press **Start dots** when ready. A configurable countdown gives you time to place your staff ends on the blue dots. Each staff has two targets; match both ends and keep their pace. In Circles, a stationary solid white center dot marks where to center your hand.
 
 - **Circles:** two opposite dots travel around each circle. With two staves, choose the second staff's direction and phase offset. A 90° offset makes the staves perpendicular; 180° repeats the same pair of positions because the ends are interchangeable.
 - **Antispin:** the H dot moves along the horizontal axis and the V dot along the vertical axis. Their combined motion keeps a constant staff length between them. One full cycle visits all four outer turnarounds. With two staves, follow **AH / AV** for staff A and **BH / BV** for staff B. Each pair belongs to its own cross. Choose the same or opposite cycle direction for B and adjust its phase offset.
-- **Pace settings:** choose 5–120 cycles per minute, clockwise/counterclockwise direction, a 0–10 second countdown, and dot size. Existing center, size, rotation, circle separation, perspective calibration, and target tolerance still apply.
+- **Pace settings:** choose 5–120 cycles per minute without audio sync, clockwise/counterclockwise direction, a 0–10 second countdown, and dot size. Existing center, size, rotation, circle separation, perspective calibration, and target tolerance still apply.
 - **Pause** holds the dot positions. **Resume** uses the countdown before continuing; **Restart** returns to the starting phase; **Stop** returns to the ready state. Setup changes and camera interruptions require an explicit new start. Reopening the app never resumes the exercise automatically.
 
 The preview reports **WITH DOTS**, the average tip-to-dot gap, and how much tracking was measurable over the last five seconds. Gap is a percentage of the full guide width. Unclear or hidden tips are excluded, and the dots remain visible so you can rejoin. While following dots, streaks require both tips of every selected staff to match their moving targets. Existing short tracking/alignment grace applies. Ordinary geometric measurements remain available separately.
 
-Dot speed is independent of the beat/audio controls. Fixed beat targets are hidden during this exercise; turn off **Follow moving dots** to return to beat practice. Reduced motion freezes decorative glow accents, while the exercise dots keep moving until you pause them. Frame exports retain the target positions and exercise state for replay.
+**With system audio active, dots follow the detected BPM: four beats per full cycle.** Each beat lands at the next quarter-circle or Antispin outer turnaround. At 120 BPM, the dots make 30 cycles/min. Half/Double tempo and Audio offset apply. The manual speed slider is hidden while audio sets the pace. Three seconds of solid beat detection earns the existing hold through up to 15 seconds of audio dropout; once it expires, dots freeze and following scores pause until a reliable beat returns. Small phase corrections avoid jumps when the detector updates its estimate. Pause remains paused even when audio returns. With manual tempo selected, the separate cycles/min setting controls the dots. Fixed beat targets are hidden during this exercise; turn off **Follow moving dots** to return to beat practice. Reduced motion freezes decorative glow accents, while the exercise dots keep moving until you pause them. Frame exports retain the target positions and exercise state for replay.
 
 ![Follow both staff ends around their circles using blue moving dots and configurable pace controls](docs/screenshots/web-moving-dots.png)
 

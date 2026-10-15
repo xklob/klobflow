@@ -7,10 +7,10 @@ import org.json.JSONObject
 data class PacerFrame(
     val enabled:Boolean=false,val state:String="off",val phase:Double=0.0,val elapsedSeconds:Double=0.0,
     val countdownMs:Long=0,val rpm:Double=20.0,val targets:List<List<P>> = emptyList(),val feedback:List<TipCue> = emptyList(),
-    val valid:Boolean=false,val onTarget:Boolean=false,val meanError:Double?=null,val onTargetPercent:Double?=null,val measuredPercent:Double?=null
+    val valid:Boolean=false,val onTarget:Boolean=false,val meanError:Double?=null,val onTargetPercent:Double?=null,val measuredPercent:Double?=null,val audioSynced:Boolean=false
 ) {
     fun json()=JSONObject().put("enabled",enabled).put("state",state).put("phase",phase).put("elapsedSeconds",elapsedSeconds)
-        .put("countdownMs",countdownMs).put("rpm",rpm).put("targets",JSONArray(targets.map {pair->JSONArray(pair.map {it.json()})}))
+        .put("countdownMs",countdownMs).put("rpm",rpm).put("audioSynced",audioSynced).put("targets",JSONArray(targets.map {pair->JSONArray(pair.map {it.json()})}))
         .put("feedback",JSONArray(feedback.map {it.json()})).put("valid",valid).put("onTarget",onTarget)
         .put("meanError",meanError ?: JSONObject.NULL).put("onTargetPercent",onTargetPercent ?: JSONObject.NULL).put("measuredPercent",measuredPercent ?: JSONObject.NULL)
 }
@@ -23,20 +23,24 @@ class MovingPacer {
     private var state="off"
     private var elapsedMs=0L
     private var countdownMs=0L
+    private var audioBeats:Double?=null
+    private var audioElapsed=0L
+    private var audioReady=false
     private val history=ArrayDeque<Sample>()
     private var sampleTime:Long?=null
 
     private fun configKey(c:Config)=listOf(c.mode,c.staffCount,c.pacerEnabled,c.pacerRpm,c.pacerDirection,c.pacerPattern,c.pacerOffset,c.pacerCountdown,
         c.cx,c.cy,c.scale,c.rotation,c.circleSeparation,c.tolerance,c.planeCorners,c.planeAspect,c.calibrationRotation,c.calibrationImageAspect,
-        c.facing,c.mirror,c.zoom,c.led,c.threshold,c.minLength,c.staffColors,c.fps).toString()
+        c.facing,c.mirror,c.zoom,c.led,c.threshold,c.minLength,c.staffColors,c.fps,c.tempoEnabled,c.tempoSource,c.audioRate,c.audioOffsetMs).toString()
     private fun enabled(g:Guide)=g.config.pacerEnabled && g.config.mode in listOf("circles","antispin")
     private fun clear(s:Segment?)=s!=null && s.confidence.isFinite() && s.confidence>=.55 && !s.blurred && !s.occluded &&
         s.a.x.isFinite() && s.a.y.isFinite() && s.b.x.isFinite() && s.b.y.isFinite()
     private fun squared(a:P,b:P)=(a.x-b.x).pow(2)+(a.y-b.y).pow(2)
     private fun clearStatistics(){history.clear();sampleTime=null}
-    fun reset(){key=null;time=null;state="off";elapsedMs=0;countdownMs=0;clearStatistics()}
+    private fun resetAudio(){audioBeats=null;audioElapsed=0;audioReady=false}
+    fun reset(){key=null;time=null;state="off";elapsedMs=0;countdownMs=0;resetAudio();clearStatistics()}
     fun reconfigure(before:Config,after:Config){if(configKey(before)!=configKey(after))reset()}
-    private fun ready(g:Guide){state=if(enabled(g))"ready"else"off";elapsedMs=0;countdownMs=0;clearStatistics()}
+    private fun ready(g:Guide){state=if(enabled(g))"ready"else"off";elapsedMs=0;countdownMs=0;resetAudio();clearStatistics()}
     private fun synchronize(t:Long,g:Guide) {
         val nextKey=configKey(g.config)+":${g.width}:${g.height}"
         if(key!=nextKey){reset();key=nextKey;ready(g)}
@@ -56,18 +60,40 @@ class MovingPacer {
         when(operation) {
             "start","restart"->{
                 require(enabled(g)){"Enable moving dots in Circles or Antispin before starting"}
-                elapsedMs=0;countdownMs=g.config.pacerCountdown*1000L;state=if(countdownMs>0)"countdown"else"running";clearStatistics()
+                elapsedMs=0;countdownMs=g.config.pacerCountdown*1000L;state=if(countdownMs>0)"countdown"else"running";resetAudio();clearStatistics()
             }
-            "pause"->{if(state in listOf("running","countdown"))state="paused";countdownMs=0;clearStatistics()}
+            "pause"->{if(state in listOf("running","countdown"))state="paused";countdownMs=0;audioReady=false;clearStatistics()}
             "resume"->if(state=="paused"){countdownMs=g.config.pacerCountdown*1000L;state=if(countdownMs>0)"countdown"else"running";clearStatistics()}
             "stop"->ready(g)
         }
     }
-    fun update(time:Long,staffs:List<Segment?>,guide:Guide):PacerFrame {
+    fun update(time:Long,staffs:List<Segment?>,guide:Guide,audio:AudioTempo?=null):PacerFrame {
         val t=time;val g=guide
         synchronize(t,g)
-        val c=g.config;val active=enabled(g);val phase=(elapsedMs*c.pacerRpm/60000)%1.0
-        val frame=PacerFrame(enabled=active,state=state,phase=phase,elapsedSeconds=elapsedMs/1000.0,countdownMs=countdownMs,rpm=c.pacerRpm)
+        val c=g.config;val active=enabled(g);val audioSynced=c.tempoEnabled && c.tempoSource!="manual"
+        var phase=(elapsedMs*c.pacerRpm/60000)%1.0;var rpm=c.pacerRpm;var waiting=false
+        if(audioSynced){
+            val ready=audio?.usable(t.toDouble())==true && audio.bpm!!.isFinite() && audio.bpm>0 && audio.origin.isFinite() && t-audio.at<2000
+            rpm=if(ready)audio!!.bpm!!*c.audioRate/4 else 0.0
+            val delta=max(0L,elapsedMs-audioElapsed)
+            if(state=="running"){
+                if(!ready){waiting=true;elapsedMs-=delta;audioReady=false;clearStatistics()}
+                else {
+                    val period=60000/audio!!.bpm!!;val beat=((t-audio.origin-c.audioOffsetMs)/period%1+1)%1
+                    if(audioBeats==null)audioBeats=beat
+                    else {
+                        val advance=if(audioReady)delta/period else 0.0;audioBeats=audioBeats!!+advance
+                        // An updated origin may name a different beat. Lock only
+                        // fractional beat phase, with bounded correction to avoid jumps.
+                        val error=((beat-audioBeats!!%1+1.5)%1)-.5;val limit=delta/period*.15
+                        audioBeats=audioBeats!!+error.coerceIn(-limit,limit)
+                    }
+                    audioReady=true
+                }
+            }else audioReady=false
+            audioElapsed=elapsedMs;phase=(((audioBeats ?: 0.0)*c.audioRate/4)%1+1)%1
+        }
+        val frame=PacerFrame(enabled=active,state=if(waiting)"waitingAudio"else state,phase=phase,elapsedSeconds=elapsedMs/1000.0,countdownMs=countdownMs,rpm=rpm,audioSynced=audioSynced)
         if(!active)return frame
         val sign=if(c.pacerDirection=="cw")1 else -1;val theta=sign*2*PI*phase
         val count=c.staffCount
@@ -80,7 +106,7 @@ class MovingPacer {
                 val delta=P(cos(angle),sin(angle))*g.radius;listOf(center+delta,center-delta)
             }
         val targets=planeTargets.map {pair->pair.map(g::project)}
-        if(state!="running")return frame.copy(targets=targets)
+        if(state!="running" || waiting)return frame.copy(targets=targets)
         val selected=staffs.take(count)
         val measured=if(selected.size==count && selected.all(::clear))selected.map {g.rectify(it!!)} else emptyList()
         val valid=measured.size==count && measured.all(::clear)

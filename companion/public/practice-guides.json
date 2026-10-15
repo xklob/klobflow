@@ -5,7 +5,7 @@
    "Stand where you will practice, with both staves in view. Press Auto-fit, then spin normally for two seconds; it centers and sizes the grid once. Reset guide layout restores the default.",
    "The lime line is staff A and the purple line is staff B, drawn between each staff's two tracked ends. The colors only tell the staves apart. Faint curves show each tip's path over the last 4 seconds.",
    "An amber ring and arrow mark a tip that is off the grid: move that tip into the white TARGET ring on the nearest line. A white ring with a check means that tip is within tolerance.",
-   "Size sets the grid width; Match staff length sets it to one staff length. If another light is tracked, choose your LED colors or capture the background. For an off-angle camera, use Calibrate viewing angle."
+   "Size sets the grid width; Match staff length sets it to one staff length. If another light is tracked, choose your LED colors or capture the background. For an off-angle camera, use Calibrate viewing angle. Hands-free setup: hold two staves in an X for five seconds, then follow the countdown and hold your midpoint grips at the new guide centers."
   ]
  },
  "circles": {
@@ -14,7 +14,7 @@
    "Get into your spinning position with both staves in view. Press Auto-fit and spin normally for two seconds to fit the circles. For a paced exercise, enable Follow moving dots, choose your speed, then press Start dots. Center your hand on the solid white dot inside each circle.",
    "With moving dots off, trace the white circles with your tips. An amber ring and arrow show which way to move a tip into its white TARGET ring on the circle. A white ring with a check means that tip is within tolerance. With moving dots on, aim for the blue dots instead.",
    "Moving dots come in pairs labeled A or B. Match both ends of each staff to its pair; either end can follow either dot. Speed is full cycles per minute. Choose direction, a get-ready countdown, and the second staff's direction and phase offset in Pace settings. Pause holds the dots; Resume uses your countdown.",
-   "Match staff length sets each circle's diameter. Size, center, separation and Target tolerance also apply to moving dots. Following and gap use only clear samples from the last five seconds; all selected staves must be measured, and missing tips pause scores. Dot speed is independent of music. Disable Follow moving dots to use the numbered beat targets again."
+   "Match staff length sets each circle's diameter. Size, center, separation and Target tolerance also apply to moving dots. Following and gap use only clear samples from the last five seconds; all selected staves must be measured, and missing tips pause scores. With system audio, four beats make one full cycle: one beat per quarter-circle or Antispin outer turnaround. The qualified beat can coast for 15 seconds through a dropout; dots pause if it expires. Manual mode uses cycles per minute. Disable Follow moving dots to use the numbered beat targets again. Hands-free setup: hold two staves in an X for five seconds, then follow the countdown and hold your midpoint grips at the new guide centers."
   ]
  },
  "cube": {
@@ -23,7 +23,7 @@
    "The cube is a flat drawing, not measured depth. Press Auto-fit with your staves in view, then adjust Size and Cube projection depth so the corners sit where you want to reach.",
    "Aim tips at the white corner points. An amber ring and arrow lead from a tip to its nearest corner, marked by a white TARGET ring. A white ring with a check means that tip is on a corner.",
    "If the camera is off to one side, use Calibrate viewing angle on a real rectangle in your movement plane. It corrects that plane only, not movement toward or away from the camera.",
-   "Use cube error for chosen alignment moments; moves between corners naturally score worse. The lime and purple lines only identify staff A and staff B."
+   "Use cube error for chosen alignment moments; moves between corners naturally score worse. The lime and purple lines only identify staff A and staff B. Hands-free setup: hold two staves in an X for five seconds, then follow the countdown and hold your midpoint grips at the new guide centers."
   ]
  },
  "free": {
@@ -32,7 +32,7 @@
    "Keep your whole movement in view. Free flow has no alignment score, so no arrows or targets appear.",
    "The lime line is staff A and the purple line is staff B, drawn between each staff's tracked ends. Faint curves show where each tip went in the last 4 seconds; gaps mean the tip was hidden or unclear.",
    "Identical staves can swap after being fully hidden; use Identify staves to correct them. If a lamp or window is tracked, choose your LED colors or capture the background.",
-   "Beat practice still works here: numbered points sit on a circle around the guide center. Auto-fit or Size changes that circle. Record a session to review your paths later."
+   "Beat practice still works here: numbered points sit on a circle around the guide center. Auto-fit or Size changes that circle. Record a session to review your paths later. Hands-free setup: hold two staves in an X for five seconds, then follow the countdown and hold your midpoint grips at the new guide centers."
   ]
  },
  "antispin": {
@@ -41,7 +41,7 @@
    "Choose one or two double-ended staves. Each staff traces its own cross: one tip on the horizontal line, the other on the vertical line. For a paced exercise, enable Follow moving dots, choose your speed, then press Start dots. With two staves, match staff A and B to their labeled crosses.",
    "Place each cross where that staff's two tip paths intersect. Cross separation moves A and B apart; zero overlaps them. Set Rotation to 0 for level horizontal/vertical lines. Match staff length sets center-to-edge distance to one full staff length, so the whole cross is two staff lengths wide. Step back if it will not fit.",
    "Get ready, then press Auto-fit and complete a full antispin cycle during its two-second sample. Check Center X/Y afterward. For an off-angle camera, calibrate a rectangle in your movement plane first. With moving dots, follow blue H horizontally and blue V vertically; two-staff targets are AH / AV and BH / BV. The pair keeps a constant end-to-end length.",
-   "Pace settings controls full cycles per minute, direction, countdown and dot size. For two staves, choose the same or opposite cycle direction and phase offset for B. Pause holds the dots; Resume uses your countdown. Following and gap use clear samples from the last five seconds; all selected staves must be measured, and missing tips pause scores. Tolerance is a percent of the full cross width. Dot speed is independent of music. Disable Follow moving dots to use the four outer beat turnarounds again."
+   "Pace settings controls full cycles per minute, direction, countdown and dot size. For two staves, choose the same or opposite cycle direction and phase offset for B. Pause holds the dots; Resume uses your countdown. Following and gap use clear samples from the last five seconds; all selected staves must be measured, and missing tips pause scores. Tolerance is a percent of the full cross width. With system audio, four beats make one full cycle: one beat per quarter-circle or Antispin outer turnaround. The qualified beat can coast for 15 seconds through a dropout; dots pause if it expires. Manual mode uses cycles per minute. Disable Follow moving dots to use the four outer beat turnarounds again. Hands-free setup: hold two staves in an X for five seconds, then follow the countdown and hold your midpoint grips at the new guide centers."
   ]
  }
 }

@@ -28,6 +28,7 @@ export class AlignmentFeedback {
  constructor(){this.reset();}
  reset(){this.time=-1;this.key='';this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=null;this.samples=[];this.pacerElapsed=null;}
  update(frame){
+  if(frame.gesture?.active){this.reset();return {state:"calibrating",title:"ALIGNMENT SETUP",detail:frame.gesture.detail,tips:[],cues:false,summary:null,tracking:{tone:"wait",title:"SETUP IN PROGRESS",detail:"Practice scores pause while the guide is being aligned.",key:"gesture",valid:false,confirmed:false}};}
   const {time,config,staffs}=frame,following=!!config.pacerEnabled&&['circles','antispin'].includes(config.mode),pacer=following?frame.pacer:null;
   const idle=following&&(!pacer?.enabled||pacer.state!=='running');
   const key=JSON.stringify([config.mode,config.staffCount,config.tolerance,config.planeCorners,config.cx,config.cy,config.scale,config.rotation,config.circleSeparation,frame.width,frame.height,config.staffColors,config.threshold,config.minLength,config.led,config.facing,config.mirror,config.zoom,following,pacer?.state,config.pacerRpm,config.pacerDirection,config.pacerPattern,config.pacerOffset,config.pacerCountdown]);
@@ -54,7 +55,7 @@ export class AlignmentFeedback {
   if(snapshot)return result('paused','PRECISION PAUSED','Scores resume after the background snapshot.');
   if(idle){
    const state=pacer?.state||'ready';
-   const title=state==='countdown'?'GET READY':state==='paused'?'GUIDE DOTS PAUSED':'READY TO FOLLOW',detail=state==='countdown'?'Place your tips on the blue dots. Scoring starts when they move.':state==='paused'?'Resume to continue from these dot positions. Scores are paused.':'Set your speed, then press Start dots. Match all tips to their blue dots.';
+   const title=state==='waitingAudio'?'WAITING FOR MUSIC BEAT':state==='countdown'?'GET READY':state==='paused'?'GUIDE DOTS PAUSED':'READY TO FOLLOW',detail=state==='waitingAudio'?'Dots and scores pause until a reliable beat returns. Connect audio or play music.':state==='countdown'?'Place your tips on the blue dots. Scoring starts when they move.':state==='paused'?'Resume to continue from these dot positions. Scores are paused.':'Set your speed, then press Start dots. Match all tips to their blue dots.';
    Object.assign(tracking,{tone:'wait',title:state==='ready'?'GUIDE DOTS READY':title,detail,key:`practice|${state}`,valid:false,confirmed:false});
    return result('practice',title,detail);
   }

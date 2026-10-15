@@ -1,0 +1,2124 @@
+[
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.5250000000000001,
+          "cy": 0.6999999999999998,
+          "scale": 0.20000000000000018
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 1,
+      "mode": "grid",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.50625,
+          "cy": 0.6999999999999998,
+          "scale": 0.20000000000000007
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 2,
+      "mode": "grid",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.5250000000000001,
+          "cy": 0.6999999999999998,
+          "scale": 0.20000000000000018
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 1,
+      "mode": "circles",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.50625,
+          "cy": 0.6999999999999998,
+          "scale": 0.20000000000000007,
+          "circleSeparation": 1.2499999999999996
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 2,
+      "mode": "circles",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.5250000000000001,
+          "cy": 0.6999999999999998,
+          "scale": 0.16666666666666682
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 1,
+      "mode": "cube",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.50625,
+          "cy": 0.6999999999999998,
+          "scale": 0.16666666666666674
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 2,
+      "mode": "cube",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.5250000000000001,
+          "cy": 0.6999999999999998,
+          "scale": 0.20000000000000018
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 1,
+      "mode": "free",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.50625,
+          "cy": 0.6999999999999998,
+          "scale": 0.20000000000000007
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 2,
+      "mode": "free",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross and put the second staff aside. Grip the remaining staff at its midpoint, put your hand at the new center, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.5250000000000001,
+          "cy": 0.6999999999999998,
+          "scale": 0.40000000000000036
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 1,
+      "mode": "antispin",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  },
+  {
+    "frames": [
+      {
+        "patch": null,
+        "time": 0,
+        "status": {
+          "active": false,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 1000,
+        "status": {
+          "active": false,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 2000,
+        "status": {
+          "active": false,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 3000,
+        "status": {
+          "active": false,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 4000,
+        "status": {
+          "active": false,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "holding",
+          "detail": "Keep both staves crossed and still. Release the X to stop.",
+          "title": "HOLD THE X · 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 5000,
+        "status": {
+          "active": true,
+          "remainingMs": 5000,
+          "progress": 0,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 5"
+        }
+      },
+      {
+        "patch": null,
+        "time": 6000,
+        "status": {
+          "active": true,
+          "remainingMs": 4000,
+          "progress": 0.19999999999999996,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 4"
+        }
+      },
+      {
+        "patch": null,
+        "time": 7000,
+        "status": {
+          "active": true,
+          "remainingMs": 3000,
+          "progress": 0.4,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 3"
+        }
+      },
+      {
+        "patch": null,
+        "time": 8000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0.6,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 2"
+        }
+      },
+      {
+        "patch": null,
+        "time": 9000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.8,
+          "state": "countdown",
+          "detail": "Uncross. Grip each staff at its midpoint, put your hands at the new guide centers, then hold still.",
+          "title": "AUTO-ALIGNMENT IN 1"
+        }
+      },
+      {
+        "patch": null,
+        "time": 10000,
+        "status": {
+          "active": true,
+          "remainingMs": 2000,
+          "progress": 0,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": null,
+        "time": 11000,
+        "status": {
+          "active": true,
+          "remainingMs": 1000,
+          "progress": 0.5,
+          "state": "settling",
+          "detail": "Measuring your still pose. Keep gripping each staff at its midpoint.",
+          "title": "HOLD STILL · ALIGNING"
+        }
+      },
+      {
+        "patch": {
+          "cx": 0.50625,
+          "cy": 0.6999999999999998,
+          "scale": 0.40000000000000013,
+          "circleSeparation": 0.6249999999999998
+        },
+        "time": 12000,
+        "status": {
+          "active": true,
+          "remainingMs": 0,
+          "progress": 0,
+          "state": "applying",
+          "detail": "Keep still for a moment.",
+          "title": "APPLYING ALIGNMENT"
+        }
+      }
+    ],
+    "config": {
+      "mirror": true,
+      "pacerDotSize": 16,
+      "streakEffects": true,
+      "pacerRpm": 20,
+      "cubeDepth": 0.4,
+      "showGuide": true,
+      "minLength": 0.22,
+      "calibrationRotation": 0,
+      "scale": 0.32,
+      "facing": "front",
+      "led": true,
+      "threshold": 175,
+      "trails": true,
+      "audioOffsetMs": 0,
+      "pacerPattern": "opposite",
+      "staffCount": 2,
+      "mode": "antispin",
+      "symmetry": true,
+      "pacerEnabled": false,
+      "planeAspect": 1,
+      "alignmentGraceMs": 200,
+      "autoFit": false,
+      "tempoSource": "manual",
+      "bpm": 120,
+      "circleSeparation": 1,
+      "tolerance": 4,
+      "audioRate": 1,
+      "trackingGraceMs": 1500,
+      "pacerOffset": 0,
+      "pacerDirection": "cw",
+      "calibrationImageAspect": 0,
+      "timing": "tog-same",
+      "rotation": 0,
+      "pacerCountdown": 3,
+      "fps": 60,
+      "planeCorners": [],
+      "beatPoints": 4,
+      "zoom": 0,
+      "showFeedback": true,
+      "cx": 0.5,
+      "cy": 0.5,
+      "staffColors": [],
+      "diagonals": true,
+      "gestureEnabled": true,
+      "tempoEnabled": false,
+      "ratio": "1:1"
+    }
+  }
+]

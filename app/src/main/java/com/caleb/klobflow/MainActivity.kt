@@ -121,11 +121,11 @@ class MainActivity:ComponentActivity() {
     fun patch(key:String,value:Any)=run{engine.updateConfig(JSONObject().put(key,value))}
     val lifecycleOwner=LocalLifecycleOwner.current
     var freshnessNow by remember {mutableLongStateOf(SystemClock.elapsedRealtime())}
-    LaunchedEffect(lifecycleOwner,ui.config.pacerEnabled){if(ui.config.pacerEnabled)lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){while(true){freshnessNow=SystemClock.elapsedRealtime();delay(150)}}}
-    val pacerStale=ui.frame?.let {it.pacer.enabled&&max(freshnessNow,SystemClock.elapsedRealtime())-it.time>750} ?: false
+    LaunchedEffect(lifecycleOwner,ui.config.pacerEnabled,ui.config.gestureEnabled){if(ui.config.pacerEnabled||ui.config.gestureEnabled)lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED){while(true){freshnessNow=SystemClock.elapsedRealtime();delay(150)}}}
+    val pacerStale=ui.frame?.let {(it.pacer.enabled||it.gesture.state!="idle")&&max(freshnessNow,SystemClock.elapsedRealtime())-it.time>750} ?: false
     // One coach for the status boxes and the overlay, so text and drawn cues always agree.
     val coach=remember {AlignmentFeedback()}
-    val feedback=remember(ui.frame?.time,ui.frame?.pacer,pacerStale){if(pacerStale)Coaching("paused","CAMERA PAUSED","Wait for fresh frames, then start the dots again.",tracking=BoxText("wait","NO FRESH FRAMES","Moving dots and scores are paused."))else ui.frame?.let {coach.update(it.time,it.staffs,it.guide,it.background,it.pacer)}}
+    val feedback=remember(ui.frame?.time,ui.frame?.pacer,pacerStale){if(pacerStale)Coaching("paused","CAMERA PAUSED",if(ui.frame?.pacer?.enabled==true)"Wait for fresh frames, then start the dots again."else"Wait for fresh frames before making another X.",tracking=BoxText("wait","NO FRESH FRAMES","Camera frames are interrupted. Scores are paused."))else ui.frame?.let {coach.update(it.time,it.staffs,it.guide,it.background,it.pacer,it.gesture)}}
     if(focus)PracticeFocus(ui,engine,feedback,{focus=false},pacerStale=pacerStale){message=it}
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME){permission=ContextCompat.checkSelfPermission(context,Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED}
     Column(Modifier.fillMaxSize().background(Background).safeDrawingPadding()) {
@@ -221,7 +221,9 @@ class MainActivity:ComponentActivity() {
                     Label("BEAT TIMING")
                     BeatSettings(ui,engine)
                     Label("GUIDE CALIBRATION")
-                    Text("Framing stays fixed until you press Auto-fit. Get into position first, then keep your full staves visible for two seconds.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    Text("Framing changes when you press Auto-fit or deliberately hold both staves in an X for five seconds.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    Toggle("X gesture alignment",ui.config.gestureEnabled){patch("gestureEnabled",it)}
+                    Text("Use two staves for the X, even in one-staff mode. After the five-second countdown, grip the midpoint of each selected staff, place your hands at the new centers, and hold still. Center, size and supported zoom adjust together. Angle calibration keeps zoom fixed.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     FitControls(ui,engine)
                     ControlSlider("Center X",(ui.config.cx*100).toFloat(),10f..90f,"%"){patch("cx",it/100.0)}
                     ControlSlider("Center Y",(ui.config.cy*100).toFloat(),10f..90f,"%"){patch("cy",it/100.0)}
@@ -294,8 +296,8 @@ class MainActivity:ComponentActivity() {
             if(c.pacerEnabled){
                 TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Close pace settings"else"Pace settings")}
                 if(expanded){
-                    ControlSlider("Speed",c.pacerRpm.toFloat(),5f..120f,steps=114,valueLabel={"${it.roundToInt()} cycles/min"}){patch("pacerRpm",it.roundToInt())}
-                    Text("One cycle is a full turn. This speed is independent of music and BPM.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    if(!(c.tempoEnabled && c.tempoSource!="manual"))ControlSlider("Speed",c.pacerRpm.toFloat(),5f..120f,steps=114,valueLabel={"${it.roundToInt()} cycles/min"}){patch("pacerRpm",it.roundToInt())}
+                    Text(if(c.tempoEnabled && c.tempoSource!="manual")"Speed follows audio: 4 beats per cycle. Each beat marks a quarter-circle or the next Antispin turnaround. Half/double tempo and audio offset also apply."else"One cycle is a full turn. Choose a speed here, or connect system audio for 4 beats per cycle.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     Text("Direction on screen",color=Ink,fontSize=15.sp,modifier=Modifier.padding(top=8.dp))
                     FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("cw" to "Clockwise","ccw" to "Counterclockwise").forEach {(key,label)->FilterChip(selected=c.pacerDirection==key,onClick={patch("pacerDirection",key)},label={Text(label)})}}
                     ControlSlider("Get-ready countdown",c.pacerCountdown.toFloat(),0f..10f," s",steps=9){patch("pacerCountdown",it.roundToInt())}
@@ -316,12 +318,13 @@ class MainActivity:ComponentActivity() {
     if(!ui.config.pacerEnabled||ui.config.mode !in listOf("circles","antispin"))return
     val pacer=ui.frame?.pacer
     val state=pacer?.takeIf {it.enabled&&it.state!="off"}?.state ?: "ready"
-    val enabled=ui.frame!=null&&(ui.demo||ui.cameraReady)&&ui.frame.background.state !in listOf("countdown","capturing")
+    val enabled=ui.frame!=null&&(ui.demo||ui.cameraReady)&&ui.frame.background.state !in listOf("countdown","capturing") && !ui.frame.gesture.active
     fun command(operation:String){try{engine.command(JSONObject().put("action","pacer").put("operation",operation))}catch(e:Exception){onError(e.message ?: "Could not control moving dots")}}
     val stats=remember(state,pacer?.valid,stale,(ui.frame?.time ?: 0L)/500){
         fun pct(value:Double?)=value?.let {"${it.roundToInt()}%"} ?: "…"
         if(stale)"Waiting for fresh frames. Start again when the camera returns."else when(state){
             "running"->if(pacer?.valid==true)"Last 5s · ${pct(pacer.onTargetPercent)} with dots · ${pacer.meanError?.let {"%.1f%%".format(it)} ?: "…"} gap · ${pct(pacer.measuredPercent)} measured"else"Tips unclear · scores paused · ${pct(pacer?.measuredPercent)} measured"
+            "waitingAudio"->"Dots and scores pause until a reliable beat returns. Connect audio or play music."
             "countdown"->"Get into position. Scoring begins when the dots move."
             "paused"->"Phase is held. Resume when you are ready."
             else->"Press Start dots when you are ready."
@@ -329,9 +332,9 @@ class MainActivity:ComponentActivity() {
     }
     Surface(color=Color(0xff10202a),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Color(0xff3e758e)),modifier=Modifier.fillMaxWidth().padding(bottom=8.dp)){
         Column(Modifier.padding(if(compact)8.dp else 12.dp)){
-            Text(if(stale)"CAMERA PAUSED"else when(state){"running"->"FOLLOW THE DOTS";"countdown"->"START IN ${max(1,ceil((pacer?.countdownMs?.toDouble() ?: 0.0)/1000).toInt())}";"paused"->"DOTS PAUSED";else->"READY TO FOLLOW"},color=Color(0xffb9eaff),fontSize=if(compact)16.sp else 20.sp,fontWeight=FontWeight.Bold)
+            Text(if(stale)"CAMERA PAUSED"else when(state){"running"->"FOLLOW THE DOTS";"waitingAudio"->"WAITING FOR MUSIC BEAT";"countdown"->"START IN ${max(1,ceil((pacer?.countdownMs?.toDouble() ?: 0.0)/1000).toInt())}";"paused"->"DOTS PAUSED";else->"READY TO FOLLOW"},color=Color(0xffb9eaff),fontSize=if(compact)16.sp else 20.sp,fontWeight=FontWeight.Bold)
             Text(stats,color=Ink,fontSize=if(compact)13.sp else 15.sp,lineHeight=18.sp)
-            if(!compact)Text("${ui.config.pacerRpm.roundToInt()} cycles/min · ${if(ui.config.pacerDirection=="ccw")"counterclockwise"else"clockwise"} · independent of the beat",color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))
+            if(!compact)Text(if(ui.config.tempoEnabled && ui.config.tempoSource!="manual")"4 beats per cycle"+(if(pacer!=null && pacer.rpm>0)" · ${(pacer.rpm*4).roundToInt()} BPM → %.1f cycles/min".format(pacer.rpm)else"")+(if(ui.frame?.audio?.holding==true)" · holding the last steady beat"else"")else"${ui.config.pacerRpm.roundToInt()} cycles/min · ${if(ui.config.pacerDirection=="ccw")"counterclockwise"else"clockwise"}",color=Muted,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))
             FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){
                 when(state){
                     "ready"->Button(enabled=enabled&&!stale,onClick={command("start")}){Text("Start dots")}
@@ -405,12 +408,18 @@ class MainActivity:ComponentActivity() {
     var calibrating by remember {mutableStateOf(false)}
     var planeAspect by remember {mutableStateOf("1.0")}
     var picks by remember {mutableStateOf(emptyList<P>())}
+    var gestureSuspended by remember {mutableStateOf(false)}
+    LaunchedEffect(identifying,calibrating){
+        val selected=identifying||calibrating
+        if(selected!=gestureSuspended){gestureSuspended=selected;engine.command(JSONObject().put("action","gesture").put("operation",if(selected)"suspend"else"resume"))}
+    }
+    DisposableEffect(engine){onDispose{if(gestureSuspended)engine.command(JSONObject().put("action","gesture").put("operation","resume"))}}
     val cueSectors=remember {IntArray(4){-1}}
     val labelPaint=remember {android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {typeface=android.graphics.Typeface.DEFAULT_BOLD;textAlign=android.graphics.Paint.Align.CENTER}}
     val backgroundState=ui.frame?.background?.state ?: "off"
     val density=LocalDensity.current
     var streakHeight by remember {mutableStateOf(0.dp)}
-    val showStreak=ui.config.streakEffects&&!pacerStale&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing"&&ui.frame!=null
+    val showStreak=ui.config.streakEffects&&!pacerStale&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing"&&ui.frame!=null&&ui.frame.gesture.active!=true
     LaunchedEffect(showStreak){if(!showStreak)streakHeight=0.dp}
     // Fullscreen allocates the HUD's actual wrapped height before sizing the camera.
     // The HUD measures at its natural height, rather than being clipped by space left over.
@@ -625,6 +634,19 @@ class MainActivity:ComponentActivity() {
         if(ui.demo)Text(if(focus)"DEMO"else"SYNTHETIC DEMO",Modifier.align(Alignment.TopStart).padding(12.dp).background(Background).padding(6.dp),color=Lavender,fontSize=12.sp)
         if(calibrating)Text("Tap "+listOf("top left","top right","bottom right","bottom left")[picks.size],Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime,fontSize=16.sp)
         if(identifying)Text("Tap ${if(picks.size<2)"staff A" else "staff B"}, end ${picks.size%2+1}",Modifier.align(Alignment.TopCenter).background(Background).padding(8.dp),color=Lime,fontSize=16.sp)
+        val alignment=ui.frame?.gesture
+        if(alignment!=null && alignment.state!="idle" && !(alignment.state=="holding" && alignment.progress<.15) && !pacerStale && !identifying && !calibrating)
+            Surface(color=Color(0xf2081219),shape=RoundedCornerShape(12.dp),border=BorderStroke(2.dp,Cyan),modifier=Modifier.align(Alignment.TopCenter).padding(8.dp).widthIn(max=560.dp)){
+                Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(5.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        Text(alignment.title,Modifier.weight(1f),color=Cyan,fontSize=20.sp,lineHeight=23.sp,fontWeight=FontWeight.Bold)
+                        if(alignment.active||alignment.state=="holding")OutlinedButton(onClick={engine.command(JSONObject().put("action","gesture").put("operation","cancel"))},contentPadding=PaddingValues(horizontal=10.dp,vertical=2.dp)){Text("Cancel",fontSize=14.sp)}
+                    }
+                    val detail=if(alignment.state=="countdown"){if(ui.config.staffCount==1)"Put the second staff aside. Grip the midpoint; place your hand at the new center. Hold still."else"Uncross. Grip the midpoints; place your hands at the new centers. Hold still."}else alignment.detail
+                    Text(detail,color=Ink,fontSize=15.sp,lineHeight=19.sp)
+                    if(alignment.state in listOf("holding","countdown","settling"))LinearProgressIndicator(progress={alignment.progress.toFloat()},modifier=Modifier.fillMaxWidth().height(5.dp),color=Cyan,trackColor=Color(0xff28332a))
+                }
+            }
         // A steady countdown over the live preview: only the numeral changes, once per second.
         val snapshotStatus=ui.frame?.background
         val saved=backgroundState=="ready" && SystemClock.uptimeMillis()-savedAt<2200

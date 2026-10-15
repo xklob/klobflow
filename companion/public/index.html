@@ -46,6 +46,8 @@
           </div>
           <label class="select-label">Props <select id="staff-count" data-config="staffCount"><option value="2">Two double-ended staves</option><option value="1">One double-ended staff / one hand</option></select></label>
           <div class="fit-block">
+            <label class="toggle"><input id="gesture-enabled" type="checkbox" data-config="gestureEnabled" checked><span>X gesture alignment</span></label>
+            <p class="small-note">Hold <strong>two staves in an X for 5 seconds</strong>, even in one-staff mode. The next 5-second countdown gives you time to uncross, grip the midpoints, place your hands at the new centers, and hold still. Center, size and supported zoom adjust together. Fixed-zoom webcams and viewing-angle calibration keep the current zoom.</p>
             <div class="button-row wrap"><button id="fit-guide" class="subtle" title="Fit the guide's center and size, and widen or narrow supported camera zoom, from two seconds of your visible staves">Auto-fit</button><button id="fit-size" class="subtle" title="Set the guide width or circle diameter to your visible staff length">Match staff length</button><button id="reset-guide" class="subtle" title="Center the guide at default size with no rotation" disabled>Reset guide layout</button></div>
             <p id="fit-status" class="small-note" aria-live="polite">Get into position, then press Auto-fit and spin normally for two seconds with your full staves in view.</p>
             <p id="size-helper" class="small-note"></p>
@@ -128,7 +130,7 @@
             <p id="pacer-help" class="small-note">Match both staff ends to the blue dots. Start when you are ready.</p>
             <details id="pacer-options" hidden><summary>Pace settings</summary>
               <label class="range-label">Speed <output for="pacer-rpm">20 cycles/min</output><input id="pacer-rpm" data-config="pacerRpm" type="range" min="5" max="120" step="1" value="20"></label>
-              <p class="small-note">One cycle is a full turn. This speed is independent of music and BPM.</p>
+              <p id="pacer-speed-help" class="small-note">One cycle is a full turn. With system audio, four beats make one cycle: a quarter-circle or the next Antispin turnaround on each beat.</p>
               <label class="select-label">Direction on screen <select data-config="pacerDirection"><option value="cw">Clockwise</option><option value="ccw">Counterclockwise</option></select></label>
               <label class="range-label">Get-ready countdown <output for="pacer-countdown">3 s</output><input id="pacer-countdown" data-config="pacerCountdown" type="range" min="0" max="10" step="1" value="3"></label>
               <label class="range-label">Dot size <output for="pacer-dot-size">16</output><input id="pacer-dot-size" data-config="pacerDotSize" type="range" min="8" max="28" step="1" value="16"></label>
@@ -238,7 +240,7 @@
           <div id="practice-view">
             <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="focus-details" class="subtle" aria-expanded="false" aria-controls="tracking-detail coaching-detail beat-hits">Details</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
             <section id="pacer-bar" class="pacer-bar" aria-label="Follow moving dots" hidden>
-              <div class="pacer-reading"><strong id="pacer-title" role="status">READY TO FOLLOW</strong><span id="pacer-stats">Press Start dots when you are ready.</span><small id="pacer-note">Speed is independent of the beat.</small></div>
+              <div class="pacer-reading"><strong id="pacer-title" role="status">READY TO FOLLOW</strong><span id="pacer-stats">Press Start dots when you are ready.</span><small id="pacer-note">Choose a pace or follow system audio.</small></div>
               <div class="pacer-actions"><button id="pacer-start" class="primary">Start dots</button><button id="pacer-pause" class="primary" aria-label="Pause dots" hidden>Pause</button><button id="pacer-resume" class="primary" aria-label="Resume dots" hidden>Resume</button><button id="pacer-restart" class="subtle" hidden>Restart</button><button id="pacer-stop" class="subtle" aria-label="Stop dots" hidden>Stop</button></div>
             </section>
             <div class="status-row">
@@ -256,6 +258,11 @@
               </section>
             </div>
             <div id="stage">
+            <section id="gesture-overlay" class="gesture-overlay" role="status" aria-live="polite" hidden>
+              <div class="gesture-heading"><strong id="gesture-title"></strong><button id="gesture-cancel" class="subtle">Cancel</button></div>
+              <p id="gesture-detail"></p><p id="gesture-compact"></p>
+              <div id="gesture-progress" class="gesture-progress" role="progressbar" aria-label="Gesture alignment progress" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+            </section>
               <section id="streak-hud" class="streak-hud" aria-label="Alignment streak" hidden><div class="fade-stack"><div class="fade-live"><strong id="streak-title"></strong></div></div><div class="streak-meter" role="progressbar" aria-label="Seconds toward full streak power" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><span id="streak-power"></span></div><small id="streak-detail"></small></section>
               <video id="local-video" autoplay muted playsinline hidden></video>
               <canvas

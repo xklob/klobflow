@@ -6529,6 +6529,7 @@
       "cy": 0.5,
       "staffColors": [],
       "diagonals": true,
+      "gestureEnabled": true,
       "tempoEnabled": true,
       "ratio": "1:1"
     },
@@ -13121,6 +13122,7 @@
       "cy": 0.5,
       "staffColors": [],
       "diagonals": true,
+      "gestureEnabled": true,
       "tempoEnabled": true,
       "ratio": "1:1"
     },
@@ -19696,6 +19698,7 @@
       "cy": 0.5,
       "staffColors": [],
       "diagonals": true,
+      "gestureEnabled": true,
       "tempoEnabled": true,
       "ratio": "1:1"
     },
@@ -26288,6 +26291,7 @@
       "cy": 0.5,
       "staffColors": [],
       "diagonals": true,
+      "gestureEnabled": true,
       "tempoEnabled": true,
       "ratio": "1:1"
     },
