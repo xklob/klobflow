@@ -192,7 +192,8 @@ let viewBox={width:0,height:0},hudBox=null;
 // Canvas labels avoid the streak box drawn over the stage (measured after layout, not every frame).
 function measureHud(){const e=$('streak-hud');hudBox=e.hidden||e.parentElement!==$('stage')?null:{x:e.offsetLeft-canvas.offsetLeft,y:e.offsetTop-canvas.offsetTop,w:e.offsetWidth,h:e.offsetHeight};}
 new ResizeObserver(([entry])=>{viewBox=entry.contentRect;measureHud();if(current)render(current,lastImage);}).observe(canvas);
-new ResizeObserver(measureHud).observe($('streak-hud'));
+// MAX POWER may wrap the HUD: reposition canvas labels even on a paused replay.
+new ResizeObserver(()=>{measureHud();if(current)render(current,lastImage);}).observe($('streak-hud'));
 new ResizeObserver(([entry])=>{chartBox=entry.contentRect;rootPx=parseFloat(getComputedStyle(document.documentElement).fontSize)||20;drawChart();}).observe(chart);
 const setText=(id,text)=>{const e=$(id);if(e.textContent!==text)e.textContent=text;};
 // Keep the whole preview on screen: the stage gets the height left below the toolbar and status boxes.
@@ -750,6 +751,53 @@ function render(frame, image) {
     ctx.lineTo(b[0] * u, b[1] * u);
     ctx.stroke();
   };
+  // Localized energy stays beneath guides and measured-tip cues. All dimensions and
+  // opacity grow continuously; the fixed accent count avoids particle pop-in.
+  const power=c.streakEffects!==false?Math.max(0,Math.min(1,frame.streak?.energy||0)):0;
+  if(power>0){
+    const scale=Math.max(.6,Math.min(1.5,u/480)),heat=power*power;
+    const phase=reducedMotion.matches?-Math.PI/2:frame.time/3600;
+    ctx.save();ctx.lineCap='round';
+    frame.staffs.forEach(s=>{
+      if(!s||s.blurred||s.occluded||s.confidence<.55)return;
+      // A narrow luminous wake connects observed endpoints without washing the video.
+      line(s.a,s.b,`rgba(255,179,43,${.12*heat})`,(12+20*power)*scale);
+      line(s.a,s.b,`rgba(255,222,113,${.28*heat})`,(5+11*power)*scale);
+      line(s.a,s.b,`rgba(255,251,232,${.55*heat})`,(2+3*power)*scale);
+      for(const tip of [s.a,s.b]){
+        const x=tip[0]*u,y=tip[1]*u,halo=(16+64*power)*scale,rim=(12+30*power)*scale;
+        const aura=ctx.createRadialGradient(x,y,0,x,y,halo);
+        aura.addColorStop(0,`rgba(255,255,246,${.95*power})`);
+        aura.addColorStop(.16,`rgba(255,246,191,${.82*power})`);
+        aura.addColorStop(.35,`rgba(255,211,89,${.55*power})`);
+        aura.addColorStop(.65,`rgba(255,169,43,${.2*power})`);
+        aura.addColorStop(1,'rgba(255,169,43,0)');
+        ctx.fillStyle=aura;ctx.beginPath();ctx.arc(x,y,halo,0,Math.PI*2);ctx.fill();
+        // Six tapered rays turn slowly as one shape, with no flicker or random jitter.
+        for(let n=0;n<6;n++){
+          const a=phase+n*Math.PI/3,reach=halo*(.76+.1*(n%3));
+          const start=rim*.7,half=(1+3*power)*scale;
+          ctx.fillStyle=`rgba(255,240,174,${.65*heat})`;ctx.beginPath();
+          ctx.moveTo(x+Math.cos(a)*reach,y+Math.sin(a)*reach);
+          ctx.lineTo(x+Math.cos(a)*start-Math.sin(a)*half,y+Math.sin(a)*start+Math.cos(a)*half);
+          ctx.lineTo(x+Math.cos(a)*start+Math.sin(a)*half,y+Math.sin(a)*start-Math.cos(a)*half);ctx.closePath();ctx.fill();
+        }
+        ctx.strokeStyle=`rgba(255,215,112,${.28*power})`;ctx.lineWidth=(3+5*power)*scale;
+        ctx.beginPath();ctx.arc(x,y,rim,0,Math.PI*2);ctx.stroke();
+        ctx.strokeStyle=`rgba(255,252,226,${.9*power})`;ctx.lineWidth=(1+1.8*power)*scale;
+        ctx.beginPath();ctx.arc(x,y,rim,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0,Math.min(1,frame.streak.progress)));ctx.stroke();
+        const core=ctx.createRadialGradient(x,y,0,x,y,(5+11*power)*scale);
+        core.addColorStop(0,`rgba(255,255,255,${power})`);core.addColorStop(.35,`rgba(255,253,222,${.9*power})`);core.addColorStop(1,'rgba(255,230,150,0)');
+        ctx.fillStyle=core;ctx.beginPath();ctx.arc(x,y,(5+11*power)*scale,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=`rgba(255,253,230,${.95*heat})`;
+        for(let n=0;n<4;n++){
+          const a=-phase+n*Math.PI/2,r=rim+(7+8*power)*scale;
+          ctx.beginPath();ctx.arc(x+Math.cos(a)*r,y+Math.sin(a)*r,(1+2.2*power)*scale,0,Math.PI*2);ctx.fill();
+        }
+      }
+    });
+    ctx.restore();
+  }
   if (c.showGuide) {
     ctx.beginPath();
     for (const s of g.lines) { ctx.moveTo(s.a[0] * u, s.a[1] * u); ctx.lineTo(s.b[0] * u, s.b[1] * u); }
@@ -813,18 +861,6 @@ function render(frame, image) {
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
     for (const p of [s.a, s.b]) {
-      const power=c.streakEffects!==false?(frame.streak?.energy||0):0;
-      if(power>.025&&!s.blurred&&!s.occluded&&s.confidence>=.55){
-        ctx.save();const unit=Math.max(.6,Math.min(1.5,u/480)),radius=(13+18*power)*unit,x=p[0]*u,y=p[1]*u;
-        ctx.globalAlpha=.12*power;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,radius*1.5,0,Math.PI*2);ctx.fill();
-        ctx.globalAlpha=.35+.55*power;ctx.strokeStyle=color;ctx.shadowColor=color;ctx.shadowBlur=18*power*unit;ctx.lineWidth=(1+2*power)*unit;
-        ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.stroke();
-        const phase=reducedMotion.matches?-Math.PI/2:frame.time/1800;
-        ctx.strokeStyle=frame.streak.level===4?'#ffe48a':'#6dd8ff';ctx.beginPath();ctx.arc(x,y,radius+5*unit,phase,phase+Math.PI*2*frame.streak.progress);ctx.stroke();
-        const particles=Math.floor(power*8);ctx.shadowBlur=0;ctx.fillStyle=color;
-        for(let k=0;k<particles;k++){const a=phase+k*Math.PI*2/particles;ctx.beginPath();ctx.arc(x+Math.cos(a)*(radius+9*unit),y+Math.sin(a)*(radius+9*unit),(1.2+power)*unit,0,Math.PI*2);ctx.fill();}
-        ctx.restore();
-      }
       // Estimated end: identity color over a dark outline so it survives bright LEDs.
       ring(p[0]*u,p[1]*u,6*k,color,1.8*k);
     }
@@ -999,8 +1035,9 @@ function acceptFrame(f, image = null) {
     streakBox.show({key:flow.state,state:flow.state,render(){$('streak-title').textContent=streakText(flow);$('streak-title').style.color=flow.state==='recovering'?'var(--slate)':'';hud.dataset.state=flow.state;}},{immediate:!!replay});
     if(streakBox.shown?.state===flow.state)$('streak-title').textContent=streakText(flow);
   }
-  $('streak-power').style.width=`${flow.progress*100}%`;$('streak-power').parentElement.setAttribute('aria-valuenow',Math.min(10,flow.seconds).toFixed(1));
-  $('streak-detail').textContent=flow.state==='free'?'Choose a guide to earn alignment streaks.':`Best ${flow.bestSeconds.toFixed(1)}s · more glow at 2 / 5 / 10s`;
+  $('streak-power').style.width=`${flow.progress*100}%`;$('streak-power').parentElement.setAttribute('aria-valuenow',Math.min(30,flow.seconds).toFixed(1));
+  $('streak-power').parentElement.setAttribute('aria-valuetext',`${Math.round(flow.progress*100)}% power · ${Math.min(30,flow.seconds).toFixed(1)} of 30 seconds`);
+  $('streak-detail').textContent=flow.state==='free'?'Choose a guide to earn alignment streaks.':`Best ${flow.bestSeconds.toFixed(1)}s · full power at 30s`;
   displayedFeedback=alignmentFeedback.update(f);
   current = f;
   if (lastImage && lastImage !== image) lastImage.close?.();

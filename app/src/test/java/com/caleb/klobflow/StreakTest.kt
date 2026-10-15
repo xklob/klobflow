@@ -17,9 +17,11 @@ class StreakTest {
     @Test fun sustainedAlignmentUsesElapsedTimeAtThirtyAndSixtyFps(){
         for(fps in listOf(30,60)){
             val coach=FlowStreak();val g=guide();var f=StreakFrame()
-            for(i in 0..fps*10){f=coach.update((i*1000.0/fps).roundToLong(),listOf(staff(g),null),g)
-                if(i==fps*2)assertEquals(2,f.level);if(i==fps*5)assertEquals(3,f.level)}
-            assertEquals(10.0,f.seconds,1e-9);assertEquals(4,f.level);assertEquals(1.0,f.progress,1e-9);assertTrue(f.energy>.95)
+            for(i in 0..fps*35){val time=(i*1000.0/fps).roundToLong();f=coach.update(time,listOf(staff(g),null),g)
+                val expected=(time/30000.0).coerceAtMost(1.0)
+                assertEquals(expected,f.progress,1e-9);assertEquals(expected,f.energy,1e-9)
+                assertEquals(time>=30000,f.label.contains("MAX POWER"));assertFalse(f.label.contains("LEVEL"))}
+            assertEquals(35.0,f.seconds,1e-9);assertEquals(35.0,f.bestSeconds,1e-9);assertEquals(1.0,f.progress,0.0);assertEquals(1.0,f.energy,0.0)
         }
     }
     @Test fun blurPausesWithoutAwardingHiddenTimeAndExpires(){
@@ -126,7 +128,10 @@ class StreakTest {
             val currentGuide=if(t>=12300)guide(config.copy(streakEffects=false))else g
             steps.put(JSONObject().put("time",t).put("config",currentGuide.config.json()).put("staffs",JSONArray(staves.map {it?.json()?:JSONObject.NULL})).put("output",coach.update(t,staves,currentGuide).json()))
         }
-        val fixture=JSONObject().put("steps",steps);val file=File("../companion/test/fixtures/native-streak.json")
+        val rampCoach=FlowStreak();val ramp=JSONArray()
+        for(t in 0L..35000L step 100){val frame=rampCoach.update(t,listOf(s,null),g)
+            if(t in listOf(0L,1000L,1900L,2000L,2100L,4900L,5000L,5100L,9900L,10000L,10100L,15000L,29900L,30000L,30100L,35000L))ramp.put(JSONObject().put("time",t).put("output",frame.json()))}
+        val fixture=JSONObject().put("steps",steps).put("ramp",ramp);val file=File("../companion/test/fixtures/native-streak.json")
         if(System.getenv("KLOBFLOW_UPDATE_FIXTURES")=="1")file.writeText(fixture.toString(2)+"\n")
         assertEquals(BrowserParityTest().canonical(JSONObject(file.readText())),BrowserParityTest().canonical(fixture))
     }

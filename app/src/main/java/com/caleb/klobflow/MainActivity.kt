@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
@@ -226,7 +227,7 @@ class MainActivity:ComponentActivity() {
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
                     Text("The newest tip cycles through the full rainbow every 4.2 seconds. Each segment keeps its color while fading; brighter segments are newer. Subtle highlights mark clear detections.",color=Muted,fontSize=14.sp)
                     Toggle("Streak glow and particles",ui.config.streakEffects){patch("streakEffects",it)}
-                    Text("Keep every tip on the guide. Glow builds at 2, 5 and 10 seconds.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    Text("Keep every tip on the guide. Glow grows smoothly to a brilliant white-gold aura at 30 seconds. Forgiveness holds your earned power.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     Label("STREAK FORGIVENESS")
                     ControlSlider("Tracking grace",ui.config.trackingGraceMs.toFloat(),0f..3000f,steps=29,valueLabel={if(it==0f)"Off"else"${it.roundToInt()} ms"}){patch("trackingGraceMs",it.roundToInt())}
                     ControlSlider("Alignment grace",ui.config.alignmentGraceMs.toFloat(),0f..1000f,steps=19,valueLabel={if(it==0f)"Off"else"${it.roundToInt()} ms"}){patch("alignmentGraceMs",it.roundToInt())}
@@ -352,6 +353,50 @@ class MainActivity:ComponentActivity() {
             val k=1.dp.toPx()
             val outline=Color.Black.copy(alpha=.72f)
             fun ring(center:Offset,radius:Float,color:Color,width:Float){drawCircle(outline,radius,center,style=Stroke(width+3.5f*k));drawCircle(color,radius,center,style=Stroke(width))}
+            // Match the browser aura in camera space. Guides and measured cues draw above it.
+            val power=if(ui.config.streakEffects)f.streak.energy.toFloat().coerceIn(0f,1f)else 0f
+            if(power>0f){
+                val scale=(unit/480).coerceIn(.6f,1.5f);val heat=power*power
+                val phase=if(android.animation.ValueAnimator.areAnimatorsEnabled())(f.time/3600.0).toFloat()else(-PI/2).toFloat()
+                f.staffs.forEach {s->if(s!=null&&!s.blurred&&!s.occluded&&s.confidence>=.55){
+                    drawLine(Color(0xffffb32b).copy(alpha=.12f*heat),p(s.a),p(s.b),(12+20*power)*scale,cap=StrokeCap.Round)
+                    drawLine(Color(0xffffde71).copy(alpha=.28f*heat),p(s.a),p(s.b),(5+11*power)*scale,cap=StrokeCap.Round)
+                    drawLine(Color(0xfffffbe8).copy(alpha=.55f*heat),p(s.a),p(s.b),(2+3*power)*scale,cap=StrokeCap.Round)
+                    listOf(s.a,s.b).forEach {tip->
+                        val pos=p(tip);val halo=(16+64*power)*scale;val rim=(12+30*power)*scale
+                        val aura=Brush.radialGradient(
+                            0f to Color(0xfffffff6).copy(alpha=.95f*power),
+                            .16f to Color(0xfffff6bf).copy(alpha=.82f*power),
+                            .35f to Color(0xffffd359).copy(alpha=.55f*power),
+                            .65f to Color(0xffffa92b).copy(alpha=.2f*power),
+                            1f to Color(0xffffa92b).copy(alpha=0f),center=pos,radius=halo)
+                        drawCircle(aura,halo,pos)
+                        // Fixed counts and smooth rotation avoid particle pop-in and flashing.
+                        repeat(6){n->
+                            val a=phase+n*PI/3;val reach=halo*(.76f+.1f*(n%3));val start=rim*.7f;val half=(1+3*power)*scale
+                            val dx=cos(a).toFloat();val dy=sin(a).toFloat()
+                            val ray=Path().apply {
+                                moveTo(pos.x+dx*reach,pos.y+dy*reach)
+                                lineTo(pos.x+dx*start-dy*half,pos.y+dy*start+dx*half)
+                                lineTo(pos.x+dx*start+dy*half,pos.y+dy*start-dx*half);close()
+                            }
+                            drawPath(ray,Color(0xfffff0ae).copy(alpha=.65f*heat))
+                        }
+                        drawCircle(Color(0xffffd770).copy(alpha=.28f*power),rim,pos,style=Stroke((3+5*power)*scale))
+                        drawArc(Color(0xfffffce2).copy(alpha=.9f*power),-90f,(360*f.streak.progress.coerceIn(0.0,1.0)).toFloat(),false,
+                            Offset(pos.x-rim,pos.y-rim),androidx.compose.ui.geometry.Size(rim*2,rim*2),style=Stroke((1+1.8f*power)*scale,cap=StrokeCap.Round))
+                        val coreRadius=(5+11*power)*scale
+                        val core=Brush.radialGradient(0f to Color.White.copy(alpha=power),.35f to Color(0xfffffdde).copy(alpha=.9f*power),
+                            1f to Color(0xffffe696).copy(alpha=0f),center=pos,radius=coreRadius)
+                        drawCircle(core,coreRadius,pos)
+                        repeat(4){n->
+                            val a=-phase+n*PI/2;val r=rim+(7+8*power)*scale
+                            drawCircle(Color(0xfffffde6).copy(alpha=.95f*heat),(1+2.2f*power)*scale,
+                                Offset(pos.x+cos(a).toFloat()*r,pos.y+sin(a).toFloat()*r))
+                        }
+                    }
+                }}
+            }
             if(ui.config.showGuide){
                 // A dark casing keeps the white dashed guide readable over bright LEDs and daylight.
                 val guidePath=Path().apply {
@@ -362,7 +407,6 @@ class MainActivity:ComponentActivity() {
                 drawPath(guidePath,Color(0xfff4f8ee).copy(alpha=.72f),style=Stroke(1.6f*k,pathEffect=PathEffect.dashPathEffect(floatArrayOf(7f*k,6f*k))))
                 if(ui.config.mode in listOf("grid","cube"))g.displayVertices.forEach {drawCircle(Color.Black.copy(alpha=.7f),4.5f*k,p(it));drawCircle(Color(0xffeef5e6),2.8f*k,p(it))}
             }
-            val power=if(ui.config.streakEffects)f.streak.energy.toFloat()else 0f
             if(ui.config.trails){
                 val width=4f*(unit/480).coerceIn(.5f,2f)*(1+power*.35f)
                 fun visible(s:Segment?)=s!=null&&!s.occluded&&(s.confidence>=.55||s.blurred)
@@ -383,16 +427,6 @@ class MainActivity:ComponentActivity() {
                     }
                 }}}
             }
-            if(power>.025f)f.staffs.forEachIndexed {i,s->if(s!=null&&!s.blurred&&!s.occluded&&s.confidence>=.55)listOf(s.a,s.b).forEach {tip->
-                val pos=p(tip);val color=if(i==0)Lime else Lavender;val scale=(unit/480).coerceIn(.6f,1.5f);val radius=(13+18*power)*scale
-                drawCircle(color.copy(alpha=.12f*power),radius*1.5f,pos)
-                drawCircle(color.copy(alpha=.35f+.55f*power),radius,pos,style=Stroke((1+2*power)*scale))
-                val phase=if(android.animation.ValueAnimator.areAnimatorsEnabled())(f.time/1800.0).toFloat()else(-PI/2).toFloat()
-                val outer=radius+5*scale
-                drawArc(if(f.streak.level==4)Color(0xffffe48a)else Color(0xff6dd8ff),Math.toDegrees(phase.toDouble()).toFloat(),(360*f.streak.progress).toFloat(),false,Offset(pos.x-outer,pos.y-outer),androidx.compose.ui.geometry.Size(outer*2,outer*2),style=Stroke((1+2*power)*scale))
-                val particles=(power*8).toInt()
-                repeat(particles){n->val a=phase+n*2*PI/particles;drawCircle(color,(1.2f+power)*scale,Offset(pos.x+cos(a).toFloat()*(radius+9*scale),pos.y+sin(a).toFloat()*(radius+9*scale)))}
-            }}
             f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.occluded).35f else if(s.blurred).75f else if(s.confidence>=0.55)1f else .35f);drawLine(col,p(s.a),p(s.b),4f,pathEffect=if(s.blurred&&!s.occluded)PathEffect.dashPathEffect(floatArrayOf(8f,5f))else null);ring(p(s.a),6f*k,col,1.8f*k);ring(p(s.b),6f*k,col,1.8f*k)}}
             // Labels sit on dark plates and never overlap each other or the rings they explain.
             val placed=mutableListOf<Rect>()
@@ -505,9 +539,9 @@ class MainActivity:ComponentActivity() {
         val shownState=streakText.update(SystemClock.uptimeMillis(),flow.state){a,b->a=="building" && b!="building" || (a=="held" || a=="recovering") && (b=="paused" || b=="ready") || b=="off" || b=="free"}
         Surface(color=Color(0xee0b140f),shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth().padding(top=6.dp)){
             Column(Modifier.padding(10.dp)){
-                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused"||shownState=="held"||shownState=="recovering")Slate else Lime,fontSize=14.sp,fontWeight=FontWeight.Bold)
-                LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Lime,trackColor=Color(0xff28332a))
-                if(!focus)Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · levels at 2 / 5 / 10s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
+                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused"||shownState=="held"||shownState=="recovering")Slate else Color(0xfffff1bf),fontSize=14.sp,fontWeight=FontWeight.Bold)
+                LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Color(0xffffe28d),trackColor=Color(0xff28332a))
+                if(!focus)Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · full power at 30s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
             }
         }
     }

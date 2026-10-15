@@ -26,10 +26,12 @@ export class FlowStreak {
   }
   this.best=Math.max(this.best,this.ms);
   // Forgiveness keeps earned effects, never hidden or off-target time.
-  const target=state==='held'||state==='recovering'?this.energy:state==='building'?Math.min(1,this.ms/10000):0;
-  this.energy+=(target-this.energy)*(1-Math.exp(-dt/350));
-  const level=this.ms>=10000?4:this.ms>=5000?3:this.ms>=2000?2:1;
-  return {state,seconds:this.ms/1000,bestSeconds:this.best/1000,level,energy:this.energy,progress:Math.min(1,this.ms/10000)};
+  const progress=Math.min(1,this.ms/30000);
+  if(state==='building')this.energy=progress;
+  else if(state!=='held'&&state!=='recovering')this.energy*=Math.exp(-dt/350);
+  // Legacy wire field only; current renderers and labels use continuous power.
+  const level=1+Math.floor(progress*3);
+  return {state,seconds:this.ms/1000,bestSeconds:this.best/1000,level,energy:this.energy,progress};
  }
 }
 export function streakText(flow){
@@ -39,5 +41,5 @@ export function streakText(flow){
  if(flow.state==='recovering')return 'STREAK HELD · return to the guide';
  if(flow.state==='paused')return 'STREAK PAUSED · waiting for clear tips';
  if(flow.state==='ready')return 'BUILD YOUR STREAK · keep every tip on the guide';
- return `FLOW STREAK · ${flow.seconds.toFixed(1)}s · LEVEL ${flow.level}`;
+ return `FLOW STREAK · ${flow.seconds.toFixed(1)}s · ${flow.progress>=1?'MAX POWER':`GLOW ${Math.floor(flow.progress*100)}%`}`;
 }

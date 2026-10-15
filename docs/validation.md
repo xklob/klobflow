@@ -1,3 +1,12 @@
+# v0.10.0 validation
+
+Validated locally on 2026-10-14. This update changes streak progression and rendering only; the detector, precision scorer, timing, and forgiveness rules are unchanged.
+
+- 102 regular JVM tests and 87 Node tests pass. The optional private-video diagnostic remains skipped by the regular suite. Thirty- and sixty-fps sequences check every frame of the continuous ramp, exact maximum at 30 seconds, and continued elapsed/best time beyond maximum. Native/browser fixtures agree before, at, and after the former 2/5/10-second thresholds, at 30 seconds, and through interruption/reset cases. Android lint and debug builds pass.
+- All 33 browser flows pass, including a real-time 30-second demo streak, maximum-power HUD, reset, effects off, free flow, and reduced motion. Rendered checks sample the same pose at 0/25/50/75/100% power: brightness increases throughout, with substantially more bright area at maximum. Reduced-motion renders of the same pose are pixel-identical at different timestamps. Hidden/unclear tips and effects-off do not receive the aura. Desktop and mobile screenshots keep guides and correction labels readable. Rendering uses two bounded radial gradients, six rays, and four sparks per clear endpoint without a fullscreen blur.
+- The disposable Android emulator single-staff practice flow passes through generated LED images, native detection, fitting, timing, and a 30-second maximum-power streak. It verifies continued preview operation, fullscreen/rotation, and effect disablement. README screenshots use generated practice only. No physical phone or private recording was modified. The prior video-replay evidence below remains applicable to the unchanged detector; extra-effect latency on a physical phone remains unmeasured.
+- Release checks verify the signed APK, unchanged package/certificate, versionCode 13, alignment, companion archive contents, checksums, matching source/tag, and GitHub CI. Klobstore follows the existing repository release entry. The normal localhost companion is updated with this release.
+
 # v0.9.0 validation
 
 Validated locally on 2026-10-14, including the endpoint-quality, streak-forgiveness, and audio-feedback follow-ups. Pull request #1 was merged before preparing v0.9.0. The release increases Android versionCode to 12 and retains the existing package and signing identity. Release checks cover signed APK verification and alignment, companion archive contents, checksums, and matching GitHub source.

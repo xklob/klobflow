@@ -1120,7 +1120,7 @@ input[type="number"] {
   bottom: 0.6rem;
   width: min(18rem, 62%);
   padding: 0.5rem 0.65rem;
-  border: 1px solid #466849;
+  border: 1px solid #76623b;
   border-radius: 0.5rem;
   background: #0b140fea;
   pointer-events: none;
@@ -1128,7 +1128,7 @@ input[type="number"] {
   line-height: 1.35;
 }
 .streak-hud strong {
-  color: #b6f36b;
+  color: #fff1bf;
   display: block;
   letter-spacing: 0.04em;
   font-size: 0.8rem;
@@ -1157,7 +1157,7 @@ input[type="number"] {
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #b6f36b, #6dd8ff, #ffe48a);
+  background: linear-gradient(90deg, #e6ad51, #ffe28d, #fffcea);
   transition: width 0.15s linear;
 }
 @media (prefers-reduced-motion: reduce) {

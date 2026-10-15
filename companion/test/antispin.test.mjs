@@ -46,7 +46,7 @@ test('antispin size fit uses full staff length; feedback averages axes and strea
  const summary=coach.update(frame(1100,pose(g,.5))).summary;assert.match(summary.detail,/Horizontal tip: 4.0%/);assert.match(summary.detail,/Vertical tip: 8.0%/);
  assert.equal(coach.update(frame(7000,null)).summary,null);
  for(let t=0;t<=2500;t+=20)streak.update(frame(t,pose(g,t/1000)));
- assert.equal(streak.update(frame(2520,pose(g,2.52))).level,2);
+ close(streak.update(frame(2520,pose(g,2.52))).progress,2.52/30);
  const held=streak.update(frame(2540,off));assert.equal(held.state,'recovering');assert.equal(held.seconds,2.52);
  assert.equal(streak.update(frame(2760,off)).seconds,0);
 });

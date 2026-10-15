@@ -182,7 +182,7 @@
           >
           <p class="small-note">The newest trail color cycles through a full rainbow every 4.2 seconds. Each mark keeps its color as it fades; fainter means older.</p>
           <label class="toggle"><input type="checkbox" data-config="streakEffects" checked><span>Streak glow &amp; particles</span></label>
-          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds.</p>
+          <p class="small-note">Keep every tip on the guide. Glow grows smoothly to a brilliant white-gold aura at 30 seconds. Forgiveness holds your earned power.</p>
           <p class="small-note"><strong>Streak forgiveness</strong></p>
           <label class="range-label">Tracking grace <output for="tracking-grace">1500 ms</output><input id="tracking-grace" data-config="trackingGraceMs" type="range" min="0" max="3000" step="100" value="1500" aria-describedby="streak-forgiveness-help"></label>
           <label class="range-label">Alignment grace <output for="alignment-grace">200 ms</output><input id="alignment-grace" data-config="alignmentGraceMs" type="range" min="0" max="1000" step="50" value="200" aria-describedby="streak-forgiveness-help"></label>
@@ -235,7 +235,7 @@
               </section>
             </div>
             <div id="stage">
-              <section id="streak-hud" class="streak-hud" aria-label="Alignment streak" hidden><div class="fade-stack"><div class="fade-live"><strong id="streak-title"></strong></div></div><div class="streak-meter" role="progressbar" aria-label="Streak power" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><span id="streak-power"></span></div><small id="streak-detail"></small></section>
+              <section id="streak-hud" class="streak-hud" aria-label="Alignment streak" hidden><div class="fade-stack"><div class="fade-live"><strong id="streak-title"></strong></div></div><div class="streak-meter" role="progressbar" aria-label="Seconds toward full streak power" aria-valuemin="0" aria-valuemax="30" aria-valuenow="0"><span id="streak-power"></span></div><small id="streak-detail"></small></section>
               <video id="local-video" autoplay muted playsinline hidden></video>
               <canvas
                 id="view"

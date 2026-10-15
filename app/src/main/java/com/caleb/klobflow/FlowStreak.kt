@@ -12,7 +12,7 @@ data class StreakFrame(val state:String="ready",val seconds:Double=0.0,val bestS
         "paused"->"STREAK PAUSED · waiting for clear tips"
         "off"->"STREAK EFFECTS OFF"
         "ready"->"BUILD YOUR STREAK · keep every tip on the guide"
-        else->"FLOW STREAK · %.1fs · LEVEL %d".format(seconds,level)
+        else->"FLOW STREAK · %.1fs · ".format(seconds)+if(progress>=1.0)"MAX POWER"else"GLOW ${floor(progress*100).toInt()}%"
     }
 }
 /** Cosmetic rewards never alter precision scores or award time across missing frames. */
@@ -46,8 +46,10 @@ class FlowStreak {
             }
         }
         // Forgiveness freezes earned glow and time; it cannot make an uncertain tip precise.
-        best=max(best,ms);val target=if(state=="held"||state=="recovering")energy else if(state=="building")min(1.0,ms/10000.0)else 0.0
-        energy+=(target-energy)*(1-exp(-dt/350.0))
-        return StreakFrame(state,ms/1000.0,best/1000.0,if(ms>=10000)4 else if(ms>=5000)3 else if(ms>=2000)2 else 1,energy,min(1.0,ms/10000.0))
+        best=max(best,ms);val progress=min(1.0,ms/30000.0)
+        energy=when(state){"building"->progress;"held","recovering"->energy;else->energy*exp(-dt/350.0)}
+        // Keep the legacy wire field for older companions; all current effects use continuous power.
+        val legacyLevel=1+(progress*3).toInt()
+        return StreakFrame(state,ms/1000.0,best/1000.0,legacyLevel,energy,progress)
     }
 }

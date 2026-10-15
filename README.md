@@ -8,13 +8,13 @@ A practice tool for double staves: use the native Android app with its local PC 
 
 Generated LED demo through the native tracker and companion demo. These illustrate the interface, not real-practice accuracy.
 
-<img src="docs/screenshots/android-practice.png" alt="Android full-screen practice with beat timing and a level-four alignment streak" width="340">
+<img src="docs/screenshots/android-practice.png" alt="Android full-screen practice with beat timing and maximum streak glow" width="340">
 
 ![Desktop practice view with alignment guidance, zoom, and camera controls](docs/screenshots/web-practice.png)
 
 ![Full-screen practice keeps large alignment and timing feedback, recording, and an exit button visible](docs/screenshots/web-fullscreen.png)
 
-![Sustained circle alignment earns a level-four streak with brighter tip rings and particles](docs/screenshots/web-streak.png)
+![Thirty seconds of sustained circle alignment earns maximum streak glow](docs/screenshots/web-streak.png)
 
 ![Browser-only practice with a generated LED camera input and local recording](docs/screenshots/browser-camera.png)
 
@@ -142,7 +142,7 @@ Timing uses interpolated crossings in the measured practice plane. It does not i
 
 Keep **every tip** of the selected one or two staves within the guide tolerance to build a flow streak. Circles reward staying on the circumference, Grid rewards staying on its lines, Cube rewards holding its projected vertices, and Antispin rewards keeping one tip on each assigned axis. The timer, power bar, and best streak show the result in both Android and browser practice.
 
-Tip halos and trails grow with sustained alignment. Levels increase after **2, 5, and 10 seconds**, adding orbiting particles and finally gold rings. Correction arrows and checked white tip rings remain visible above the effects. **Streak glow and particles** turns the extra effects off; the browser uses the label **Streak glow & particles**. Free flow keeps ordinary decorative trails without awarding alignment credit. Reduced-motion preferences stop the particles' orbit.
+Tip halos and trails grow continuously with sustained alignment, reaching **MAX POWER at 30 earned seconds**. The meter shows glow percentage instead of discrete levels. At full power, bright white-gold rings, a broad luminous aura, smooth rays, and orbiting sparks surround each clear tip. Correction arrows and checked white tip rings remain visible above the effects. **Streak glow and particles** turns the extra effects off; the browser uses the label **Streak glow & particles**. Free flow keeps ordinary decorative trails without awarding alignment credit. Reduced-motion preferences stop the rays and sparks from rotating.
 
 **Streak forgiveness** has two controls on Android and in the browser. **Tracking grace** holds earned progress during missing or blurred tips for **0–3 seconds**, default **1.5 seconds**. **Alignment grace** allows a brief off-target blip for **0–1 second**, default **200 ms**. Set either to **Off** for an immediate reset of that kind. These settings complement the spatial Target tolerance.
 

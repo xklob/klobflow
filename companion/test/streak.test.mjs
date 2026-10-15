@@ -2,18 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Guide,defaults,Scorer,patchConfig} from '../public/core.mjs';
-import {FlowStreak} from '../public/streak.mjs';
+import {FlowStreak,streakText} from '../public/streak.mjs';
 const config={...defaults,staffCount:1,mode:'circles',scale:.23};
 const guide=(c=config)=>new Guide(c,640,480);
 const staff=(g=guide())=>({a:g.point(-1,0),b:g.point(1,0),confidence:1});
 const update=(coach,time,staffs=[staff(),null],g=guide())=>coach.update({time,config:g.config,staffs,feedback:g.cues(staffs)});
 function build(coach){for(let t=0;t<=1000;t+=20)update(coach,t);}
-test('native and browser streak thresholds, uncertainty and decay agree',()=>{
+test('native and browser continuous streak ramp, uncertainty and decay agree',()=>{
  const fixture=JSON.parse(readFileSync(new URL('./fixtures/native-streak.json',import.meta.url))),coach=new FlowStreak();
  for(const step of fixture.steps){const result=update(coach,step.time,step.staffs,guide(step.config));for(const key of Object.keys(step.output))typeof result[key]==='number'?assert.ok(Math.abs(result[key]-step.output[key])<1e-8,`${key} at ${step.time}`):assert.equal(result[key],step.output[key]);}
+ const rampCoach=new FlowStreak(),checkpoints=new Map(fixture.ramp.map(s=>[s.time,s.output]));
+ for(let t=0;t<=35000;t+=100){const result=update(rampCoach,t),expected=checkpoints.get(t);if(expected)for(const key of Object.keys(expected))typeof result[key]==='number'?assert.ok(Math.abs(result[key]-expected[key])<1e-8,`${key} ramp at ${t}`):assert.equal(result[key],expected[key]);}
 });
-test('30 and 60 fps award identical elapsed alignment and levels',()=>{
- for(const fps of [30,60]){const coach=new FlowStreak();let result;for(let i=0;i<=fps*10;i++){result=update(coach,Math.round(i*1000/fps));if(i===fps*2)assert.equal(result.level,2);if(i===fps*5)assert.equal(result.level,3);}assert.equal(result.seconds,10);assert.equal(result.level,4);assert.equal(result.progress,1);assert.ok(result.energy>.95);}
+test('30 and 60 fps build continuously to full power at 30 seconds and keep counting afterward',()=>{
+ for(const fps of [30,60]){const coach=new FlowStreak();let result;for(let i=0;i<=fps*35;i++){
+   const time=Math.round(i*1000/fps),expected=Math.min(1,time/30000);result=update(coach,time);
+   assert.ok(Math.abs(result.progress-expected)<1e-9);assert.ok(Math.abs(result.energy-expected)<1e-9);
+   assert.equal(streakText(result).includes('MAX POWER'),time>=30000);assert.ok(!streakText(result).includes('LEVEL'));
+  }assert.equal(result.seconds,35);assert.equal(result.bestSeconds,35);assert.equal(result.progress,1);assert.equal(result.energy,1);}
 });
 test('brief uncertainty pauses without credit and sustained uncertainty resets',()=>{
  const coach=new FlowStreak();build(coach);const s=staff();

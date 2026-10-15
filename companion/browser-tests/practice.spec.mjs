@@ -110,7 +110,9 @@ test('alignment streak builds, resets, disables and respects free flow',async({p
  await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
  await page.locator('[data-mode="circles"]').click();await page.locator('#staff-count').selectOption('1');
  await page.locator('[data-config="scale"]').fill('0.23');await page.locator('[data-config="scale"]').dispatchEvent('change');
- await expect(page.locator('#streak-title')).toContainText('LEVEL 4',{timeout:20000});
+ await expect(page.locator('#streak-title')).toContainText('GLOW',{timeout:12000});
+ await expect(page.locator('#streak-power').locator('..')).toHaveAttribute('aria-valuemax','30');
+ await expect(page.locator('#streak-title')).toContainText('MAX POWER',{timeout:40000});
  await expect(page.locator('#streak-power')).toHaveAttribute('style',/100%/);
  await page.setViewportSize({width:1920,height:1080});await page.evaluate(()=>window.scrollTo(0,0));
  await page.screenshot({path:'../review/web-streak.png'});

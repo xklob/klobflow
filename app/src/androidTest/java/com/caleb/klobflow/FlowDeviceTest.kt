@@ -123,7 +123,10 @@ class FlowDeviceTest {
             assertEquals(.22,engine.config.scale,.06)
             scenario.onActivity {engine.command(JSONObject().put("action","syncBeat"))}
             await {engine.ui.value.frame!!.beat.hits.any {it!=null}}
-            await(20000){engine.ui.value.frame!!.streak.level==4}
+            await(45000){engine.ui.value.frame!!.streak.progress==1.0}
+            assertTrue(engine.ui.value.frame!!.streak.seconds>=30)
+            assertEquals(1.0,engine.ui.value.frame!!.streak.energy,0.0)
+            assertTrue(engine.ui.value.frame!!.streak.label.contains("MAX POWER"))
             assertNull("A cancelled camera callback must not report an error in the demo",engine.ui.value.error)
             val device=androidx.test.uiautomator.UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
             val focus=device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.text("Full screen")),5000)
