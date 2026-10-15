@@ -208,11 +208,11 @@ addEventListener('resize',fitStage);document.addEventListener('fullscreenchange'
 const layoutWatch=new ResizeObserver(()=>fitStage());for(const e of [document.querySelector('header'),document.querySelector('.stage-toolbar'),document.querySelector('.quick-actions'),document.querySelector('.status-row'),$('antispin-footer')])layoutWatch.observe(e);
 // LED colors: an empty list means any color, including rainbow patterns.
 const colorNames=colors=>colors.map(c=>c[0].toUpperCase()+c.slice(1)).join(' + ');
-for(const chip of document.querySelectorAll('#staff-colors .chip'))chip.onclick=()=>{
-  const color=chip.dataset.color,selected=new Set(config.staffColors||[]);
+for(const chip of document.querySelectorAll('#staff-colors .chip'))chip.onclick=()=>patch(current=>{
+  const color=chip.dataset.color,selected=new Set(current.staffColors||[]);
   if(!color)selected.clear();else if(selected.has(color))selected.delete(color);else selected.add(color);
-  patch({staffColors:staffColorNames.filter(n=>selected.has(n))});
-};
+  return {staffColors:staffColorNames.filter(n=>selected.has(n))};
+});
 function detectionSummary(c,state='off'){
   const colors=c.staffColors||[],led=c.led===false?'LED detection off (edge mode)':colors.length?`Detecting ${colorNames(colors)} LEDs only`:'Detecting LEDs of any color';
   return `${led} · ${state==='ready'?'background snapshot on':state==='countdown'||state==='capturing'?'capturing background':'no background snapshot'}`;
@@ -517,15 +517,17 @@ function patch(update) {
   const throughEdit = controlEditRevision;
   if(update.bpm!==undefined){systemAudio.stop();update={...update,tempoSource:"manual"};}
   configChain = configChain.then(async () => {
+    // Resolve queued toggles after the previous response updated config.
+    const changes=typeof update==='function'?update(config):update;
     if (demo) {
-      try { syncConfig(patchConfig(config,update), {force:true,throughEdit}); trail = []; message(""); }
+      try { syncConfig(patchConfig(config,changes), {force:true,throughEdit}); trail = []; message(""); }
       catch (e) { message(e.message); syncConfig(config, {force:true,throughEdit}); }
       return;
     }
     try {
       const result = await api("/api/control", {
         action: "config",
-        config: update,
+        config: changes,
       });
       syncConfig(result.config, {force:true,throughEdit});
       trail = [];

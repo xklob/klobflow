@@ -68,7 +68,8 @@ test('color selection and background capture stay usable while the camera runs',
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');await expect(page.locator('#background-capture')).toBeDisabled();
  await page.locator('#local-open').click();await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
- await page.locator('[data-color="red"]').click();await page.locator('[data-color="blue"]').click();
+ // Both events must arrive before the first asynchronous config response.
+ await page.evaluate(()=>{document.querySelector('[data-color="red"]').click();document.querySelector('[data-color="blue"]').click();});
  for(const color of ['red','blue'])await expect(page.locator(`[data-color="${color}"]`)).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('#color-summary')).toContainText(/red.*blue/i);
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')).staffColors)).toEqual(['red','blue']);

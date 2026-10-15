@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Klobflow · Motion lab</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<header>
+  <a class="brand" href="/">klob<span>flow</span><small>MOTION LAB</small></a>
+  <p class="tagline">See the movement. Find your flow.</p>
+  <span id="modelStatus" class="badge" data-state="loading"><i aria-hidden="true"></i><span id="modelText">Loading local vision…</span></span>
+</header>
+<main>
+  <section class="sources" aria-label="Video source">
+    <div class="camera-pick">
+      <button id="camera" class="primary" type="button">Use PC camera</button>
+      <select id="cameraChoice" aria-label="Which PC camera"><option value="">Default camera</option></select>
+    </div>
+    <button id="usb" type="button">Phone · USB</button>
+    <button id="lan" type="button" aria-expanded="false" aria-controls="phoneForm">Phone · Wi-Fi</button>
+    <button id="openFile" type="button">Open a video</button>
+    <input id="file" type="file" accept="video/*" hidden>
+    <button id="stop" class="quiet" type="button" disabled>Stop</button>
+  </section>
+  <form id="phoneForm" class="phone-form" hidden>
+    <label for="address">Phone address</label>
+    <input id="address" placeholder="192.168.1.20:8787" autocomplete="off" inputmode="decimal" spellcheck="false">
+    <button class="primary" type="submit">Connect</button>
+    <button id="closePhone" type="button" class="quiet">Close</button>
+    <p>Turn on camera sharing in the Klobflow Android app. Both devices must be on the same network.</p>
+  </form>
+
+  <section id="workspace" class="workspace" aria-label="Motion view">
+    <div class="message-row">
+      <p id="message" class="message" role="status" aria-live="polite">Choose a camera, your phone, or a recording. Video stays on this PC.</p>
+      <p id="instruction" class="instruction" role="status" aria-live="polite" hidden><strong id="instructionTitle"></strong><span id="instructionDetail"></span></p>
+    </div>
+    <div class="stage-column">
+      <div class="stage" id="stage">
+        <canvas id="view" width="1280" height="720" tabindex="-1" aria-label="Motion view. No source yet."></canvas>
+        <div id="empty" class="empty"><span class="orbit" aria-hidden="true"></span><h1>Your movement, as it is.</h1><p>One staff. Two ends. A center.<br>No targets to chase.</p></div>
+        <div class="stage-top"><span id="viewLabel" class="pill">No source</span><button id="fullscreen" class="glass" type="button" aria-keyshortcuts="F">Full screen</button></div>
+        <figure id="livePreview" class="live-preview" hidden><canvas id="live" width="320" height="180" aria-hidden="true"></canvas><figcaption>LIVE</figcaption></figure>
+      </div>
+      <div class="view-bar">
+        <div class="toggles" role="group" aria-label="View">
+          <label class="toggle"><input id="mirror" type="checkbox" checked aria-keyshortcuts="M"> Mirror view <kbd>M</kbd></label>
+          <label class="toggle"><input id="trails" type="checkbox" checked aria-keyshortcuts="P"> Recent paths <kbd>P</kbd></label>
+          <label class="toggle"><input id="smooth" type="checkbox" aria-keyshortcuts="V"> Smooth live view <kbd>V</kbd></label>
+        </div>
+        <p class="stats"><span id="cadence" hidden></span><span id="latency" hidden></span></p>
+      </div>
+      <div id="playbackBar" class="playback" role="group" aria-label="Recording playback" hidden>
+        <button id="playPause" type="button" aria-keyshortcuts="Space">Play</button>
+        <input id="seek" type="range" min="0" max="0" step="any" value="0" aria-label="Position in the recording">
+        <span id="clock" class="clock">0:00 / 0:00</span>
+        <label class="speed">Speed <select id="playback"><option value="1">Normal</option><option value="0.5">Half</option><option value="0.25">Quarter</option><option value="0.1">Tenth</option></select></label>
+      </div>
+    </div>
+    <aside aria-label="Staff">
+      <div class="readout">
+        <span class="eyebrow">STAFF</span>
+        <h2 id="trackingState">No source yet</h2>
+        <p id="trackingDetail">Start a camera, connect your phone, or open a recording.</p>
+      </div>
+      <div class="actions">
+        <button id="selectStaff" class="primary big" type="button" aria-keyshortcuts="R" disabled><span id="selectText">Select staff ends</span><kbd>R</kbd></button>
+        <button id="undoPoint" type="button" aria-keyshortcuts="Backspace" hidden>Undo point</button>
+        <button id="cancelSelection" type="button" aria-keyshortcuts="Escape" hidden>Cancel<kbd>Esc</kbd></button>
+      </div>
+      <ul class="points" aria-label="Tracked points">
+        <li id="aRow" data-state="waiting"><i class="ring a" aria-hidden="true"></i><span>End A</span><strong id="aState">Waiting</strong></li>
+        <li id="midRow" data-state="waiting"><i class="ring mid" aria-hidden="true"></i><span>Midpoint</span><strong id="midState">Waiting</strong></li>
+        <li id="bRow" data-state="waiting"><i class="ring b" aria-hidden="true"></i><span>End B</span><strong id="bState">Waiting</strong></li>
+      </ul>
+      <p class="legend"><span><i class="ring key" aria-hidden="true"></i>Solid: image estimate</span><span><i class="ring key dashed" aria-hidden="true"></i>Dashed: inferred</span></p>
+      <p id="keys" class="keys">Rings appear only on the exact frame the model analysed. The small LIVE view never waits for the model.</p>
+    </aside>
+  </section>
+
+  <details id="geometry" class="calibration"><summary>Camera geometry <span>Lens correction, then viewing angle</span></summary>
+    <p>Correct the lens first, then the viewing angle. A profile belongs to one camera, lens, zoom and capture mode. Changing the source clears both.</p>
+    <div class="calibration-grid">
+      <div><h3>1. Lens correction</h3><p>A measured profile straightens bowed lines and evens out scale near the edges of the frame.</p>
+        <div class="row"><button id="importLens" type="button" disabled>Import lens profile</button><input id="lensFile" type="file" accept="application/json,.json" hidden><button id="saveLens" type="button" disabled>Save profile</button><button id="clearLens" type="button" disabled>Clear lens correction</button></div>
+        <p id="lensStatus" class="status" role="status">No lens correction</p>
+        <details><summary>Measure a lens profile</summary><p>Use a flat checkerboard with 9 × 6 inner corners. Keep the camera and zoom fixed. Capture at least eight board positions and tilts, including near the edges of the view.</p>
+          <div class="row"><a class="button" href="/checkerboard.svg" download="klobflow-checkerboard.svg">Printable checkerboard</a></div>
+          <label class="field">Lens type <select id="lensModel"><option value="pinhole">Standard or ultrawide</option><option value="fisheye">Fisheye</option></select></label>
+          <div class="row"><button id="captureBoard" type="button" disabled>Capture board view</button><button id="solveLens" type="button" disabled>Calculate profile</button><button id="clearBoard" type="button" disabled>Clear captures</button></div>
+          <p id="boardCount" class="status" role="status">0 views captured</p>
+        </details>
+      </div>
+      <div><h3>2. Viewing angle</h3><p>Click the four corners of a flat rectangle behind you, such as a square tapestry, clockwise from the top left as you see it on screen. It should be parallel to your movement plane.</p>
+        <label class="field">Reference width ÷ height <input id="planeAspect" type="number" min="0.1" max="10" step="0.01" value="1"></label>
+        <div class="row"><button id="selectPlane" type="button" disabled>Select reference corners</button><button id="clearPlane" type="button" disabled>Clear viewing angle</button></div>
+        <p id="planeStatus" class="status" role="status">Original viewing angle</p>
+        <p class="hint">This corrects one flat plane, not depth. Moving toward the camera still changes apparent size.</p>
+      </div>
+    </div>
+  </details>
+  <footer>
+    <p class="shortcuts"><kbd>R</kbd> select or reselect · <kbd>Esc</kbd> cancel · <kbd>←↑↓→</kbd> + <kbd>Enter</kbd> place a point · <kbd>F</kbd> full screen · <kbd>M</kbd> mirror · <kbd>P</kbd> paths · <kbd>V</kbd> smooth view · <kbd>Space</kbd> play · <kbd>,</kbd> <kbd>.</kbd> step a paused recording</p>
+    <p>Experimental rewrite · Descriptive motion, not a score · Processing stays on this PC<br>Model estimates can drift. If a ring follows the wrong object, reselect the ends.</p>
+  </footer>
+</main>
+<video id="sourceVideo" playsinline muted hidden></video>
+<script type="module" src="/app.mjs"></script>
+</body></html>

@@ -5,6 +5,9 @@ local.properties
 signing.properties
 *.jks
 *.keystore
+*.pt
+*.pth
+*.safetensors
 node_modules/
 artifacts/
 review/
@@ -12,3 +15,8 @@ review/
 
 companion/test-results/
 companion/playwright-report/
+__pycache__/
+*.pyc
+.venv-motion
+motion/test-results/
+motion/playwright-report/
