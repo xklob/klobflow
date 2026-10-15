@@ -63,6 +63,7 @@ jobs:
       - run: python -m pytest motion/tests -q
       - run: npm ci --prefix companion
       - run: ln -s ../companion/node_modules motion/node_modules
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: companion/node_modules/.bin/playwright install --with-deps chromium
       - run: companion/node_modules/.bin/playwright test -c motion/playwright.config.mjs
         env:
