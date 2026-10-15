@@ -30,5 +30,31 @@ fun filterStaffColors(pixels:IntArray,w:Int,h:Int,colors:List<String>):IntArray 
         val nearby=integral[bottom*stride+right]-integral[top*stride+right]-integral[bottom*stride+left]+integral[top*stride+left]
         if(nearby>=2)out[i]=pixels[i]
     }
+    // A three-pixel hue allowance can hollow out large overexposed end caps.
+    // Fill only bounded bright cores whose boundary is supported by selected hue.
+    // One nearby colored spot must not admit an entire white window or room light.
+    if(!hasWhite){
+        fun high(p:Int)=max(p ushr 16 and 255,max(p ushr 8 and 255,p and 255))
+        val bright=BooleanArray(pixels.size){neutral[it]&&high(pixels[it])>=160}
+        val visited=BooleanArray(pixels.size);val queue=IntArray(pixels.size)
+        for(first in pixels.indices)if(bright[first]&&!visited[first]){
+            var head=0;var tail=1;var boundary=0;var supported=0;var clipped=false
+            queue[0]=first;visited[first]=true
+            while(head<tail){
+                val at=queue[head++];val x=at%w;val y=at/w
+                if(x==0||x==w-1||y==0||y==h-1)clipped=true
+                var edge=false;var color=false
+                for(dy in -1..1)for(dx in -1..1){
+                    val xx=x+dx;val yy=y+dy;if(xx !in 0 until w||yy !in 0 until h)continue
+                    val i=yy*w+xx
+                    if(bright[i]){if(!visited[i]){visited[i]=true;queue[tail++]=i}}
+                    else{edge=true;if(matched[i]&&high(pixels[i])>=80)color=true}
+                }
+                if(edge){boundary++;if(color)supported++}
+            }
+            if(!clipped&&tail<=w*h*.03&&boundary>0&&supported.toDouble()/boundary>=.35)
+                for(i in 0 until tail)out[queue[i]]=pixels[queue[i]]
+        }
+    }
     return out
 }

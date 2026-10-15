@@ -150,3 +150,25 @@ test('quick setup actions and short tutorials stay discoverable',async({page})=>
  await page.locator('.legend-help summary').click();await expect(page.locator('.feedback-legend')).toBeVisible();
  await page.locator('.legend-help summary').click();await expect(page.locator('.feedback-legend')).toBeHidden();
 });
+
+test('a rejected demo setting restores its value and later changes still apply',async({page})=>{
+ await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
+ await page.locator('#bpm').fill('500');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#bpm')).toHaveValue('120');
+ await page.locator('#bpm').fill('105');await page.locator('#bpm').dispatchEvent('change');await expect(page.locator('#bpm')).toHaveValue('105');
+ await page.locator('[data-mode="antispin"]').click();await expect(page.locator('[data-mode="antispin"]')).toHaveClass(/active/);
+});
+
+test('live trails cover the full rainbow and older marks fade without changing color',async({page})=>{
+ await page.addInitScript(()=>{
+  const proto=CanvasRenderingContext2D.prototype,style=Object.getOwnPropertyDescriptor(proto,'strokeStyle');window.trailColors={};
+  Object.defineProperty(proto,'strokeStyle',{...style,set(value){
+   const match=typeof value==='string'&&value.match(/^hsl\(([\d.]+) /);
+   if(this.canvas.id==='view'&&match){const hue=Number(match[1]),key=hue.toFixed(4),record=window.trailColors[key]??={hue,minAlpha:this.globalAlpha,maxAlpha:this.globalAlpha};record.minAlpha=Math.min(record.minAlpha,this.globalAlpha);record.maxAlpha=Math.max(record.maxAlpha,this.globalAlpha);}
+   style.set.call(this,value);
+  }});
+ });
+ await page.goto('/');await page.locator('#demo-start').click();
+ await expect.poll(()=>page.evaluate(()=>new Set(Object.values(window.trailColors).map(x=>Math.floor(x.hue/60))).size),{timeout:7000}).toBe(6);
+ // A timestamp keeps the same hue while its opacity decreases over later renders.
+ await expect.poll(()=>page.evaluate(()=>Object.values(window.trailColors).some(x=>x.maxAlpha-x.minAlpha>.4)),{timeout:7000}).toBe(true);
+});

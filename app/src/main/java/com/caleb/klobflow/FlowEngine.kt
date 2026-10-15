@@ -144,6 +144,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
     private fun process(bitmap:Bitmap,now:Long,source:String,streamGeneration:Int=generation) {
         if(closed || !active || streamGeneration!=generation)return
         synchronized(processing) {
+            // A source may have changed while this frame waited for a reset/configuration lock.
+            if(closed || !active || streamGeneration!=generation)return
             val c=config
             val scale=384.0/max(bitmap.width,bitmap.height)
             val small=Bitmap.createScaledBitmap(bitmap,max(2,(bitmap.width*scale).toInt()),max(2,(bitmap.height*scale).toInt()),true)
@@ -190,6 +192,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
         demoScheduled=true
         demoTimer.scheduleWithFixedDelay({
             if(!demo || closed)return@scheduleWithFixedDelay
+            val demoGeneration=generation
             val bitmap=Bitmap.createBitmap(640,480,Bitmap.Config.ARGB_8888)
             val canvas=Canvas(bitmap);canvas.drawColor(Color.rgb(15,20,18))
             val t=SystemClock.elapsedRealtime()/1500.0
@@ -202,22 +205,22 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                     canvas.drawLine((a.x*480).toFloat(),(a.y*480).toFloat(),(b.x*480).toFloat(),(b.y*480).toFloat(),paint)
                 }else canvas.drawLine((cx-cos(angle)*105).toFloat(),(cy-sin(angle)*105).toFloat(),(cx+cos(angle)*105).toFloat(),(cy+sin(angle)*105).toFloat(),paint)
             }
-            process(bitmap,SystemClock.elapsedRealtime(),"demo")
+            process(bitmap,SystemClock.elapsedRealtime(),"demo",demoGeneration)
         },0,33,TimeUnit.MILLISECONDS)
     }
     private var demoScheduled=false
     fun updateConfig(patch:JSONObject,fromFit:Boolean=false) {
         val next=config.patch(patch)
-        if(next.tempoSource!="phone" || !next.tempoEnabled)context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))
-        if(next.tempoSource!="pc")pcAudio=AudioTempo()
         val cameraChange=next.facing!=config.facing || next.fps!=config.fps || next.mirror!=config.mirror
         val zoomChange=next.zoom!=config.zoom
         require(!(cameraChange && (ui.value.recording || ui.value.finalizing))){"Stop recording before changing camera or frame rate."}
+        if(next.tempoSource!="phone" || !next.tempoEnabled)context.stopService(android.content.Intent(context,PlaybackTempoService::class.java))
+        if(next.tempoSource!="pc")pcAudio=AudioTempo()
         synchronized(processing){
             if(!fromFit){fitRevision++;fit.cancel()}
             if(next.staffCount!=config.staffCount || next.staffColors!=config.staffColors || next.led!=config.led || zoomChange)tracker.reset()
             if(cameraChange || zoomChange)backgroundFilter.clear()
-            config=next;scorer.reset();timingCoach.reset()
+            timingCoach.reconfigure(config,next);config=next;scorer.reset()
         }
         preferences.edit().putString("config",next.json().toString()).apply()
         mutable.update {it.copy(config=next)}
@@ -316,8 +319,13 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                 val bpm=if(j.isNull("bpm"))null else j.getDouble("bpm")
                 val age=j.optDouble("ageMs",0.0);require(age.isFinite() && age in 0.0..5000.0){"Invalid audio age"}
                 val confidence=j.getDouble("confidence");val origin=j.optDouble("origin",0.0);val now=SystemClock.elapsedRealtime().toDouble()
-                require((bpm==null || bpm.isFinite() && bpm in 30.0..400.0) && confidence.isFinite() && confidence in 0.0..1.0 && origin.isFinite() && (bpm==null || abs(origin-now)<10000)){"Invalid or unsynchronized audio tempo"}
-                pcAudio=AudioTempo(j.optBoolean("running",false),bpm,origin,confidence,j.optDouble("level",0.0).coerceIn(0.0,1.0),now-age,if(bpm==null)"Waiting for a reliable PC audio beat"else "Following PC system audio")
+                val holding=j.optBoolean("holding",false);val remaining=j.optDouble("holdRemainingMs",0.0)
+                require(remaining.isFinite() && remaining in 0.0..15000.0 && (!holding || bpm!=null && confidence>=.6)){"Invalid audio hold"}
+                require((bpm==null || bpm.isFinite() && bpm in 30.0..400.0) && confidence.isFinite() && confidence in 0.0..1.0 && origin.isFinite() && (bpm==null || abs(origin-now)<if(holding)25000 else 10000)){"Invalid or unsynchronized audio tempo"}
+                val level=j.optDouble("level",0.0);val history=j.optDouble("historySeconds",0.0)
+                val candidate=if(j.isNull("candidateBpm"))null else j.getDouble("candidateBpm")
+                require(level.isFinite() && level in 0.0..1.0 && history.isFinite() && history in 0.0..8.0 && (candidate==null || candidate.isFinite() && candidate in 60.0..200.0)){"Invalid audio signal details"}
+                pcAudio=AudioTempo(j.optBoolean("running",false),bpm,origin,confidence,level,now-age,if(holding)"Holding the last steady beat"else if(bpm==null)"Waiting for a reliable PC audio beat"else "Following PC system audio",history,candidate,holding,remaining)
             }
             "fit"->synchronized(processing){fitRevision++;fit.begin(zoom=j.optBoolean("zoom",false),size=j.optBoolean("sizeOnly",false))}
             "background"->synchronized(processing){

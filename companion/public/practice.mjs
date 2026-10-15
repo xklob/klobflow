@@ -3,6 +3,11 @@ const mean=a=>a.reduce((s,n)=>s+n,0)/a.length,clamp=(v,a,b)=>Math.min(b,Math.max
 export class TimingCoach {
  constructor(){this.reset();}
  reset(time=null){this.epoch=time;this.previous=null;this.hits=[null,null];}
+ reconfigure(before,after){
+  const changed=keys=>keys.some(key=>JSON.stringify(before[key])!==JSON.stringify(after[key]));
+  if(changed(['tempoEnabled','bpm','tempoSource','audioRate','audioOffsetMs']))this.reset();
+  else if(changed(['mode','staffCount','beatPoints','cx','cy','scale','rotation','cubeDepth','circleSeparation','planeCorners','planeAspect','calibrationImageAspect','calibrationRotation','facing','fps','mirror','zoom','led','threshold','minLength','staffColors'])){this.previous=null;this.hits=[null,null];}
+ }
  targets(g,index){
   const c=g.config,origin=c.mode==='circles'?g.circles[index]:g.center;
   if(c.mode==='cube')return c.beatPoints===8?g.vertices:c.beatPoints===4?g.vertices.slice(0,4):[g.vertices[0],g.vertices[2]];
@@ -29,20 +34,23 @@ export class TimingCoach {
 }
 export class FitHelper {
  constructor(){this.cancel();}
- begin(zoom=false,size=false){this.active=true;this.allowZoom=zoom;this.sizeOnly=size;this.start=0;this.samples=[];this.status=size?'Hold each full staff visible to match the guide size.':'Fitting center and size: keep your full staves visible for two seconds.';}
- cancel(){this.active=false;this.samples=[];this.status='';}
+ begin(zoom=false,size=false){this.active=true;this.allowZoom=zoom;this.sizeOnly=size;this.start=null;this.lastSample=null;this.samples=[];this.status=size?'Hold each full staff visible to match the guide size.':'Fitting center and size: keep your full staves visible for two seconds.';}
+ cancel(){this.active=false;this.start=null;this.lastSample=null;this.samples=[];this.status='';}
  update(t,staffs,g,zoomMin,zoomMax,zoom){
   if(!this.active)return null;
   const measured=staffs.slice(0,g.config.staffCount).map(s=>s&&s.confidence>=.7&&!s.occluded&&!s.blurred?g.rectify(s):null);
-  if(measured.length!==g.config.staffCount||measured.some(s=>!s)){this.start=0;this.samples=[];this.status=`Waiting for ${g.config.staffCount} fully visible staff${g.config.staffCount===2?'s':''} to fit the guide.`;return null;}
-  if(!this.start)this.start=t;this.samples.push(measured);if(this.samples.length>90)this.samples.shift();
+  if(measured.length!==g.config.staffCount||measured.some(s=>!s)){this.start=null;this.lastSample=null;this.samples=[];this.status=`Waiting for ${g.config.staffCount} fully visible staff${g.config.staffCount===2?'s':''} to fit the guide.`;return null;}
+  // Preserve the entire two-second interval, including at 60 fps; stalls restart collection.
+  if(this.lastSample!==null&&(t<this.lastSample||t-this.lastSample>250)){this.start=null;this.samples=[];}
+  if(t===this.lastSample)return null;
+  this.start??=t;this.lastSample=t;this.samples.push(measured);
   this.status=`Fitting ${Math.min(100,Math.floor((t-this.start)/20))}% · keep the full movement in view`;
   if(t-this.start<2000||this.samples.length<12)return null;
   const all=this.samples.flat(),lengths=all.map(length).sort((a,b)=>a-b),radius=lengths[Math.floor(lengths.length/2)]/2,endpoints=all.flatMap(s=>[s.a,s.b]).map(p=>g.local(p)),origin=g.config.mode==='antispin'?g.point(...[0,1].map(i=>(Math.min(...endpoints.map(p=>p[i]))+Math.max(...endpoints.map(p=>p[i])))/(2*g.radius))):[mean(all.map(s=>center(s)[0])),mean(all.map(s=>center(s)[1]))],x=g.planeX,y=g.planeY;
   const spanX=Math.max(...all.map(s=>center(s)[0]+length(s)/2))-Math.min(...all.map(s=>center(s)[0]-length(s)/2)),spanY=Math.max(...all.map(s=>center(s)[1]+length(s)/2))-Math.min(...all.map(s=>center(s)[1]-length(s)/2));
   if(this.allowZoom&&!g.calibrated&&zoomMax>zoomMin){
    const extentX=Math.max(...all.map(s=>Math.abs(center(s)[0]-x/2)+length(s)/2)),extentY=Math.max(...all.map(s=>Math.abs(center(s)[1]-y/2)+length(s)/2)),desired=clamp(zoom*Math.min(1.5,x*.41/extentX,y*.41/extentY),zoomMin,zoomMax);this.allowZoom=false;
-   if(Math.abs(desired-zoom)>zoom*.08){this.start=0;this.samples=[];this.status='Adjusting camera framing, then refitting the guide…';return {zoom:desired};}
+   if(Math.abs(desired-zoom)>zoom*.08){this.start=null;this.lastSample=null;this.samples=[];this.status='Adjusting camera framing, then refitting the guide…';return {zoom:desired};}
   }
   const scale=g.config.mode==='antispin'?radius*2:this.sizeOnly||['circles','free'].includes(g.config.mode)?radius:Math.max(spanX,spanY)/2/(g.config.mode==='cube'?1+g.config.cubeDepth/2:1),patch={scale:clamp(scale,.1,.48)};
   if(!this.sizeOnly){patch.cx=clamp(origin[0]/x,.1,.9);patch.cy=clamp(origin[1]/y,.1,.9);}

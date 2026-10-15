@@ -11,7 +11,8 @@ data class P(val x: Double, val y: Double) {
     fun distance(o: P) = hypot(x-o.x,y-o.y)
     fun json() = JSONArray(listOf(x,y))
 }
-data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false, val blurred:Boolean=false) {
+data class Segment(val a: P, val b: P, val confidence: Double = 1.0, val occluded: Boolean = false, val blurred:Boolean=false,
+    internal val capEvidence:CapEvidence?=null) {
     val center get() = (a+b)*0.5
     val length get() = a.distance(b)
     val angle get() = atan2(b.y-a.y,b.x-a.x)
@@ -40,10 +41,12 @@ data class Config(
     val timing: String="tog-same", val ratio: String="1:1", val zoom: Double=0.0, val mirror: Boolean=true,
     val planeCorners: List<P> = emptyList(), val planeAspect: Double=1.0,
     val calibrationRotation: Int=0, val calibrationImageAspect: Double=0.0,
-    val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true
+    val staffCount:Int=2, val autoFit:Boolean=false, val tempoEnabled:Boolean=false, val bpm:Double=120.0, val beatPoints:Int=4, val tempoSource:String="manual", val audioRate:Double=1.0, val audioOffsetMs:Double=0.0, val streakEffects:Boolean=true,
+    val trackingGraceMs:Int=1500, val alignmentGraceMs:Int=200
 ) {
     fun json() = JSONObject().apply {
         put("streakEffects",streakEffects);put("tempoSource",tempoSource);put("audioRate",audioRate);put("audioOffsetMs",audioOffsetMs)
+        put("trackingGraceMs",trackingGraceMs);put("alignmentGraceMs",alignmentGraceMs)
         put("staffCount",staffCount);put("autoFit",autoFit);put("tempoEnabled",tempoEnabled);put("bpm",bpm);put("beatPoints",beatPoints)
         put("mode",mode);put("led",led);put("threshold",threshold);put("minLength",minLength);put("staffColors",JSONArray(staffColors))
         put("cx",cx);put("cy",cy);put("scale",scale);put("rotation",rotation);put("cubeDepth",cubeDepth)
@@ -59,6 +62,7 @@ data class Config(
             require(n.isFinite() && n in lo..hi) { "$k must be between $lo and $hi" };return n
         }
         fun choice(k: String,v: String,allowed: List<String>) = (if(j.has(k)) j.getString(k) else v).also { require(it in allowed) { "Invalid $k" } }
+        fun grace(k:String,v:Int,maximum:Int)=num(k,v.toDouble(),0.0,maximum.toDouble()).also {require(it%1.0==0.0){"$k must be whole milliseconds"}}.toInt()
         fun flag(k: String,v: Boolean) = if(j.has(k)) j.getBoolean(k) else v
         val nextFacing=choice("facing",facing,listOf("front","back"))
         val nextZoom=num("zoom",zoom,0.0,100.0)
@@ -72,7 +76,7 @@ data class Config(
         val colors=if(j.has("staffColors")){val a=j.getJSONArray("staffColors");require(a.length()<=staffColorNames.size){"Choose valid staff colors"};(0 until a.length()).map {a.getString(it)}.also {require(it.all {color->color in staffColorNames}){"Choose valid staff colors"}}.distinct()}else staffColors
         val nextCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt()
         val nextMode=choice("mode",mode,listOf("grid","circles","cube","free","antispin"))
-        return copy(streakEffects=flag("streakEffects",streakEffects),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
+        return copy(streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
             staffColors=colors,threshold=num("threshold",threshold.toDouble(),60.0,250.0).toInt(),minLength=num("minLength",minLength,0.1,0.8),
             cx=num("cx",cx,0.1,0.9),cy=num("cy",cy,0.1,0.9),scale=num("scale",scale,0.1,0.48),
             rotation=num("rotation",rotation,-90.0,90.0),cubeDepth=num("cubeDepth",cubeDepth,0.1,0.9),
@@ -164,13 +168,14 @@ data class Metrics(val deviation: Double?=null,val angle: Double?=null,val symme
 }
 class Scorer {
     private val history=ArrayDeque<Pair<Long,List<Segment?>>>()
+    private fun valid(s:Segment?)=s!=null&&s.confidence>=.55&&!s.blurred&&!s.occluded
     fun reset(){history.clear()}
     fun score(t: Long,staffs: List<Segment?>,g: Guide): Metrics {
         val measured=staffs.take(g.config.staffCount).map {it?.let(g::rectify)}
         history.addLast(t to measured)
         while(history.isNotEmpty() && t-history.first().first>1200)history.removeFirst()
-        val good=measured.filterNotNull().filter {it.confidence>=0.55 && !it.blurred && !it.occluded}
-        val coverage=history.count {it.second.count {s->s!=null && s.confidence>=0.55}==g.config.staffCount}.toDouble()/history.size*100
+        val good=measured.filterNotNull().filter(::valid)
+        val coverage=history.count {it.second.count(::valid)==g.config.staffCount}.toDouble()/history.size*100
         if(good.size!=g.config.staffCount)return Metrics(coverage=coverage)
         val pts=good.flatMap {listOf(it.a,it.b)}
         val deviation=if(g.config.mode=="free")null else if(g.config.mode=="antispin")sqrt(g.cues(staffs).sumOf {it.error.pow(2)}/(2*g.config.staffCount))else sqrt(pts.sumOf {g.deviation(it).pow(2)}/(2*g.config.staffCount))/(2*g.radius)*100
@@ -185,7 +190,7 @@ class Scorer {
         val sym=if(g.config.symmetry && g.config.staffCount==2) sqrt(min(reflect(a.a).distance(b.a).pow(2)+reflect(a.b).distance(b.b).pow(2),reflect(a.a).distance(b.b).pow(2)+reflect(a.b).distance(b.a).pow(2))/2)/(2*g.radius)*100 else null
         val speeds=history.zipWithNext().mapNotNull {(prev,next)->
             val dt=(next.first-prev.first)/1000.0
-            if(dt<=0 || dt>0.15 || prev.second.any {it==null || it.confidence<0.55} || next.second.any {it==null || it.confidence<0.55})null
+            if(dt<=0 || dt>0.15 || prev.second.any {!valid(it)} || next.second.any {!valid(it)})null
             else (0 until g.config.staffCount).map {angleDifference(next.second[it]!!.angle,prev.second[it]!!.angle)/dt}.average()
         }
         val mean=if(speeds.isEmpty())0.0 else speeds.average()

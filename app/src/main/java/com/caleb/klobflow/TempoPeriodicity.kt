@@ -9,6 +9,7 @@ class TempoPeriodicity {
     private val frames=ArrayDeque<Frame>()
     private var lastFit=Double.NEGATIVE_INFINITY
     var estimate: Estimate?=null; private set
+    val historySeconds: Double get()=if(frames.size<2)0.0 else (frames.last().time-frames.first().time).coerceIn(0.0,8.0)
     fun reset() { frames.clear(); estimate=null; lastFit=Double.NEGATIVE_INFINITY }
 
     fun observe(time: Double,value: Double) {
@@ -28,6 +29,11 @@ class TempoPeriodicity {
         val mean=samples.sumOf { it.value }/samples.size
         val values=DoubleArray(samples.size) { samples[it].value-mean }
         if (values.sumOf { it*it }/values.size<.0004) return null
+        // A constant tone's initial normalization ramp can correlate with itself for seconds.
+        // Require variation in the latest 1.2 seconds too, before trusting or holding that tempo.
+        val recent=samples.takeLast(60)
+        val recentMean=recent.sumOf {it.value}/recent.size
+        if(recent.sumOf {(it.value-recentMean).pow(2)}/recent.size<.0004)return null
         val maximum=min((3.05/step).toInt()+2,values.size/2)
         val correlation=DoubleArray(maximum+1)
         for (lag in 1..maximum) {

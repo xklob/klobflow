@@ -39,6 +39,40 @@ class FlowDeviceTest {
             java.io.File(context.getExternalFilesDir(null),"practice-antispin.png").outputStream().use {screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};screenshot.recycle()
         }
     }
+    @Test fun aQueuedFrameCannotRestoreTrackingAfterItsSourceStops(){
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        val owner=object:androidx.lifecycle.LifecycleOwner {override val lifecycle=androidx.lifecycle.LifecycleRegistry(this)}
+        lateinit var engine:FlowEngine
+        instrumentation.runOnMainSync {engine=FlowEngine(instrumentation.targetContext,owner);engine.startDemo()}
+        val timer=FlowEngine::class.java.getDeclaredField("demoTimer").apply {isAccessible=true}.get(engine) as java.util.concurrent.ScheduledExecutorService
+        timer.shutdownNow();assertTrue(timer.awaitTermination(5,java.util.concurrent.TimeUnit.SECONDS))
+        val lock=FlowEngine::class.java.getDeclaredField("processing").apply {isAccessible=true}.get(engine)
+        val generation=FlowEngine::class.java.getDeclaredField("generation").apply {isAccessible=true}
+        val lastTime=FlowEngine::class.java.getDeclaredField("lastTime").apply {isAccessible=true}
+        val process=FlowEngine::class.java.getDeclaredMethod("process",android.graphics.Bitmap::class.java,java.lang.Long.TYPE,String::class.java,java.lang.Integer.TYPE).apply {isAccessible=true}
+        val bitmap=android.graphics.Bitmap.createBitmap(64,48,android.graphics.Bitmap.Config.ARGB_8888)
+        val failure=java.util.concurrent.atomic.AtomicReference<Throwable?>()
+        var frameThread:Thread?=null
+        try {
+            synchronized(lock){
+                engine.resetTracking()
+                val oldGeneration=generation.getInt(engine)
+                frameThread=Thread {try {process.invoke(engine,bitmap,1000L,"demo",oldGeneration)}catch(t:Throwable){failure.set(t)}}.apply {start()}
+                // The frame passed its outer source check and is now waiting for the processing lock.
+                await(5000){frameThread!!.state==Thread.State.BLOCKED}
+                instrumentation.runOnMainSync {engine.background()}
+                engine.resetTracking()
+            }
+            frameThread!!.join(5000)
+            assertFalse("Queued analysis must finish",frameThread!!.isAlive);assertNull(failure.get())
+            assertNull(engine.ui.value.frame);assertNull(engine.ui.value.bitmap)
+            assertEquals("Stopped-source pixels must not repopulate cleared tracking history",0L,lastTime.getLong(engine))
+        } finally {
+            frameThread?.join(5000)
+            instrumentation.runOnMainSync {engine.close()}
+            bitmap.recycle()
+        }
+    }
     private fun await(timeout:Long=15000,condition:()->Boolean){val end=SystemClock.elapsedRealtime()+timeout;while(SystemClock.elapsedRealtime()<end){if(condition())return;Thread.sleep(150)};assertTrue("Timed out",condition())}
     @Test fun cameraSharingAndZoomRecoverAcrossBackgroundAndRecreation() {
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext

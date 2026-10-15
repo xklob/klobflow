@@ -3,30 +3,30 @@ import {optimizeCamera,applyCameraProfile,applyTrackSettings,setExposure,openCam
 import {saveSession,listSessions,getSession} from "./sessions.mjs";
 
 export class BrowserCamera {
-  constructor(video,{onFrame=()=>{},onStatus=()=>{},onSessions=()=>{}}={}){
-    this.video=video;this.onFrame=onFrame;this.onStatus=onStatus;this.onSessions=onSessions;
+  constructor(video,{onFrame=()=>{},onStatus=()=>{},onSessions=()=>{},onState=()=>{}}={}){
+    this.video=video;this.onFrame=onFrame;this.onStatus=onStatus;this.onSessions=onSessions;this.onState=onState;this.phase="stopped";
     this.config={...defaults};try{this.config=patchConfig(this.config,JSON.parse(localStorage.getItem("klobflow.local.config")||"{}"),{restore:true});}catch{}
     this.active=false;this.recording=false;this.finalizing=false;this.generation=0;this.requestId=0;this.configRevision=0;this.pending=new Map();this.unsaved=new Map();this.lastFrame=null;
     this.canvas=document.createElement("canvas");this.context=this.canvas.getContext("2d",{willReadFrequently:true});
     this.recordCanvas=document.createElement("canvas");this.recordContext=this.recordCanvas.getContext("2d");
     this.resumeOnVisible=false;
     this.visibility=()=>{
-      if(document.hidden){this.resumeOnVisible=this.active;this.stop().catch(e=>onStatus(e.message));}
+      if(document.hidden){this.resumeOnVisible ||= this.active || this.phase==="opening";this.stop("paused").catch(e=>onStatus(e.message));}
       else if(this.resumeOnVisible){this.resumeOnVisible=false;this.start({deviceId:this.deviceId,target:this.target,reuse:true}).catch(e=>onStatus(e.message));}
     };
     document.addEventListener("visibilitychange",this.visibility);
-    this.pageHide=()=>{this.resumeOnVisible=this.active;this.stop().catch(()=>{});};
+    this.pageHide=()=>{this.resumeOnVisible ||= this.active || this.phase==="opening";this.stop("paused").catch(()=>{});};
     window.addEventListener("pagehide",this.pageHide);
     window.addEventListener("pageshow",()=>{if(this.resumeOnVisible&&!document.hidden)this.visibility();});
   }
   remember(){try{localStorage.setItem("klobflow.local.config",JSON.stringify(this.config));}catch{}}
   async start({deviceId=this.deviceId,target=this.target||"auto",reuse=false}={}){
-    await this.stop();
+    await this.stop("opening");
     const generation=++this.generation,controller=new AbortController();this.controller=controller;
     this.target=target;this.onStatus("Opening your PC camera…");
-    if(!navigator.mediaDevices?.getUserMedia)throw Error("Camera access requires localhost or HTTPS and a browser that supports local cameras.");
     let stream;
     try{
+      if(!navigator.mediaDevices?.getUserMedia)throw Error("Camera access requires localhost or HTTPS and a browser that supports local cameras.");
       stream=await openCamera({deviceId,signal:controller.signal,onProgress:this.onStatus});
       if(generation!==this.generation){stream.getTracks().forEach(t=>t.stop());return;}
       this.stream=stream;this.track=stream.getVideoTracks()[0];this.video.srcObject=stream;await this.video.play();
@@ -59,15 +59,15 @@ export class BrowserCamera {
           this.onFrame(f);
         }
       };
-      this.worker.onerror=()=>{this.busy=false;this.onStatus("Camera analysis stopped. Restart the PC camera to try again.");};
+      this.worker.onerror=()=>{this.stop("error").then(()=>this.onStatus("Camera analysis stopped. Any recording is in the practice log. Choose Use PC camera to restart.")).catch(e=>this.onStatus(e.message));};
       await this.request("config",{config:this.config,restore:true,start:true,zoom:this.zoom,revision:this.configRevision});
-      this.active=true;this.busy=false;this.lastSubmitted=0;this.cameraSamples=[];
-      this.track.onended=()=>{if(this.active){this.stop().catch(()=>{});this.onStatus("Camera disconnected. Reconnect it and choose Start PC camera.");}};
+      this.active=true;this.phase="live";this.busy=false;this.lastSubmitted=0;this.cameraSamples=[];
+      this.track.onended=()=>{if(this.active){this.stop("disconnected").then(()=>this.onStatus("Camera disconnected. Reconnect it and choose Use PC camera. Any recording is in the practice log.")).catch(e=>this.onStatus(e.message));}};
       this.status=`${this.settings.width} × ${this.settings.height} · PC camera`;
-      this.onStatus(this.status);this.remember();this.schedule(generation);
+      this.onStatus(this.status);this.onState();this.remember();this.schedule(generation);
     }catch(e){
       const superseded=generation!==this.generation;
-      stream?.getTracks().forEach(t=>t.stop());if(generation===this.generation)await this.stop();
+      stream?.getTracks().forEach(t=>t.stop());if(generation===this.generation)await this.stop("error");
       if(superseded&&controller.signal.aborted&&e.name==='AbortError')return;
       throw Error(cameraError(e));
     }
@@ -153,29 +153,34 @@ export class BrowserCamera {
     recorder.ondataavailable=e=>{if(e.data.size){this.chunks.push(e.data);this.videoBytes+=e.data.size;if(this.videoBytes>256_000_000&&this.recording)this.stopRecording().then(()=>this.onStatus("Session saved at the 256 MB capture limit. Start another recording to continue."));}};
     recorder.onerror=e=>{this.recordingError=e.error?.message||"Video encoder error";this.onStatus(this.recordingError);if(recorder.state!=="inactive")recorder.stop();};
     recorder.onstop=async()=>{
-      this.recording=false;this.finalizing=true;
+      this.recording=false;this.finalizing=true;this.onState();
       this.recordStream.getTracks().forEach(t=>t.stop());
       const session={id,createdAt,durationMs:performance.now()-this.recordingStarted,frames:this.frameCount,validFrames:this.validCount,meanDeviation:this.validCount?this.errorSum/this.validCount:null,recordingError:this.recordingError,config:this.config,mimeType,video:new Blob(this.chunks,{type:mimeType}),analysis:new Blob([this.analysis.join("\n")+"\n"],{type:"application/x-ndjson"})};
       this.chunks=[];this.analysis=[];
       try{await saveSession(session);this.onStatus("Practice saved in this browser. Export your video and analysis to keep a backup.");}
       catch{this.unsaved.set(id,session);this.onStatus("Browser storage is full or unavailable. Export this session now; it is only kept in this tab.");}
-      this.finalizing=false;this.recorder=null;this.finishRecording(session);this.onSessions();
+      this.finalizing=false;this.recorder=null;this.onState();this.finishRecording(session);this.onSessions();
     };
-    recorder.start(1000);this.recording=true;
+    recorder.start(1000);this.recording=true;this.onState();
   }
   async stopRecording(){
-    if(this.recorder&&this.recorder.state!=="inactive"){this.recording=false;this.finalizing=true;this.recorder.stop();}
+    if(this.recorder&&this.recorder.state!=="inactive"){this.recording=false;this.finalizing=true;this.onState();this.recorder.stop();}
     if(this.finalizing)await this.finished;
   }
-  async sessions(){return [...this.unsaved.values(),...await listSessions()];}
+  async sessions(){
+    const temporary=[...this.unsaved.values()].map(session=>({...session,temporary:true}));
+    try{return [...temporary,...await listSessions()];}
+    catch(e){if(temporary.length)return temporary;throw e;}
+  }
   async session(id){return this.unsaved.get(id)||await getSession(id);}
-  async stop(){
-    this.controller?.abort();++this.generation;this.active=false;
+  async stop(phase="stopped"){
+    if(phase!=="paused")this.resumeOnVisible=false;
+    this.controller?.abort();++this.generation;this.active=false;this.phase=phase;
     if(this.callback!==undefined){this.video.cancelVideoFrameCallback?.(this.callback);cancelAnimationFrame(this.callback);}
     this.worker?.terminate();this.worker=null;this.busy=false;
     for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(Error("Camera stopped"));}this.pending.clear();
     // Release the physical source immediately, before asynchronous recording finalization.
     this.stream?.getTracks().forEach(t=>{t.onended=null;t.stop();});this.stream=null;this.track=null;this.video.pause();this.video.srcObject=null;
-    await this.stopRecording();
+    this.onState();await this.stopRecording();
   }
 }

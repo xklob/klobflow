@@ -8,7 +8,7 @@ let revision=0;let audio={running:false,bpm:null,confidence:0,at:0,status:"Conne
 let config={...defaults},detector=new StaffDetector(),tracker=new StaffTracker(),scorer=new Scorer(),previous=0,fps=0,lastFrame=null;
 self.onmessage=({data})=>{
   try {
-    if(data.type==="config") {revision=data.revision??revision;const old=config;config=patchConfig(config,data.config,{restore:!!data.restore});if(old.staffCount!==config.staffCount||old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing||old.led!==config.led||JSON.stringify(old.staffColors)!==JSON.stringify(config.staffColors))tracker.reset();if(old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing)background.clear();scorer.reset();timingCoach.reset();zoom=data.zoom||zoom;if(!data.fromFit)fit.cancel();self.postMessage({type:"config",id:data.id,config});return;}
+    if(data.type==="config") {revision=data.revision??revision;const old=config;config=patchConfig(config,data.config,{restore:!!data.restore});if(old.staffCount!==config.staffCount||old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing||old.led!==config.led||JSON.stringify(old.staffColors)!==JSON.stringify(config.staffColors))tracker.reset();if(old.zoom!==config.zoom||old.mirror!==config.mirror||old.facing!==config.facing)background.clear();scorer.reset();timingCoach.reconfigure(old,config);zoom=data.zoom||zoom;if(!data.fromFit)fit.cancel();self.postMessage({type:"config",id:data.id,config});return;}
     if(data.type==="background"){
       if(!['capture','clear','cancel'].includes(data.mode))throw Error('Choose capture, clear or cancel');
       if(data.mode==='capture')background.begin(data.time);else background.clear();
@@ -33,7 +33,7 @@ self.onmessage=({data})=>{
     const detected=detector.detect(background.apply(argb,width,height,time,`${config.facing}:${config.mirror}:${config.zoom}`),width,height,config,tracker.hints(time,config.staffCount)),staffs=tracker.update(detected,time,config.staffCount),g=new Guide(config,width,height);
     if(previous&&time>previous)fps=fps?fps*.85+1000/(time-previous)*.15:1000/(time-previous);previous=time;
     const fitPatch=fit.update(time,staffs,g,zoom.min,zoom.max,zoom.ratio);if(fitPatch)self.postMessage({type:"fit",config:fitPatch,revision});
-    const ready=config.tempoSource==="manual"||(audio.running&&audio.bpm&&audio.confidence>=.6&&time-audio.at>=-100&&time-audio.at<2000);
+    const ready=config.tempoSource==="manual"||(audio.running&&audio.bpm&&audio.confidence>=.6&&time-audio.at>=-100&&time-audio.at<2000&&(!audio.holding||time-audio.at<audio.holdRemainingMs));
     const metrics=scorer.score(time,staffs,g);
     lastFrame={background:background.status,averagedMetrics:rollingErrors.update(time,metrics,config),streak:streakCoach.update({time,config,staffs,feedback:g.cues(staffs)}),audio,beat:timingCoach.update(time,staffs,g,config.tempoSource==="manual"?config.bpm:(audio.bpm||config.bpm)*config.audioRate,config.tempoSource==="manual"?null:audio.origin+config.audioOffsetMs,ready),fitStatus:fit.status,time,width,height,staffs,config,currentConfig:config,guide:g.json(),feedback:g.cues(staffs),metrics,analysisFps:fps,source:"camera"};
     self.postMessage({type:"frame",frame:lastFrame,processingMs:performance.now()-start});

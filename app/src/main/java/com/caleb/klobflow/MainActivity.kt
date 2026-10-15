@@ -224,9 +224,13 @@ class MainActivity:ComponentActivity() {
                     Toggle("Show guide",ui.config.showGuide){patch("showGuide",it)}
                     Toggle("Diagonal grid lines",ui.config.diagonals){patch("diagonals",it)}
                     Toggle("Tip trails",ui.config.trails){patch("trails",it)}
-                    Text("Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.",color=Muted,fontSize=14.sp)
+                    Text("The newest tip cycles through the full rainbow every 4.2 seconds. Each segment keeps its color while fading; brighter segments are newer. Subtle highlights mark clear detections.",color=Muted,fontSize=14.sp)
                     Toggle("Streak glow and particles",ui.config.streakEffects){patch("streakEffects",it)}
-                    Text("Keep every tip on the guide. Glow builds at 2, 5 and 10 seconds. Blur pauses the streak; leaving the guide ends it.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    Text("Keep every tip on the guide. Glow builds at 2, 5 and 10 seconds.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+                    Label("STREAK FORGIVENESS")
+                    ControlSlider("Tracking grace",ui.config.trackingGraceMs.toFloat(),0f..3000f,steps=29,valueLabel={if(it==0f)"Off"else"${it.roundToInt()} ms"}){patch("trackingGraceMs",it.roundToInt())}
+                    ControlSlider("Alignment grace",ui.config.alignmentGraceMs.toFloat(),0f..1000f,steps=19,valueLabel={if(it==0f)"Off"else"${it.roundToInt()} ms"}){patch("alignmentGraceMs",it.roundToInt())}
+                    Text("Tracking grace holds your streak through missing or blurred tips. Alignment grace covers brief off-target blips. Earned seconds freeze during either hold. Scores and on-target cues stay unchanged.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     if(ui.config.staffCount==2)Toggle("Mirror-symmetry measurement",ui.config.symmetry){patch("symmetry",it)}
                     OutlinedButton(onClick={run{engine.updateConfig(Config().json().put("facing",ui.config.facing).put("fps",ui.config.fps))}}){Text("Reset practice settings")}
                 }
@@ -364,7 +368,8 @@ class MainActivity:ComponentActivity() {
                 fun visible(s:Segment?)=s!=null&&!s.occluded&&(s.confidence>=.55||s.blurred)
                 fun fade(time:Long)=(1-(f.time-time)/4200f).coerceIn(0f,1f)
                 trails.forEachIndexed {index,entry->entry.second.forEachIndexed {i,s->if(visible(s)){
-                    val staff=s!!;val color=Color.hsl(180f+(1-fade(entry.first))*150f,1f,.7f)
+                    // One rainbow turn per trail lifetime. A sample keeps its hue as it fades.
+                    val staff=s!!;val color=Color.hsl(Math.floorMod(entry.first,4200L)*360f/4200f,1f,.7f)
                     val previous=trails.getOrNull(index-1);val old=previous?.second?.getOrNull(i)
                     if(previous!=null&&visible(old)&&entry.first-previous.first in 1..150&&
                         max(old!!.a.distance(staff.a),old.b.distance(staff.b))<=min(old.length,staff.length)*.6){
@@ -497,10 +502,10 @@ class MainActivity:ComponentActivity() {
     if(ui.config.streakEffects&&!identifying&&!calibrating&&backgroundState!="countdown"&&backgroundState!="capturing")ui.frame?.streak?.let {flow->
         // The state label holds like the status boxes; the counter ticks live within the shown state.
         val streakText=remember {StableText<String>()}
-        val shownState=streakText.update(SystemClock.uptimeMillis(),flow.state){a,b->a=="building" && b!="building" || b=="off" || b=="free"}
+        val shownState=streakText.update(SystemClock.uptimeMillis(),flow.state){a,b->a=="building" && b!="building" || (a=="held" || a=="recovering") && (b=="paused" || b=="ready") || b=="off" || b=="free"}
         Surface(color=Color(0xee0b140f),shape=RoundedCornerShape(10.dp),modifier=Modifier.fillMaxWidth().padding(top=6.dp)){
             Column(Modifier.padding(10.dp)){
-                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused")Slate else Lime,fontSize=14.sp,fontWeight=FontWeight.Bold)
+                Text(if(shownState==flow.state)flow.label else StreakFrame(state=shownState).label,color=if(shownState=="paused"||shownState=="held"||shownState=="recovering")Slate else Lime,fontSize=14.sp,fontWeight=FontWeight.Bold)
                 LinearProgressIndicator(progress={flow.progress.toFloat()},modifier=Modifier.fillMaxWidth().padding(vertical=5.dp).height(4.dp),color=Lime,trackColor=Color(0xff28332a))
                 if(!focus)Text(if(flow.state=="free")"Choose a guide to earn a streak."else"Best %.1fs · levels at 2 / 5 / 10s".format(flow.bestSeconds),color=Muted,fontSize=12.sp)
             }
@@ -561,8 +566,8 @@ class MainActivity:ComponentActivity() {
 }
 @Composable private fun Label(text:String){Text(text,color=Lime,fontSize=13.sp,letterSpacing=2.sp,modifier=Modifier.padding(top=24.dp,bottom=8.dp))}
 @Composable private fun Toggle(label:String,value:Boolean,changed:(Boolean)->Unit){Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text(label,Modifier.weight(1f),fontSize=16.sp);Switch(value,changed)}}
-@Composable private fun ControlSlider(label:String,value:Float,range:ClosedFloatingPointRange<Float>,unit:String="",changed:(Float)->Unit) {
+@Composable private fun ControlSlider(label:String,value:Float,range:ClosedFloatingPointRange<Float>,unit:String="",steps:Int=0,valueLabel:((Float)->String)?=null,changed:(Float)->Unit) {
     var draft by remember(value){mutableFloatStateOf(value)}
-    Row(Modifier.fillMaxWidth().padding(top=12.dp)){Text(label,Modifier.weight(1f),fontSize=15.sp);Text("${draft.toInt()}$unit",color=Lime,fontSize=15.sp)}
-    Slider(value=draft,onValueChange={draft=it},onValueChangeFinished={changed(draft)},valueRange=range)
+    Row(Modifier.fillMaxWidth().padding(top=12.dp)){Text(label,Modifier.weight(1f),fontSize=15.sp);Text(valueLabel?.invoke(draft)?:"${draft.toInt()}$unit",color=Lime,fontSize=15.sp)}
+    Slider(value=draft,onValueChange={draft=it},onValueChangeFinished={changed(draft)},valueRange=range,steps=steps)
 }

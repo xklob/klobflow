@@ -127,12 +127,20 @@
           <button id="calibrate" class="subtle" disabled>Calibrate viewing angle</button>
           <button id="clear-calibration" class="subtle" disabled>Clear calibration</button>
           <p id="calibration-info" class="small-note">For an off-angle camera, mark the four corners of a rectangle in your movement plane. Use 1 for a square. Recalibrate after moving the camera.</p>
-          <div class="timing-controls"><div id="audio-controls">
+          <div class="timing-controls"><div id="audio-controls" tabindex="-1" aria-label="Audio and beat settings">
           <strong>Tempo source</strong><div class="button-row wrap"><button id="audio-pc" class="subtle">Use PC system audio</button><button id="audio-phone" class="subtle">Use phone audio</button><button id="audio-manual" class="subtle">Use manual BPM / stop audio</button></div>
           <p id="audio-status" class="small-note">Manual tempo. System audio needs approval in the device or browser sharing dialog.</p>
+          <div class="audio-meters" aria-label="Live audio analysis">
+            <div class="audio-meter-heading"><span>Incoming sound</span><strong id="audio-level-label">Off</strong></div>
+            <div id="audio-level" class="audio-meter" role="meter" aria-label="Incoming sound level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="Off"><span id="audio-level-fill"></span></div>
+            <div class="audio-meter-heading"><span id="audio-confidence-heading">Beat confidence</span><strong id="audio-confidence-label">0%</strong></div>
+            <div id="audio-confidence" class="audio-meter" role="meter" aria-label="Beat confidence" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-describedby="audio-lock-note"><span id="audio-confidence-fill"></span><i class="audio-lock-marker" aria-hidden="true"></i></div>
+            <p id="audio-lock-note" class="audio-meter-note">Locks at 60% · confidence in a repeating beat</p>
+            <p id="audio-progress" class="audio-meter-progress">Connect system audio to begin.</p>
+          </div>
           <label class="select-label">Detected tempo rate <select data-config="audioRate"><option value="0.5">Half speed</option><option value="1" selected>Detected speed</option><option value="2">Double speed</option></select></label>
           <label>Audio timing offset (ms) <input type="number" data-config="audioOffsetMs" min="-500" max="500" step="10" value="0"></label>
-          <p class="small-note">Positive offset moves the pulse later. Audio is analyzed locally and never added to your recording. Unsupported or silent sources pause beat feedback.</p>
+          <p class="small-note">After 3s of a stable beat, tempo can hold for up to 15s through a dropout. Stopping capture or choosing manual ends the hold. Audio stays local and is not recorded. Positive offset moves the pulse later.</p>
           </div><label class="toggle"><input type="checkbox" data-config="tempoEnabled"><span>Beat practice</span></label>
           <label>Manual BPM <input id="bpm" data-config="bpm" type="number" min="30" max="240" step="1" value="120"></label>
           <label class="select-label">Points per turn <select data-config="beatPoints"><option value="2">2</option><option value="4" selected>4</option><option value="8">8</option></select></label>
@@ -172,9 +180,13 @@
               >Tip trails</span
             ></label
           >
-          <p class="small-note">Cyan = newest → blue / violet → pink = older. Trails fade over 4.2 seconds; subtle highlights mark clear detections.</p>
+          <p class="small-note">The newest trail color cycles through a full rainbow every 4.2 seconds. Each mark keeps its color as it fades; fainter means older.</p>
           <label class="toggle"><input type="checkbox" data-config="streakEffects" checked><span>Streak glow &amp; particles</span></label>
-          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds. Blur pauses the streak; leaving the guide ends it.</p>
+          <p class="small-note">Keep every tip on the guide. Effects build at 2, 5, and 10 seconds.</p>
+          <p class="small-note"><strong>Streak forgiveness</strong></p>
+          <label class="range-label">Tracking grace <output for="tracking-grace">1500 ms</output><input id="tracking-grace" data-config="trackingGraceMs" type="range" min="0" max="3000" step="100" value="1500" aria-describedby="streak-forgiveness-help"></label>
+          <label class="range-label">Alignment grace <output for="alignment-grace">200 ms</output><input id="alignment-grace" data-config="alignmentGraceMs" type="range" min="0" max="1000" step="50" value="200" aria-describedby="streak-forgiveness-help"></label>
+          <p id="streak-forgiveness-help" class="small-note">Tracking grace holds your streak through missing or blurred tips. Alignment grace covers brief off-target blips. Earned seconds freeze during either hold. Scores and on-target cues stay unchanged.</p>
           <label class="toggle"
             ><input type="checkbox" data-config="symmetry" checked /><span
               >Mirror symmetry</span
@@ -204,13 +216,14 @@
             <button id="quick-fit" class="subtle" title="Get into position first, then fit the guide from your visible staves" disabled>Auto-fit</button>
             <button id="quick-background" class="subtle" title="Capture an empty background after 5 seconds. Keep the camera still and move your staves out of view." disabled>Background · 5s</button>
             <button id="quick-lights" class="subtle">LED colors &amp; lights</button>
+            <button id="quick-audio" class="subtle">Audio &amp; beat</button>
           </div>
           <div id="practice-view">
-            <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
+            <div class="fullscreen-bar"><span>Practice view</span><div class="button-row"><button id="focus-record" class="primary" disabled>Record</button><button id="focus-details" class="subtle" aria-expanded="false" aria-controls="tracking-detail coaching-detail beat-hits">Details</button><button id="exit-fullscreen" class="subtle">Exit full screen</button></div></div>
             <div class="status-row">
               <section id="tracking-box" class="status-box" data-tone="idle" role="status" aria-label="Tracking">
-                <div class="box-head"><i class="tone-dot"></i>Tracking</div>
-                <div class="fade-stack"><div class="fade-live"><strong id="tracking-title">NO CAMERA YET</strong><p id="tracking-detail">Connect your phone, use your PC camera, or explore the demo.</p></div></div>
+                <div class="box-head"><i class="tone-dot"></i><span class="focus-full-label">Tracking</span><span id="tracking-short-label" class="focus-short">Tracking</span></div>
+                <div class="fade-stack"><div class="fade-live"><strong id="tracking-title">NO CAMERA YET</strong><strong id="tracking-brief" class="focus-short">NO CAMERA YET</strong><p id="tracking-detail">Connect your phone, use your PC camera, or explore the demo.</p></div></div>
               </section>
               <section id="coaching" class="status-box coaching" data-tone="idle" role="status" aria-label="Alignment">
                 <div class="box-head"><i class="tone-dot"></i>Alignment</div>
@@ -218,7 +231,7 @@
               </section>
               <section id="beat-feedback" class="status-box beat-feedback" data-tone="timing" role="status" aria-label="Timing" hidden>
                 <div class="box-head"><i id="beat-dot" class="beat-dot"></i>Timing</div>
-                <div class="fade-stack"><div class="fade-live"><strong id="beat-pulse"></strong><div id="beat-hits"></div></div></div>
+                <div class="fade-stack"><div class="fade-live"><strong id="beat-pulse"></strong><div id="beat-brief"></div><div id="beat-hits"></div></div></div>
               </section>
             </div>
             <div id="stage">

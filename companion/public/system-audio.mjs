@@ -29,12 +29,12 @@ export class SystemAudio {
    this.sink=this.context.createGain();this.sink.gain.value=0;this.source.connect(this.processor);this.processor.connect(this.sink);this.sink.connect(this.context.destination);
    for(const track of stream.getTracks())track.onended=()=>this.stop('Audio sharing ended. Connect again or choose manual BPM.');
    this.context.onstatechange=()=>{if(this.active&&this.context.state!=='running')this.stop('Audio processing paused. Reconnect audio or use manual BPM.');};
-   this.active=true;this.onUpdate({running:true,bpm:null,confidence:0,at:performance.now(),status:'Listening for a steady beat… allow 6–10 seconds.'});
+   this.active=true;this.state={running:true,bpm:null,confidence:0,level:0,historySeconds:0,candidateBpm:null,holding:false,holdRemainingMs:0,at:performance.now(),status:'Listening for a steady beat… allow 6–10 seconds.'};this.onUpdate(this.state);
   }catch(e){stream?.getTracks().forEach(t=>t.stop());if(generation===this.generation)this.stop();throw Error(e.name==='NotAllowedError'?'Audio sharing was canceled. Your manual BPM is still available.':e.message);}
  }
  stop(status='Audio stopped. Choose manual BPM or connect again.'){
   ++this.generation;this.active=false;this.worker?.terminate();this.worker=null;this.source?.disconnect();this.processor?.disconnect();this.sink?.disconnect();this.stream?.getTracks().forEach(t=>t.stop());this.stream=null;
   const context=this.context;this.context=null;if(context&&context.state!=='closed')context.close().catch(()=>{});
-  this.state={running:false,bpm:null,confidence:0,at:performance.now(),status};this.onUpdate(this.state);
+  this.state={running:false,bpm:null,confidence:0,level:0,historySeconds:0,candidateBpm:null,holding:false,holdRemainingMs:0,at:performance.now(),status};this.onUpdate(this.state);
  }
 }
