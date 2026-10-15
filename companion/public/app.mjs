@@ -2,7 +2,7 @@ import { defaults, demoFrame, demoPacerCommand, resetDemoPacer } from "./demo.mj
 import { FrameDecoder } from "./stream.mjs";
 import { BrowserCamera } from "./browser-camera.mjs";
 import {SystemAudio} from "./system-audio.mjs";
-import {length,patchConfig} from "./core.mjs";
+import {length,patchConfig,Guide} from "./core.mjs";
 import {AlignmentFeedback,StableText,direction,capturingBackground} from './feedback.mjs';
 import {staffColorNames} from './staff-colors.mjs';
 import {FlowStreak,streakText} from './streak.mjs';
@@ -231,9 +231,9 @@ let pacerBusy=false,pacerReadingAt=0,pacerReadingState='';
 function showPacer(f=current){
   const enabled=pacerSupported(config)&&config.pacerEnabled,p=f?.pacer;
   $('pacer-settings').hidden=!pacerSupported(config);$('pacer-options').hidden=!enabled;
-  $('pacer-second-staff').hidden=config.mode!=='circles'||config.staffCount!==2;
+  $('pacer-second-staff').hidden=!pacerSupported(config)||config.staffCount!==2;
   $('pacer-bar').hidden=!enabled;
-  setText('pacer-help',config.mode==='antispin'?'Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length.':'Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.');
+  setText('pacer-help',config.mode==='antispin'?(config.staffCount===2?'Staff A follows AH / AV; staff B follows BH / BV. H moves horizontally; V moves vertically. Each pair stays one staff length apart.':'Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length.'):'Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.');
   if(!enabled)return;
   const state=p?.enabled&&p.state!=='off'?p.state:'ready',stalled=sourceStalled&&!replay;
   $('pacer-bar').dataset.state=stalled?'stalled':state;
@@ -344,7 +344,7 @@ function downloadBlob(blob, name) {
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 const descriptions = {
-  antispin: "One staff: trace the horizontal line with one tip and the vertical line with the other. Error measures drift from each assigned line, not shaft angle.",
+  antispin: "Each staff traces its own cross: one tip horizontal, the other vertical. With two staves, match A and B to their labeled crosses. Error measures tip drift, not shaft angle.",
   grid: "Trace clean lines through the grid. Error measures tip distance to the nearest guide line.",
   circles:
     "Follow overlapping circles. Error measures tip distance from the nearest circumference.",
@@ -392,7 +392,6 @@ function enableControls() {
   document
     .querySelectorAll("[data-config], [data-mode]")
     .forEach((e) => (e.disabled = !(available || demo) || !!replay));
-  $("staff-count").disabled ||= config.mode === "antispin";
   for (const key of ["mirror", "facing", "fps"]) {
     const control = document.querySelector(`[data-config="${key}"]`);
     if (control) control.disabled ||= cameraLocked;
@@ -473,7 +472,9 @@ function syncConfig(c, {force=false, throughEdit=Infinity} = {}) {
   $('fit-size').title=antispin?'Set center-to-edge distance to one full staff length':'Set guide width or circle diameter to one staff length';
   $('beat-legend').querySelector('span').textContent=antispin?'Blue rings = outer turnarounds. Alternate the horizontal and vertical tips on successive pulses.':'Blue numbered rings = beat points. The small white dot marks the tip used for timing.';
   $("depth-control").hidden = config.mode !== "cube";
-  $("circles-control").hidden = config.mode !== "circles";
+  $("circles-control").hidden = !["circles","antispin"].includes(config.mode)||config.staffCount!==2;
+  setText("separation-label",antispin?"Cross separation":"Circle separation");
+  $("circles-control").title=antispin?"Distance between A and B cross centers. Zero overlaps the crosses.":"Distance between circle centers";
   $("error-label").textContent =
     config.mode === "antispin" ? "LINE DRIFT" : config.mode === "cube"
       ? "VERTEX ERROR"
@@ -909,6 +910,17 @@ function render(frame, image) {
     }
   });
   ctx.globalAlpha = 1;
+  // A stationary hand reference, drawn above trails and kept clear of staff-name labels.
+  // Rebuild the calibrated centers from frame settings, including older saved sessions.
+  if(c.mode==='circles'&&c.showGuide){
+    const geometry=new Guide({...defaults,...c},frame.width,frame.height);
+    for(const center of geometry.circles){
+      const [x,y]=at(geometry.project(center));
+      ctx.beginPath();ctx.arc(x,y,9*k,0,Math.PI*2);ctx.fillStyle='#050805';ctx.fill();
+      ctx.beginPath();ctx.arc(x,y,6*k,0,Math.PI*2);ctx.fillStyle='#ffffff';ctx.fill();
+      placed.push({x:x-12*k,y:y-12*k,w:24*k,h:24*k});
+    }
+  }
   // A letter at each staff's middle names the line; lime and purple identify staves, not scores.
   frame.staffs.forEach((s,n)=>{
     if(!s||n>=(c.staffCount||2))return;
@@ -916,8 +928,8 @@ function render(frame, image) {
     tag(`${'AB'[n]}${note}`,{fill:n?'#b5a3ff':'#b6f36b',ink:'#10130f',stroke:'#10130f',size:15,alpha:s.occluded?.65:1,force:true,candidates:[()=>[x,y],(pw,ph)=>[x,y-ph*1.2],(pw,ph)=>[x,y+ph*1.2]]});
   });
   if(c.mode==='antispin'){
-    if(c.showGuide)g.lines.forEach((s,i)=>{const color=i?'#b5a3ff':'#6dd8ff';line(s.a,s.b,color,2.5*k);const [x,y]=at(s.a);tag(i?'VERTICAL':'HORIZONTAL',{ink:color,size:13,candidates:[beside(x,y,0,-1,12*k),beside(x,y,1,0,12*k)]});});
-    if(c.showFeedback)for(const cue of displayedFeedback.tips||[]){const [x,y]=at(cue.tip);tag(cue.axis==='horizontal'?'H TIP':'V TIP',{ink:cue.axis==='horizontal'?'#6dd8ff':'#b5a3ff',size:13,candidates:[beside(x,y,0,-1,20*k),beside(x,y,1,0,20*k),beside(x,y,-1,0,20*k)]});}
+    if(c.showGuide)g.lines.forEach((s,i)=>{const horizontal=i%2===0,staff=Math.floor(i/2),color=c.staffCount===2?(staff?'#b5a3ff':'#b6f36b'):(horizontal?'#6dd8ff':'#b5a3ff');line(s.a,s.b,color,2.5*k);const [x,y]=at(s.a),label=(c.staffCount===2?`${'AB'[staff]} · `:'')+(horizontal?'HORIZONTAL':'VERTICAL');tag(label,{ink:color,size:13,candidates:[beside(x,y,0,-1,12*k),beside(x,y,1,0,12*k)]});});
+    if(c.showFeedback)for(const [index,cue] of (displayedFeedback.tips||[]).entries()){const [x,y]=at(cue.tip);tag((c.staffCount===2?`${'AB'[Math.floor(index/2)]} `:'')+(cue.axis==='horizontal'?'H TIP':'V TIP'),{ink:cue.axis==='horizontal'?'#6dd8ff':'#b5a3ff',size:13,candidates:[beside(x,y,0,-1,20*k),beside(x,y,1,0,20*k),beside(x,y,-1,0,20*k)]});}
   }
   const pacer=frame.pacer?.enabled?frame.pacer:null,pacerDot=Math.max(8*k,(c.pacerDotSize||16)*Math.max(.6,Math.min(1.5,u/480)));
   if(pacer){
@@ -925,9 +937,9 @@ function render(frame, image) {
     // Their movement is the exercise itself, so reduced-motion does not freeze them.
     const dot=pacerDot;
     pacer.targets.forEach((pair,i)=>pair.forEach((p,j)=>{
-      const [x,y]=at(p),label=c.mode==='antispin'?(j?'V':'H'):'AB'[i];
+      const [x,y]=at(p),label=c.mode==='antispin'?(c.staffCount===2?'AB'[i]:'')+(j?'V':'H'):'AB'[i];
       ctx.beginPath();ctx.arc(x,y,dot,0,Math.PI*2);ctx.fillStyle='#123d59';ctx.fill();ctx.lineWidth=5*k;ctx.strokeStyle='#050b12';ctx.stroke();ctx.lineWidth=2.4*k;ctx.strokeStyle='#73d9ff';ctx.stroke();
-      ctx.font=`800 ${Math.max(12*k,dot*.95)}px system-ui, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e9faff';ctx.fillText(label,x,y);
+      ctx.font=`800 ${Math.max(12*k,dot*(label.length>1?.8:.95))}px system-ui, sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e9faff';ctx.fillText(label,x,y);
       placed.push({x:x-dot-3*k,y:y-dot-3*k,w:dot*2+6*k,h:dot*2+6*k});
     }));
     ctx.textAlign='start';ctx.textBaseline='alphabetic';

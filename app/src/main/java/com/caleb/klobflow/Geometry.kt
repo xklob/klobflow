@@ -84,7 +84,7 @@ data class Config(
         val colors=if(j.has("staffColors")){val a=j.getJSONArray("staffColors");require(a.length()<=staffColorNames.size){"Choose valid staff colors"};(0 until a.length()).map {a.getString(it)}.also {require(it.all {color->color in staffColorNames}){"Choose valid staff colors"}}.distinct()}else staffColors
         val nextCount=num("staffCount",staffCount.toDouble(),1.0,2.0).also {require(it==1.0 || it==2.0)}.toInt()
         val nextMode=choice("mode",mode,listOf("grid","circles","cube","free","antispin"))
-        return copy(streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=if(nextMode=="antispin")1 else nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
+        return copy(streakEffects=flag("streakEffects",streakEffects),trackingGraceMs=grace("trackingGraceMs",trackingGraceMs,3000),alignmentGraceMs=grace("alignmentGraceMs",alignmentGraceMs,1000),tempoSource=choice("tempoSource",tempoSource,listOf("manual","phone","pc")),audioRate=num("audioRate",audioRate,.5,2.0).also {require(it in listOf(.5,1.0,2.0))},audioOffsetMs=num("audioOffsetMs",audioOffsetMs,-500.0,500.0),staffCount=nextCount,autoFit=false,tempoEnabled=flag("tempoEnabled",tempoEnabled),bpm=num("bpm",bpm,30.0,240.0),beatPoints=num("beatPoints",beatPoints.toDouble(),2.0,8.0).also {require(it in listOf(2.0,4.0,8.0))}.toInt(),mode=nextMode,led=flag("led",led),
             pacerEnabled=flag("pacerEnabled",pacerEnabled),pacerRpm=pacerNumber("pacerRpm",pacerRpm,5.0,120.0),
             pacerDirection=choice("pacerDirection",pacerDirection,listOf("cw","ccw")),pacerPattern=choice("pacerPattern",pacerPattern,listOf("same","opposite")),
             pacerOffset=pacerNumber("pacerOffset",pacerOffset,0.0,180.0),pacerCountdown=pacerNumber("pacerCountdown",pacerCountdown.toDouble(),0.0,10.0).also {require(it%1.0==0.0){"pacerCountdown must be whole seconds"}}.toInt(),
@@ -131,13 +131,15 @@ class Guide(val config: Config,val width: Int,val height: Int) {
         listOf(-0.5,0.5).flatMap { z -> listOf(P(-1.0,-1.0),P(1.0,-1.0),P(1.0,1.0),P(-1.0,1.0)).map { point(it.x+z*d,it.y-z*d) } }
     } else (-1..1).flatMap { x -> (-1..1).map { y -> point(x.toDouble(),y.toDouble()) } }
     val lines: List<Segment> get() = when(config.mode) {
-        "antispin" -> listOf(Segment(point(-1.0,0.0),point(1.0,0.0)),Segment(point(0.0,-1.0),point(0.0,1.0)))
+        "antispin" -> (0 until config.staffCount).flatMap {i->listOf(Segment(antispinPoint(-1.0,0.0,i),antispinPoint(1.0,0.0,i)),Segment(antispinPoint(0.0,-1.0,i),antispinPoint(0.0,1.0,i)))}
         "grid" -> (-1..1).flatMap { i -> listOf(Segment(point(i.toDouble(),-1.0),point(i.toDouble(),1.0)),Segment(point(-1.0,i.toDouble()),point(1.0,i.toDouble()))) } +
             if(config.diagonals) listOf(Segment(point(-1.0,-1.0),point(1.0,1.0)),Segment(point(-1.0,1.0),point(1.0,-1.0))) else emptyList()
         "cube" -> vertices.let { v -> (0..1).flatMap { z -> (0..3).map { i -> Segment(v[z*4+i],v[z*4+(i+1)%4]) } }+(0..3).map { i -> Segment(v[i],v[i+4]) } }
         else -> emptyList()
     }
     val circles get()=if(config.staffCount==1)listOf(center)else listOf(point(-config.circleSeparation/2,0.0),point(config.circleSeparation/2,0.0))
+    fun antispinPoint(x:Double,y:Double,index:Int=0):P=point(x,y)+(circles[index]-center)
+    fun antispinLocal(p:P,index:Int=0):P=local(p)-local(circles[index])
     fun deviation(p: P): Double = when(config.mode) {
         "circles" -> circles.minOf { abs(p.distance(it)-radius) }
         "cube" -> vertices.minOf { p.distance(it) }
@@ -152,17 +154,17 @@ class Guide(val config: Config,val width: Int,val height: Int) {
             "cube"->vertices.minBy {it.distance(p)}
             else->circles.map {c->val d=p-c;c+(if(d.distance(P(0.0,0.0))<1e-9)P(1.0,0.0) else d*(1/d.distance(P(0.0,0.0))))*radius}.minBy {it.distance(p)}
         }
-        return measured.flatMapIndexed {i,s->val axes=if(config.mode=="antispin")antispinAxes(s)else emptyList();listOf(s.a,s.b).mapIndexed {j,p->
-            val dest=if(axes.isNotEmpty())nearestOnSegment(p,lines[axes[j]])else target(p);val error=p.distance(dest)/(2*radius)*100
+        return measured.flatMapIndexed {i,s->val axes=if(config.mode=="antispin")antispinAxes(s,i)else emptyList();listOf(s.a,s.b).mapIndexed {j,p->
+            val dest=if(axes.isNotEmpty())nearestOnSegment(p,lines[i*2+axes[j]])else target(p);val error=p.distance(dest)/(2*radius)*100
             TipCue(if(j==0)staffs[i]!!.a else staffs[i]!!.b,project(dest),error,error<=config.tolerance,if(axes.isEmpty())null else if(axes[j]==0)"horizontal" else "vertical")
         }}
     }
     /** Assign the two observed ends jointly: one per axis, never both on their nearest line. */
-    fun antispinAxes(s:Segment):List<Int> {
-        fun cost(a:Int,b:Int)=distanceToSegment(s.a,lines[a]).pow(2)+distanceToSegment(s.b,lines[b]).pow(2)
+    fun antispinAxes(s:Segment,index:Int=0):List<Int> {
+        fun cost(a:Int,b:Int)=distanceToSegment(s.a,lines[index*2+a]).pow(2)+distanceToSegment(s.b,lines[index*2+b]).pow(2)
         return if(cost(0,1)<=cost(1,0))listOf(0,1)else listOf(1,0)
     }
-    fun antispinTips(s:Segment):List<P> = if(antispinAxes(s)[0]==0)listOf(s.a,s.b)else listOf(s.b,s.a)
+    fun antispinTips(s:Segment,index:Int=0):List<P> = if(antispinAxes(s,index)[0]==0)listOf(s.a,s.b)else listOf(s.b,s.a)
     fun local(p:P):P {val d=p-center;val r=Math.toRadians(config.rotation);return P(d.x*cos(r)+d.y*sin(r),-d.x*sin(r)+d.y*cos(r))}
     val displayLines get()=lines.map {it.copy(a=project(it.a),b=project(it.b))}
     val displayVertices get()=vertices.map {project(it)}

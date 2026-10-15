@@ -57,7 +57,6 @@ export function patchConfig(previous,patch,{restore=false}={}) {
   for(const key of ['trackingGraceMs','alignmentGraceMs'])if(!Number.isInteger(c[key]))throw Error(`${key} must be whole milliseconds`);
   if(!Number.isInteger(c.pacerCountdown))throw Error('pacerCountdown must be whole seconds');
   for(const [key,choices] of Object.entries({pacerDirection:["cw","ccw"],pacerPattern:["same","opposite"],tempoSource:["manual","phone","pc"],audioRate:[.5,1,2],staffCount:[1,2],beatPoints:[2,4,8],mode:["grid","circles","cube","free","antispin"],facing:["front","back"],fps:[30,60],timing:["tog-same","split-same","tog-opp","split-opp"],ratio:["1:1","1:3","1:5"]})) if(!choices.includes(c[key])) throw Error(`Invalid ${key}`);
-  if(c.mode==='antispin')c.staffCount=1;
   for(const key of ["pacerEnabled","streakEffects","autoFit","tempoEnabled","led","diagonals","trails","showGuide","showFeedback","symmetry","mirror"]) if(typeof c[key]!=="boolean") throw Error(`Invalid ${key}`);
   if(!restore&&(c.facing!==previous.facing||c.zoom!==previous.zoom||c.mirror!==previous.mirror))c.planeCorners=[];
   if(!restore&&c.facing!==previous.facing)c.zoom=0;
@@ -87,9 +86,10 @@ export class Guide {
     if(this.calibrated){const plane=[[0,0],[this.planeX,0],[this.planeX,this.planeY],[0,this.planeY]],image=config.planeCorners.map(p=>[p[0]*this.aspectX,p[1]*this.aspectY]);this.projection=homography(plane,image);this.inverse=homography(image,plane);}
     const square=[[-1,-1],[1,-1],[1,1],[-1,1]];
     this.vertices=config.mode==="cube"?[-.5,.5].flatMap(z=>square.map(p=>this.point(p[0]+z*config.cubeDepth,p[1]-z*config.cubeDepth))):[-1,0,1].flatMap(x=>[-1,0,1].map(y=>this.point(x,y)));
+    this.circles=config.staffCount===1?[this.center]:[this.point(-config.circleSeparation/2,0),this.point(config.circleSeparation/2,0)];
     this.lines=[];
     if(config.mode==="antispin"){
-      this.lines=[segment(this.point(-1,0),this.point(1,0)),segment(this.point(0,-1),this.point(0,1))];
+      this.lines=this.circles.flatMap((_,i)=>[segment(this.antispinPoint(-1,0,i),this.antispinPoint(1,0,i)),segment(this.antispinPoint(0,-1,i),this.antispinPoint(0,1,i))]);
     }else if(config.mode==="grid"){
       for(let i=-1;i<=1;i++)this.lines.push(segment(this.point(i,-1),this.point(i,1)),segment(this.point(-1,i),this.point(1,i)));
       if(config.diagonals)this.lines.push(segment(this.point(-1,-1),this.point(1,1)),segment(this.point(-1,1),this.point(1,-1)));
@@ -97,9 +97,10 @@ export class Guide {
       for(let z=0;z<2;z++)for(let i=0;i<4;i++)this.lines.push(segment(this.vertices[z*4+i],this.vertices[z*4+(i+1)%4]));
       for(let i=0;i<4;i++)this.lines.push(segment(this.vertices[i],this.vertices[i+4]));
     }
-    this.circles=config.staffCount===1?[this.center]:[this.point(-config.circleSeparation/2,0),this.point(config.circleSeparation/2,0)];
   }
   point(x,y){const r=this.config.rotation*Math.PI/180;return add(this.center,mul([x*Math.cos(r)-y*Math.sin(r),x*Math.sin(r)+y*Math.cos(r)],this.radius));}
+  antispinPoint(x,y,index=0){return add(this.point(x,y),sub(this.circles[index],this.center));}
+  antispinLocal(p,index=0){return sub(this.local(p),this.local(this.circles[index]));}
   project(p){return this.projection?.(p)||p;}
   rectify(s){
     if(!this.calibrated)return s;
@@ -118,13 +119,13 @@ export class Guide {
     staffs=staffs.slice(0,this.config.staffCount);
     if(this.config.mode==="free"||staffs.length!==this.config.staffCount||staffs.some(s=>!s||s.confidence<.55||s.blurred||s.occluded))return [];
     const measured=staffs.map(s=>this.rectify(s));if(measured.some(s=>!s))return [];
-    return measured.flatMap((s,i)=>{const axes=this.config.mode==='antispin'?this.antispinAxes(s):null;return [s.a,s.b].map((p,j)=>{const target=axes?nearestOnSegment(p,this.lines[axes[j]]):this.target(p),error=distance(p,target)/(2*this.radius)*100;return {tip:j?staffs[i].b:staffs[i].a,target:this.project(target),error,onTarget:error<=this.config.tolerance,...(axes?{axis:axes[j]?'vertical':'horizontal'}:{})};});});
+    return measured.flatMap((s,i)=>{const axes=this.config.mode==='antispin'?this.antispinAxes(s,i):null;return [s.a,s.b].map((p,j)=>{const target=axes?nearestOnSegment(p,this.lines[i*2+axes[j]]):this.target(p),error=distance(p,target)/(2*this.radius)*100;return {tip:j?staffs[i].b:staffs[i].a,target:this.project(target),error,onTarget:error<=this.config.tolerance,...(axes?{axis:axes[j]?'vertical':'horizontal'}:{})};});});
   }
-  antispinAxes(s){
-    const cost=(a,b)=>distanceToSegment(s.a,this.lines[a])**2+distanceToSegment(s.b,this.lines[b])**2;
+  antispinAxes(s,index=0){
+    const cost=(a,b)=>distanceToSegment(s.a,this.lines[index*2+a])**2+distanceToSegment(s.b,this.lines[index*2+b])**2;
     return cost(0,1)<=cost(1,0)?[0,1]:[1,0];
   }
-  antispinTips(s){return this.antispinAxes(s)[0]===0?[s.a,s.b]:[s.b,s.a];}
+  antispinTips(s,index=0){return this.antispinAxes(s,index)[0]===0?[s.a,s.b]:[s.b,s.a];}
   local(p){const d=sub(p,this.center),r=this.config.rotation*Math.PI/180;return [d[0]*Math.cos(r)+d[1]*Math.sin(r),-d[0]*Math.sin(r)+d[1]*Math.cos(r)];}
   json(){return {
     lines:this.lines.map(s=>({...s,a:this.project(s.a),b:this.project(s.b)})),

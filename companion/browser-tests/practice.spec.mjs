@@ -90,9 +90,9 @@ test('each mode tutorial dismisses independently and single-staff beat practice 
  await page.screenshot({path:'../review/practice-timing.png',fullPage:true});
 });
 
-test('linear antispin selects one staff and explains each axis and its beats',async({page})=>{
+test('linear antispin supports two staves and explains each axis and its beats',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.getByRole('button',{name:'Explore a demo'}).click();
- await page.locator('[data-mode="antispin"]').click();await expect(page.locator('#staff-count')).toHaveValue('1');await expect(page.locator('#staff-count')).toBeDisabled();
+ await page.locator('[data-mode="antispin"]').click();await expect(page.locator('#staff-count')).toHaveValue('2');await expect(page.locator('#staff-count')).toBeEnabled();await page.locator('#staff-count').selectOption('1');
  await expect(page.locator('#tutorial-title')).toContainText('Linear antispin');await expect(page.locator('#error-label')).toHaveText('LINE DRIFT');await expect(page.locator('#angle').locator('..')).toBeHidden();
  await expect(page.locator('#coaching-detail')).toContainText('Horizontal tip:',{timeout:10000});await expect(page.locator('#coaching-detail')).toContainText('Vertical tip:');
  await page.locator('[data-config="tempoEnabled"]').check();await page.getByText('How beat practice works',{exact:true}).click();

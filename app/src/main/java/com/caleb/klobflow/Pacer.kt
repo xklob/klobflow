@@ -70,8 +70,11 @@ class MovingPacer {
         val frame=PacerFrame(enabled=active,state=state,phase=phase,elapsedSeconds=elapsedMs/1000.0,countdownMs=countdownMs,rpm=c.pacerRpm)
         if(!active)return frame
         val sign=if(c.pacerDirection=="cw")1 else -1;val theta=sign*2*PI*phase
-        val count=if(c.mode=="antispin")1 else c.staffCount
-        val planeTargets=if(c.mode=="antispin")listOf(listOf(g.point(cos(theta),0.0),g.point(0.0,sin(theta))))
+        val count=c.staffCount
+        val planeTargets=if(c.mode=="antispin")(0 until count).map {i->
+            val angle=theta*(if(i==1 && c.pacerPattern=="opposite")-1 else 1)+Math.toRadians(if(i==1)c.pacerOffset else 0.0)
+            listOf(g.antispinPoint(cos(angle),0.0,i),g.antispinPoint(0.0,sin(angle),i))
+        }
             else g.circles.take(count).mapIndexed {i,center->
                 val angle=theta*(if(i==1 && c.pacerPattern=="opposite")-1 else 1)+Math.toRadians(c.rotation+(if(i==1)c.pacerOffset else 0.0))
                 val delta=P(cos(angle),sin(angle))*g.radius;listOf(center+delta,center-delta)

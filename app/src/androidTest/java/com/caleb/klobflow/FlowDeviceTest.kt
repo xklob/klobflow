@@ -17,6 +17,33 @@ import java.net.URL
 
 @RunWith(AndroidJUnit4::class)
 class FlowDeviceTest {
+    @Test fun twoStaffAntispinControlsAndFourTargetsUseTheRealDetector(){
+        val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
+        context.getSharedPreferences("practice",0).edit().putString("config",Config(mode="antispin",staffCount=1,scale=.28,circleSeparation=1.8,pacerOffset=90.0,pacerEnabled=true,pacerCountdown=0).json().toString()).putBoolean("sharingEnabled",false).commit()
+        context.getSharedPreferences("tutorials",0).edit().putBoolean("antispin",true).commit()
+        ActivityScenario.launch(MainActivity::class.java).use {scenario->
+            lateinit var engine:FlowEngine;scenario.onActivity {engine=it.engine;engine.startDemo()}
+            try {await {engine.ui.value.frame?.metrics?.deviation!=null}} catch(e:AssertionError){throw AssertionError("Initial demo: status=${engine.ui.value.status}, error=${engine.ui.value.error}, frame=${engine.ui.value.frame?.json()}",e)}
+            val device=androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+            val two=device.wait(androidx.test.uiautomator.Until.findObject(androidx.test.uiautomator.By.text("Two staves")),5000)
+            assertNotNull(two);two.click()
+            await {engine.ui.value.frame?.let {it.guide.config.staffCount==2 && it.metrics.deviation!=null}==true}
+            assertEquals(4,engine.ui.value.frame!!.guide.lines.size)
+            scenario.onActivity {engine.command(JSONObject().put("action","pacer").put("operation","start"))}
+            await {engine.ui.value.frame?.let {it.pacer.valid && it.pacer.feedback.size==4}==true}
+            val frame=engine.ui.value.frame!!
+            assertEquals(listOf(2,2),frame.pacer.targets.map {it.size})
+            assertEquals(4,frame.json().getJSONArray("feedback").length())
+            assertEquals(listOf(2,2),frame.pacer.feedback.groupBy {it.axis}.values.map {it.size})
+            device.findObject(androidx.test.uiautomator.By.text("Full screen")).click()
+            assertTrue(device.wait(androidx.test.uiautomator.Until.hasObject(androidx.test.uiautomator.By.text("Exit full screen")),5000))
+            val screenshot=instrumentation.uiAutomation.takeScreenshot()
+            java.io.File(context.getExternalFilesDir(null),"two-staff-antispin.png").outputStream().use {screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)};screenshot.recycle()
+            scenario.onActivity {engine.updateConfig(JSONObject().put("staffCount",1))}
+            await {engine.ui.value.frame?.let {it.guide.config.staffCount==1 && it.pacer.state=="ready"}==true}
+            assertEquals(2,engine.ui.value.frame!!.guide.lines.size);assertEquals(1,engine.ui.value.frame!!.pacer.targets.size)
+        }
+    }
     @Test fun movingDotsTransportScoringAndLifecycleUseTheRealFramePipeline(){
         val instrumentation=InstrumentationRegistry.getInstrumentation();val context=instrumentation.targetContext
         context.getSharedPreferences("practice",0).edit().putString("config",Config(mode="circles",staffCount=1,scale=.22,pacerEnabled=true,pacerCountdown=1).json().toString()).putBoolean("sharingEnabled",false).commit()

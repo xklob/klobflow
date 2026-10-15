@@ -49,8 +49,11 @@ export class MovingPacer {
       targets:[],feedback:[],valid:false,onTarget:false,meanError:null,onTargetPercent:null,measuredPercent:null};
     if(!active)return frame;
     const sign=c.pacerDirection==='cw'?1:-1,theta=sign*2*Math.PI*phase;
-    const count=c.mode==='antispin'?1:c.staffCount;
-    const planeTargets=c.mode==='antispin'?[[g.point(Math.cos(theta),0),g.point(0,Math.sin(theta))]]:
+    const count=c.staffCount;
+    const planeTargets=c.mode==='antispin'?Array.from({length:count},(_,i)=>{
+      const angle=theta*(i===1&&c.pacerPattern==='opposite'?-1:1)+(i===1?c.pacerOffset:0)*Math.PI/180;
+      return [g.antispinPoint(Math.cos(angle),0,i),g.antispinPoint(0,Math.sin(angle),i)];
+    }):
       g.circles.slice(0,count).map((center,i)=>{
         const angle=theta*(i===1&&c.pacerPattern==='opposite'?-1:1)+(c.rotation+(i===1?c.pacerOffset:0))*Math.PI/180;
         const delta=mul([Math.cos(angle),Math.sin(angle)],g.radius);return [add(center,delta),add(center,mul(delta,-1))];

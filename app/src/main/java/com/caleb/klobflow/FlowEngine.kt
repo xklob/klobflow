@@ -206,7 +206,8 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                 val angle=if(i==0)t else PI-t;val cx=if(config.staffCount==1)320.0 else if(i==0)225.0 else 415.0;val cy=240.0
                 paint.color=if(i==0)Color.rgb(182,243,107)else Color.rgb(181,163,255)
                 if(config.mode=="antispin"){
-                    val guide=Guide(config,640,480);val a=guide.project(guide.point(cos(t),0.0));val b=guide.project(guide.point(0.0,sin(t)))
+                    val guide=Guide(config,640,480);val phase=t*(if(i==1 && config.pacerPattern=="opposite")-1 else 1)+Math.toRadians(if(i==1)config.pacerOffset else 0.0)
+                    val a=guide.project(guide.antispinPoint(cos(phase),0.0,i));val b=guide.project(guide.antispinPoint(0.0,sin(phase),i))
                     canvas.drawLine((a.x*480).toFloat(),(a.y*480).toFloat(),(b.x*480).toFloat(),(b.y*480).toFloat(),paint)
                 }else canvas.drawLine((cx-cos(angle)*105).toFloat(),(cy-sin(angle)*105).toFloat(),(cx+cos(angle)*105).toFloat(),(cy+sin(angle)*105).toFloat(),paint)
             }

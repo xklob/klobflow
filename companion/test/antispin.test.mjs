@@ -19,7 +19,7 @@ test('antispin assigns different axes to the two ends and never penalizes the sh
  close(g.cues([{...off,a:off.b,b:off.a},null]).map(c=>c.error),[10,5]);
  assert.ok(g.cues([{a:g.point(1.3,0),b:g.point(0,.5),confidence:1},null]).some(c=>!c.onTarget));
  for(const bad of [null,{...s,blurred:true},{...s,occluded:true},{...s,confidence:.4}]){assert.equal(g.cues([bad,null]).length,0);assert.equal(scorer.score(1100,[bad,null],g).deviation,null);}
- const config=patchConfig(defaults,{mode:'antispin'});assert.equal(config.staffCount,1);assert.equal(patchConfig(config,{staffCount:2}).staffCount,1);
+ const config=patchConfig(defaults,{mode:'antispin'});assert.equal(config.staffCount,2);assert.equal(patchConfig(config,{staffCount:1}).staffCount,1);assert.equal(patchConfig(defaults,config,{restore:true}).staffCount,2);
 });
 
 test('antispin alternates four timed outer targets, separates position and rejects gaps',()=>{

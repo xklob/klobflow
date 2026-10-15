@@ -113,7 +113,7 @@
               value="0.4"
           /></label>
           <label class="range-label" id="circles-control" hidden
-            >Circle separation <output for="circleSeparation">100%</output
+            ><span id="separation-label">Circle separation</span> <output for="circleSeparation">100%</output
             ><input
               id="circleSeparation"
               data-config="circleSeparation"
@@ -165,7 +165,7 @@
           <details class="beat-help"><summary>How beat practice works</summary>
           <div id="normal-beat-help"><p>Follow the end labeled <strong>BEAT TIP</strong>. Only that end is timed. Pass it across a numbered target on each blue pulse; either direction works. The pulse is visual, with no metronome sound.</p>
           <p>With 4 points and 120 BPM, pass top → right → bottom → left on successive beats: one full circle every 2 seconds. Start with 2 points for a simpler exercise. All target rings pulse together; the numbers label positions, not a required starting point.</p></div>
-          <div id="antispin-beat-help" hidden><p>Alternate the two tips at the four outer ends of the cross: top → right → bottom → left, or reverse. Reach one outer end on each blue pulse. All four rings pulse together; start anywhere. At 120 BPM, one full cycle takes 2 seconds.</p><p>The horizontal tip moves left/right; the vertical tip moves up/down. Timing uses their combined cycle phase to estimate each turnaround. Position is how close the arriving tip comes to that outer target. The pulse is silent.</p></div>
+          <div id="antispin-beat-help" hidden><p>Alternate the two tips at the four outer ends of the cross: top → right → bottom → left, or reverse. Reach one outer end on each blue pulse. All four rings pulse together; start anywhere. At 120 BPM, one full cycle takes 2 seconds.</p><p>With two staves, each follows its own A or B cross and gets a separate beat result. The horizontal tip moves left/right; the vertical tip moves up/down. Timing uses their combined cycle phase to estimate each turnaround. Position is how close the arriving tip comes to that outer target. The pulse is silent.</p></div>
           <p><strong>On beat</strong> means within 75 milliseconds early or late. <strong>On target</strong> means within your Target tolerance. These are separate checks. Hidden or unclear tips do not produce a beat result.</p>
           <p>With manual BPM, <strong>Start beat now</strong> resets the pulse; <strong>Tap tempo</strong> sets its speed from your taps. System audio follows its detected beat. Adjust Audio timing offset if the pulse consistently leads or lags the music.</p>
           </details></div>

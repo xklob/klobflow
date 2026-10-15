@@ -34,6 +34,7 @@ async function openDemo(page){
 async function demo(page,mode='circles'){
   await openDemo(page);
   await page.locator(`[data-mode="${mode}"]`).click();
+  if(mode==='antispin')await page.locator('#staff-count').selectOption('1');
   await page.locator('[data-config="pacerEnabled"]').check();
   await expect(page.locator('#pacer-title')).toHaveText('READY TO FOLLOW');
   await paceSettings(page);
@@ -47,7 +48,7 @@ async function inspectTargetLabels(page){
       return clear.apply(this,args);
     };
     proto.fillText=function(text,x,y,...args){
-      if(this.canvas.id==='view'&&['H','V'].includes(text))window.pacerLabels.push({text,x,y});
+      if(this.canvas.id==='view'&&['H','V','AH','AV','BH','BV'].includes(text))window.pacerLabels.push({text,x,y});
       return fill.call(this,text,x,y,...args);
     };
   });
@@ -173,8 +174,8 @@ test('mode-specific settings and beat feedback follow the effective moving-guide
   await expect(page.locator('#pacer-offset')).toHaveValue('90');
   await page.locator('[data-mode="antispin"]').click();
   await expect(page.locator('#pacer-settings')).toBeVisible();
-  await expect(page.locator('#pacer-second-staff')).toBeHidden();
-  await expect(page.locator('#staff-count')).toHaveValue('1');
+  await expect(page.locator('#pacer-second-staff')).toBeVisible();
+  await expect(page.locator('#staff-count')).toHaveValue('2');
   await expect(page.locator('#pacer-title')).toHaveText('READY TO FOLLOW');
   await page.locator('[data-mode="grid"]').click();
   await expect(page.locator('#pacer-settings')).toBeHidden();
@@ -247,7 +248,7 @@ test.describe('PC camera moving guides',()=>{
     await page.context().grantPermissions(['camera']);
     await inspectTargetLabels(page);
     await page.addInitScript(()=>{
-      if(!localStorage.getItem('klobflow.local.config'))localStorage.setItem('klobflow.local.config',JSON.stringify({mode:'antispin',pacerEnabled:true,pacerCountdown:0}));
+      if(!localStorage.getItem('klobflow.local.config'))localStorage.setItem('klobflow.local.config',JSON.stringify({mode:'antispin',staffCount:2,pacerEnabled:true,pacerCountdown:0}));
       const OriginalWorker=window.Worker;window.pacerWorkerCommands=[];window.pacerWorkerFrame=null;
       window.Worker=class extends OriginalWorker{
         constructor(...args){super(...args);this.addEventListener('message',({data})=>{if(data.type==='frame')window.pacerWorkerFrame=data.frame;});}
@@ -267,10 +268,10 @@ test.describe('PC camera moving guides',()=>{
     await page.locator('#pacer-start').click();
     await expect(page.locator('#pacer-title')).toHaveText('FOLLOW THE DOTS');
     await expect.poll(()=>page.evaluate(()=>window.pacerWorkerCommands.some(c=>c.type==='pacer'&&c.operation==='start'))).toBe(true);
-    await expect.poll(async()=>(await targetLabels(page)).map(p=>p.text).sort()).toEqual(['H','V']);
+    await expect.poll(async()=>(await targetLabels(page)).map(p=>p.text).sort()).toEqual(['AH','AV','BH','BV']);
     const before=await targetLabels(page);await expect.poll(()=>targetLabels(page)).not.toEqual(before);
     const measured=await page.evaluate(()=>window.pacerWorkerFrame);
-    expect(measured.config).toMatchObject({pacerRpm:35,pacerDirection:'ccw',pacerDotSize:22});
+    expect(measured.config).toMatchObject({staffCount:2,pacerRpm:35,pacerDirection:'ccw',pacerDotSize:22});
     expect(measured.pacer.valid).toBe(false);expect(measured.pacer.meanError).toBeNull();
     expect(measured.pacer.onTargetPercent).toBeNull();expect(measured.streak.seconds).toBe(0);
     await expect(page.locator('#pacer-stats')).not.toContainText(/100%|NaN/);
@@ -285,7 +286,7 @@ test.describe('PC camera moving guides',()=>{
     await page.locator('#pacer-start').click();
     await expect(page.locator('#pacer-title')).toHaveText('FOLLOW THE DOTS');
     await expect.poll(()=>page.evaluate(()=>window.pacerWorkerCommands.filter(c=>c.type==='pacer').map(c=>c.operation))).toEqual(['start','pause','resume','restart','stop','start']);
-    await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')))).toMatchObject({pacerEnabled:true,pacerRpm:35,pacerDirection:'ccw',pacerDotSize:22,pacerCountdown:0});
+    await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('klobflow.local.config')))).toMatchObject({staffCount:2,pacerEnabled:true,pacerRpm:35,pacerDirection:'ccw',pacerDotSize:22,pacerCountdown:0});
     // The granted camera source reopens automatically; the exercise must still wait for Start.
     await page.reload();
     await expect(page.locator('#source-label')).toHaveText('LIVE FROM YOUR PC CAMERA',{timeout:30000});
@@ -297,4 +298,25 @@ test.describe('PC camera moving guides',()=>{
     expect(await page.evaluate(()=>window.pacerWorkerCommands.some(c=>c.type==='pacer'))).toBe(false);
     await page.locator('#local-open').click();
   });
+});
+
+test('two-staff antispin exposes both crosses and four independently labeled moving dots',async({page})=>{
+ await inspectTargetLabels(page);await demo(page,'antispin');
+ await page.locator('#staff-count').selectOption('2');
+ await expect(page.locator('#pacer-second-staff')).toBeVisible();await expect(page.locator('#circles-control')).toBeVisible();
+ await expect(page.locator('#separation-label')).toHaveText('Cross separation');
+ await expect(page.locator('#pacer-help')).toContainText('BH / BV');
+ await range(page,'#circleSeparation',1.4);await range(page,'#pacer-offset',90);await range(page,'#pacer-countdown',0);
+ await page.locator('[data-config="pacerPattern"]').selectOption('same');
+ await expect.poll(async()=>(await targetLabels(page)).map(p=>p.text).sort()).toEqual(['AH','AV','BH','BV']);
+ const ready=await targetLabels(page);await page.locator('#pacer-start').click();await expect(page.locator('#pacer-title')).toHaveText('FOLLOW THE DOTS');
+ await expect.poll(()=>targetLabels(page)).not.toEqual(ready);
+ await page.locator('#pacer-pause').click();await expect(page.locator('#pacer-title')).toHaveText('DOTS PAUSED');const paused=await targetLabels(page);
+ await page.waitForTimeout(250);expect(await targetLabels(page)).toEqual(paused);
+ await page.locator('#ui-size').selectOption('large');await page.locator('#fullscreen').click();
+ await expect(page.locator('#pacer-resume')).toBeInViewport({ratio:1});await page.screenshot({path:'../review/two-staff/web-fullscreen.png'});
+ await page.locator('#exit-fullscreen').click();await page.locator('#staff-count').selectOption('1');
+ await expect(page.locator('#pacer-second-staff')).toBeHidden();await expect(page.locator('#circles-control')).toBeHidden();
+ await expect.poll(async()=>(await targetLabels(page)).map(p=>p.text).sort()).toEqual(['H','V']);
+ await expect(page.locator('#pacer-title')).toHaveText('READY TO FOLLOW');
 });

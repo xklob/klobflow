@@ -147,7 +147,7 @@ class MainActivity:ComponentActivity() {
                         OutlinedButton(onClick={engine.startDemo()}){Text("Try demo")}
                     }
                     FlowRow(horizontalArrangement=Arrangement.spacedBy(7.dp)) {listOf("grid" to "Grid","circles" to "Circles","cube" to "Cube","free" to "Free","antispin" to "Antispin").forEach {(key,label)->FilterChip(selected=ui.config.mode==key,onClick={patch("mode",key)},label={Text(label)})}}
-                    Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(enabled=ui.config.mode!="antispin" || count==1,selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
+                    Row {listOf(2 to "Two staves",1 to "One staff / one hand").forEach {(count,label)->FilterChip(selected=ui.config.staffCount==count,onClick={patch("staffCount",count)},label={Text(label)},modifier=Modifier.padding(end=6.dp))}}
                     ModeTutorial(ui.config.mode)
                     PacerSettings(ui,engine){message=it}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
@@ -228,7 +228,7 @@ class MainActivity:ComponentActivity() {
                     ControlSlider("Size",(ui.config.scale*100).toFloat(),10f..48f,"%"){patch("scale",it/100.0)}
                     ControlSlider("Rotation",ui.config.rotation.toFloat(),-90f..90f,"°"){patch("rotation",it.toDouble())}
                     if(ui.config.mode=="cube")ControlSlider("Cube projection depth",(ui.config.cubeDepth*100).toFloat(),10f..90f,"%"){patch("cubeDepth",it/100.0)}
-                    if(ui.config.mode=="circles")ControlSlider("Circle separation",(ui.config.circleSeparation*100).toFloat(),0f..180f,"%"){patch("circleSeparation",it/100.0)}
+                    if(ui.config.mode in listOf("circles","antispin") && ui.config.staffCount==2)ControlSlider(if(ui.config.mode=="antispin")"Cross separation (0 = overlap)"else"Circle separation",(ui.config.circleSeparation*100).toFloat(),0f..180f,"%"){patch("circleSeparation",it/100.0)}
                     ControlSlider("Target tolerance",ui.config.tolerance.toFloat(),1f..50f,"%"){patch("tolerance",it.toDouble())}
                     Text("Allowed distance from the guide as a percent of its width (diameter in Circles). Higher is more forgiving; detection is unchanged.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
                     Toggle("Alignment cues (arrows and targets)",ui.config.showFeedback){patch("showFeedback",it)}
@@ -290,7 +290,7 @@ class MainActivity:ComponentActivity() {
     Surface(color=Color(0xff10202a),shape=RoundedCornerShape(10.dp),border=BorderStroke(1.dp,Color(0xff386477)),modifier=Modifier.fillMaxWidth().padding(vertical=8.dp)){
         Column(Modifier.padding(12.dp)){
             Toggle("Follow moving dots",c.pacerEnabled){patch("pacerEnabled",it)}
-            Text(if(c.mode=="antispin")"Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length."else"Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
+            Text(if(c.mode=="antispin"){if(c.staffCount==2)"Staff A follows AH / AV; staff B follows BH / BV. H moves horizontally; V moves vertically. Each pair stays one staff length apart."else"Follow H along the horizontal line and V along the vertical line. The dot pair keeps a constant staff length."}else"Match both staff ends to their blue A or B dots. Each pair stays one diameter apart.",color=Muted,fontSize=14.sp,lineHeight=19.sp)
             if(c.pacerEnabled){
                 TextButton(onClick={expanded=!expanded}){Text(if(expanded)"Close pace settings"else"Pace settings")}
                 if(expanded){
@@ -300,7 +300,7 @@ class MainActivity:ComponentActivity() {
                     FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("cw" to "Clockwise","ccw" to "Counterclockwise").forEach {(key,label)->FilterChip(selected=c.pacerDirection==key,onClick={patch("pacerDirection",key)},label={Text(label)})}}
                     ControlSlider("Get-ready countdown",c.pacerCountdown.toFloat(),0f..10f," s",steps=9){patch("pacerCountdown",it.roundToInt())}
                     ControlSlider("Dot size",c.pacerDotSize.toFloat(),8f..28f,steps=19){patch("pacerDotSize",it.roundToInt())}
-                    if(c.mode=="circles"&&c.staffCount==2){
+                    if(c.staffCount==2){
                         Text("Staff B direction",color=Ink,fontSize=15.sp,modifier=Modifier.padding(top=8.dp))
                         FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("opposite" to "Opposite to A","same" to "Same as A").forEach {(key,label)->FilterChip(selected=c.pacerPattern==key,onClick={patch("pacerPattern",key)},label={Text(label)})}}
                         ControlSlider("Staff B phase offset",c.pacerOffset.toFloat(),0f..180f,"°",steps=35){patch("pacerOffset",it.roundToInt())}
@@ -516,6 +516,11 @@ class MainActivity:ComponentActivity() {
             f.staffs.forEachIndexed {i,s->if(s!=null){val col=(if(i==0)Lime else Lavender).copy(alpha=if(s.occluded).35f else if(s.blurred).75f else if(s.confidence>=0.55)1f else .35f);drawLine(col,p(s.a),p(s.b),4f,pathEffect=if(s.blurred&&!s.occluded)PathEffect.dashPathEffect(floatArrayOf(8f,5f))else null);ring(p(s.a),6f*k,col,1.8f*k);ring(p(s.b),6f*k,col,1.8f*k)}}
             // Labels sit on dark plates and never overlap each other or the rings they explain.
             val placed=mutableListOf<Rect>()
+            if(ui.config.mode=="circles" && ui.config.showGuide)g.circles.forEach {center->
+                val pos=p(g.project(center))
+                drawCircle(Color(0xff050805),9f*k,pos);drawCircle(Color.White,6f*k,pos)
+                placed.add(Rect(pos.x-12f*k,pos.y-12f*k,pos.x+12f*k,pos.y+12f*k))
+            }
             fun tag(text:String,textSize:Float,fill:Color,ink:Color,stroke:Color?,candidates:List<(Float,Float)->Offset>,force:Boolean=false,alpha:Float=1f):Boolean {
                 labelPaint.style=android.graphics.Paint.Style.FILL;labelPaint.textSize=textSize;labelPaint.color=ink.toArgb();labelPaint.alpha=(alpha*255).roundToInt()
                 val w=labelPaint.measureText(text)+textSize*.9f;val h=textSize*1.5f
@@ -540,12 +545,12 @@ class MainActivity:ComponentActivity() {
             }}
             if(ui.config.mode=="antispin"){
                 if(ui.config.showGuide)g.displayLines.forEachIndexed {i,s->
-                    val color=if(i==0)Cyan else Lavender
+                    val horizontal=i%2==0;val color=if(ui.config.staffCount==2){if(i/2==0)Lime else Lavender}else if(horizontal)Cyan else Lavender
                     drawLine(color,p(s.a),p(s.b),2.5f*k)
-                    val pos=p(s.a);tag(if(i==0)"HORIZONTAL" else "VERTICAL",13.sp.toPx(),Background,color,null,listOf(beside(pos,0f,-1f,12f*k),beside(pos,1f,0f,12f*k)))
+                    val pos=p(s.a);tag((if(ui.config.staffCount==2)"${"AB"[i/2]} · "else"")+(if(horizontal)"HORIZONTAL" else "VERTICAL"),13.sp.toPx(),Background,color,null,listOf(beside(pos,0f,-1f,12f*k),beside(pos,1f,0f,12f*k)))
                 }
-                if(ui.config.showFeedback)feedback?.tips.orEmpty().forEach {cue->val pos=p(cue.tip);val horizontal=cue.axis=="horizontal"
-                    tag(if(horizontal)"H TIP" else "V TIP",13.sp.toPx(),Background,if(horizontal)Cyan else Lavender,null,listOf(beside(pos,0f,-1f,20f*k),beside(pos,1f,0f,20f*k),beside(pos,-1f,0f,20f*k)))
+                if(ui.config.showFeedback)feedback?.tips.orEmpty().forEachIndexed {index,cue->val pos=p(cue.tip);val horizontal=cue.axis=="horizontal"
+                    tag((if(ui.config.staffCount==2)"${"AB"[index/2]} "else"")+(if(horizontal)"H TIP" else "V TIP"),13.sp.toPx(),Background,if(horizontal)Cyan else Lavender,null,listOf(beside(pos,0f,-1f,20f*k),beside(pos,1f,0f,20f*k),beside(pos,-1f,0f,20f*k)))
                 }
             }
             val pacer=f.pacer.takeIf {it.enabled&&!pacerStale}
@@ -554,9 +559,9 @@ class MainActivity:ComponentActivity() {
                 // Blue disks are task targets, distinct from hollow observed-tip rings.
                 // Exercise motion remains active when decorative motion is disabled.
                 pacer.targets.forEachIndexed {i,pair->pair.forEachIndexed {j,target->
-                    val pos=p(target);val label=if(ui.config.mode=="antispin"){if(j==0)"H" else "V"}else if(i==0)"A" else "B"
+                    val pos=p(target);val label=if(ui.config.mode=="antispin"){(if(ui.config.staffCount==2)"${"AB"[i]}"else"")+(if(j==0)"H" else "V")}else if(i==0)"A" else "B"
                     drawCircle(Color(0xff123d59),pacerDot,pos);drawCircle(Color(0xff050b12),pacerDot,pos,style=Stroke(5f*k));drawCircle(Color(0xff73d9ff),pacerDot,pos,style=Stroke(2.4f*k))
-                    labelPaint.style=android.graphics.Paint.Style.FILL;labelPaint.color=Color(0xffe9faff).toArgb();labelPaint.alpha=255;labelPaint.textSize=max(12.sp.toPx(),pacerDot*.95f)
+                    labelPaint.style=android.graphics.Paint.Style.FILL;labelPaint.color=Color(0xffe9faff).toArgb();labelPaint.alpha=255;labelPaint.textSize=max(12.sp.toPx(),pacerDot*(if(label.length>1).8f else .95f))
                     drawContext.canvas.nativeCanvas.drawText(label,pos.x,pos.y-(labelPaint.ascent()+labelPaint.descent())/2,labelPaint)
                     placed.add(Rect(pos.x-pacerDot-3f*k,pos.y-pacerDot-3f*k,pos.x+pacerDot+3f*k,pos.y+pacerDot+3f*k))
                 }}

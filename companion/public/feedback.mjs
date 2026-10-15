@@ -37,12 +37,13 @@ export class AlignmentFeedback {
   if(issue){this.onSince=[];this.on=[];this.alignedSince=null;this.lastIssue=issue;}
   const snapshot=capturingBackground(frame),confirmed=!issue&&!snapshot;
   this.samples=this.samples.filter(s=>time-s.time<=5000&&s.time!==time);
-  if(snapshot||idle)this.samples=[];else this.samples.push({time,valid:confirmed,on:confirmed&&cues.length===count*2&&cues.every(c=>c.error<=config.tolerance),horizontal:confirmed?cues.find(c=>c.axis==='horizontal')?.error:null,vertical:confirmed?cues.find(c=>c.axis==='vertical')?.error:null});
+  const axisMean=axis=>{const values=cues.filter(c=>c.axis===axis);return values.length?values.reduce((sum,c)=>sum+c.error,0)/values.length:null;};
+  if(snapshot||idle)this.samples=[];else this.samples.push({time,valid:confirmed,on:confirmed&&cues.length===count*2&&cues.every(c=>c.error<=config.tolerance),horizontal:confirmed?axisMean('horizontal'):null,vertical:confirmed?axisMean('vertical'):null});
   const measured=this.samples.filter(s=>s.valid),recent=measured.length>=3&&time-measured.at(-1).time<=(issue?.kind==='hidden'?1500:1000);
   const coverage=Math.round(measured.length/Math.max(1,this.samples.length)*100),onPercent=measured.length?Math.round(measured.filter(s=>s.on).length/measured.length*100):0;
   const average=axis=>{const values=measured.map(s=>s[axis]).filter(Number.isFinite);return values.length?(values.reduce((a,b)=>a+b,0)/values.length).toFixed(1):'–';};
-  const axisDetail=config.mode==='antispin'&&recent?`Horizontal tip: ${average('horizontal')}% ${following?'gap':'drift'} · Vertical tip: ${average('vertical')}% ${following?'gap':'drift'}. `:'';
-  const summary=recent&&!free&&!snapshot?{tone:onPercent>=80?'ok':'warn',title:`${onPercent}% ${following?'WITH DOTS':'ON TARGET'}`,detail:axisDetail+`Of measured frames in the last 5 seconds. ${following?'Both tips must follow the moving blue dots. ':''}Tolerance: ${config.tolerance}% of guide width. Unclear frames are excluded.`}:null;
+  const axisDetail=config.mode==='antispin'&&recent?`Horizontal ${count===2?'tips (A+B)':'tip'}: ${average('horizontal')}% ${following?'gap':'drift'} · Vertical ${count===2?'tips (A+B)':'tip'}: ${average('vertical')}% ${following?'gap':'drift'}. `:'';
+  const summary=recent&&!free&&!snapshot?{tone:onPercent>=80?'ok':'warn',title:`${onPercent}% ${following?'WITH DOTS':'ON TARGET'}`,detail:axisDetail+`Of measured frames in the last 5 seconds. ${following?'All tips must follow the moving blue dots. ':''}Tolerance: ${config.tolerance}% of guide width. Unclear frames are excluded.`}:null;
   // Text changes are held and faded by StableText, independently of current measurements.
   const shown=snapshot?{tone:'wait',title:'BACKGROUND SNAPSHOT',detail:'Move your staves out of view and keep the camera still.'}:confirmed?{tone:'ok',title:'CLEAR',detail:count===1?'Your staff and both of its ends are sharp.':'Both staves and all four ends are sharp.'}:describeIssue(issue??this.lastIssue??{kind:'starting'},count);
   if(recent&&!snapshot){shown.tone=coverage>=80?'ok':'warn';shown.title=`${coverage}% MEASURED`;shown.detail='Frames with both ends located, over the last 5 seconds. Unclear frames pause live scores and rings.';}
@@ -53,7 +54,7 @@ export class AlignmentFeedback {
   if(snapshot)return result('paused','PRECISION PAUSED','Scores resume after the background snapshot.');
   if(idle){
    const state=pacer?.state||'ready';
-   const title=state==='countdown'?'GET READY':state==='paused'?'GUIDE DOTS PAUSED':'READY TO FOLLOW',detail=state==='countdown'?'Place your tips on the blue dots. Scoring starts when they move.':state==='paused'?'Resume to continue from these dot positions. Scores are paused.':'Set your speed, then press Start dots. Match both tips to the blue dots.';
+   const title=state==='countdown'?'GET READY':state==='paused'?'GUIDE DOTS PAUSED':'READY TO FOLLOW',detail=state==='countdown'?'Place your tips on the blue dots. Scoring starts when they move.':state==='paused'?'Resume to continue from these dot positions. Scores are paused.':'Set your speed, then press Start dots. Match all tips to their blue dots.';
    Object.assign(tracking,{tone:'wait',title:state==='ready'?'GUIDE DOTS READY':title,detail,key:`practice|${state}`,valid:false,confirmed:false});
    return result('practice',title,detail);
   }
@@ -65,10 +66,10 @@ export class AlignmentFeedback {
   });
   if(tips.every(t=>t.onTarget))this.alignedSince??=time;else this.alignedSince=null;
   const aligned=this.alignedSince!==null&&time-this.alignedSince>=1200,cuesShown=config.showFeedback!==false;
-  if(aligned)return result('aligned',following?'WITH THE DOTS':'ON GUIDE',following?'Both tips are following the moving blue dots. Keep the same pace.':'Every tip is within tolerance. Keep tracing the guide.',tips);
+  if(aligned)return result('aligned',following?'WITH THE DOTS':'ON GUIDE',following?'All tips are following the moving blue dots. Keep the same pace.':'Every tip is within tolerance. Keep tracing the guide.',tips);
   // Every tip is inside tolerance but not yet confirmed: no correction marks are drawn, so name none.
-  if(tips.every(t=>t.error<=config.tolerance))return result('settling',following?'TIPS WITH DOTS':'TIPS ON TARGET',following?'Both tips are within tolerance. Keep following the blue dots.':'Every tip is within tolerance. Keep tracing the guide to confirm ON GUIDE.',tips);
-  return result('adjust',following?'FOLLOW THE DOTS':'OFF GUIDE',following?'Bring both tips onto the moving blue dots and keep their pace.':cuesShown?'Move each amber-ringed tip along its arrow into the white TARGET ring.':'Some tips are outside tolerance. Turn on Alignment cues to see where to move.',tips,cuesShown);
+  if(tips.every(t=>t.error<=config.tolerance))return result('settling',following?'TIPS WITH DOTS':'TIPS ON TARGET',following?'All tips are within tolerance. Keep following the blue dots.':'Every tip is within tolerance. Keep tracing the guide to confirm ON GUIDE.',tips);
+  return result('adjust',following?'FOLLOW THE DOTS':'OFF GUIDE',following?'Bring all tips onto their moving blue dots and keep their pace.':cuesShown?'Move each amber-ringed tip along its arrow into the white TARGET ring.':'Some tips are outside tolerance. Turn on Alignment cues to see where to move.',tips,cuesShown);
  }
 }
 // Rate-limits text changes so rapid events never restart a fade each frame. Urgent changes show at once;

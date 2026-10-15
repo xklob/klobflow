@@ -1,6 +1,6 @@
 # Klobflow
 
-A practice tool for double staves: use the native Android app with its local PC companion, or practice entirely in your browser with a PC webcam. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, a projected cube, or a one-staff antispin cross, and inspect your practice in real time.
+A practice tool for double staves: use the native Android app with its local PC companion, or practice entirely in your browser with a PC webcam. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, a projected cube, or one/two-staff antispin crosses, and inspect your practice in real time.
 
 **Experimental markerless tracking.** The tracker has been replayed against private Pixel 4K/60 fps and C920 practice recordings, plus generated LED motion and emulator tests. Broad blur stays explicitly uncertain; controlled endpoint-accuracy and live device-latency measurements remain outstanding. This is a measurement aid, not a universal technique grade.
 
@@ -11,6 +11,8 @@ Generated LED demo through the native tracker and companion demo. These illustra
 <img src="docs/screenshots/android-practice.png" alt="Android full-screen practice with beat timing and maximum streak glow" width="340">
 
 ![Desktop practice view with alignment guidance, zoom, and camera controls](docs/screenshots/web-practice.png)
+
+![White center dots provide a fixed hand-position reference for each circle](docs/screenshots/web-circle-centers.png)
 
 ![Full-screen practice keeps large alignment and timing feedback, recording, and an exit button visible](docs/screenshots/web-fullscreen.png)
 
@@ -49,17 +51,21 @@ For **Beat practice**, follow the endpoint labeled **BEAT TIP**. Pass a numbered
 
 ## Linear antispin
 
-Choose **Antispin** to select one double-ended staff. Keep the **H TIP** on the cyan horizontal line and the **V TIP** on the violet vertical line. The staff can rotate between them; its shaft angle is not scored. Each tip is assigned a different axis, so putting both tips along just one line does not earn a perfect result.
+Choose **Antispin**, then **One staff** or **Two staves**. With one staff, keep the **H TIP** on the cyan horizontal line and the **V TIP** on the violet vertical line. With two staves, each gets its own labeled cross: lime **A** and violet **B**. **Cross separation** moves their centers apart; zero overlaps them. Each staff must follow its own cross. The staff can rotate between them; its shaft angle is not scored. Each tip is assigned a different axis, so putting both tips along just one line does not earn a perfect result.
 
 Center the cross where your paths intersect. **Match staff length** sets each arm, from center to outer endpoint, to one full staff length. The entire cross is therefore twice the staff length. **Auto-fit** estimates center and size from a two-second sample; complete a full cycle and check the center afterward. Step back if the guide reaches its size limit. Rotation and viewing-angle calibration work in this mode too.
 
 The alignment box shows horizontal and vertical tip drift averaged over the last five seconds. Error and tolerance use the full cross width. Hidden or blurred tips never count as current measurements. The same correction arrows, age-colored trails, and alignment streaks remain available.
 
-Antispin beat practice has **four outer turnarounds**, alternating tips: top → right → bottom → left, or reverse. Reach an outer target on each blue pulse; at 120 BPM, one cycle takes two seconds. Timing estimates each turnaround from the combined horizontal/vertical tip phase. Spatial precision measures the arriving tip against that outer target. This is a projected line-tracing exercise, not an automatic classification of every antispin variation.
+Antispin beat practice has **four outer turnarounds per staff**, alternating tips: top → right → bottom → left, or reverse. Reach an outer target on each blue pulse; at 120 BPM, one cycle takes two seconds. Timing estimates each turnaround from the combined horizontal/vertical tip phase. Spatial precision measures the arriving tip against that staff's outer target. Both staves receive separate beat results. This is a projected line-tracing exercise, not an automatic classification of every antispin variation.
 
 ![One-staff antispin with labeled horizontal and vertical guides and separate drift feedback](docs/screenshots/web-antispin.png)
 
 <img src="docs/screenshots/android-antispin.png" alt="Android antispin practice with per-axis drift and turnaround timing" width="340">
+
+![Two-staff antispin with separate A and B crosses and four moving targets](docs/screenshots/web-two-staff-antispin.png)
+
+<img src="docs/screenshots/android-two-staff-antispin.png" alt="Android two-staff antispin with four moving targets" width="340">
 
 <img src="docs/screenshots/web-mobile-fullscreen.png" alt="Browser antispin fullscreen on a narrow screen, with compact tracking, alignment, timing, and a Details button" width="340">
 
@@ -132,7 +138,7 @@ Choose **Two staves** or **One staff / one hand**. One-staff mode tracks one dou
 
 Each of Grid, Circles, Cube, Free, and Antispin has its own tutorial, dismissal state, and **Show mode tutorial** button. Tutorials explain targets, corrections, size, centering, and perspective calibration.
 
-**Auto-fit** collects two seconds of reliable visible staves. It centers the guide and estimates a full-rotation envelope for Grid/Cube, or the radius and separation for Circles. **Match staff length** makes the circle diameter / guide width equal to the measured staff length, except Antispin where center-to-edge equals one staff length. The width-to-staff ratio helps you see the current size. Keep manual Size available for the pattern you intend to practice. Manual Auto-fit can conservatively tighten hardware zoom, then measures the guide again. It preserves existing perspective calibration and never invents a camera zoom for unsupported webcams. If the view is too tight at minimum zoom, step back and fit again. **Reset guide layout** restores only center X, center Y, size, rotation, and circle separation; it preserves camera choice, zoom, perspective calibration, tempo, and other preferences.
+**Auto-fit** collects two seconds of reliable visible staves. It centers the guide and estimates a full-rotation envelope for Grid/Cube, or the radius and separation for Circles. Antispin fits the center of each staff's full-cycle tip envelope, the shared staff length, and the separation between the two crosses. **Match staff length** makes the circle diameter / guide width equal to the measured staff length, except Antispin where center-to-edge equals one staff length. The width-to-staff ratio helps you see the current size. Keep manual Size available for the pattern you intend to practice. Manual Auto-fit can conservatively tighten hardware zoom, then measures the guide again. It preserves existing perspective calibration and never invents a camera zoom for unsupported webcams. If the view is too tight at minimum zoom, step back and fit again. **Reset guide layout** restores only center X, center Y, size, rotation, and circle separation; it preserves camera choice, zoom, perspective calibration, tempo, and other preferences.
 
 Enable **Beat practice**, set **BPM**, and choose 2, 4, or 8 points. **Start beat now** aligns the visual pulse; **Tap tempo** sets it from your taps. Display controls such as trails and guide visibility preserve this synchronization. Pass the numbered points on each pulse. The filled tip is the endpoint used for timing. Feedback reports milliseconds early/late and spatial error at the crossing separately. Within ±75 ms is labelled on-beat; the existing target tolerance controls the position indicator. A still or uncertain tip does not earn a timing hit. The most recent hit expires after two beats.
 
@@ -140,10 +146,10 @@ Timing uses interpolated crossings in the measured practice plane. It does not i
 
 ## Follow moving dots
 
-In **Circles** or **Antispin**, enable **Follow moving dots**, adjust the guide to your practice area, then press **Start dots** when ready. A configurable countdown gives you time to place your staff ends on the blue dots. Each staff has two targets; match both ends and keep their pace.
+In **Circles** or **Antispin**, enable **Follow moving dots**, adjust the guide to your practice area, then press **Start dots** when ready. A configurable countdown gives you time to place your staff ends on the blue dots. Each staff has two targets; match both ends and keep their pace. In Circles, a stationary solid white center dot marks where to center your hand.
 
 - **Circles:** two opposite dots travel around each circle. With two staves, choose the second staff's direction and phase offset. A 90° offset makes the staves perpendicular; 180° repeats the same pair of positions because the ends are interchangeable.
-- **Antispin:** the H dot moves along the horizontal axis and the V dot along the vertical axis. Their combined motion keeps a constant staff length between them. One full cycle visits all four outer turnarounds. This exercise supports one staff.
+- **Antispin:** the H dot moves along the horizontal axis and the V dot along the vertical axis. Their combined motion keeps a constant staff length between them. One full cycle visits all four outer turnarounds. With two staves, follow **AH / AV** for staff A and **BH / BV** for staff B. Each pair belongs to its own cross. Choose the same or opposite cycle direction for B and adjust its phase offset.
 - **Pace settings:** choose 5–120 cycles per minute, clockwise/counterclockwise direction, a 0–10 second countdown, and dot size. Existing center, size, rotation, circle separation, perspective calibration, and target tolerance still apply.
 - **Pause** holds the dot positions. **Resume** uses the countdown before continuing; **Restart** returns to the starting phase; **Stop** returns to the ready state. Setup changes and camera interruptions require an explicit new start. Reopening the app never resumes the exercise automatically.
 
@@ -187,7 +193,7 @@ Tracking coordinates use square-pixel image geometry, normalized by the shorter 
 | --- | --- |
 | Grid error | RMS distance of the four tips to the nearest selected grid line segment, as a percent of guide width. |
 | Circle error | RMS tip distance to the nearest circle circumference, as a percent of diameter. |
-| Antispin line drift | RMS distance of the two tips to their jointly assigned horizontal/vertical segments, as a percent of full cross width. Shaft angle is not scored. |
+| Antispin line drift | RMS distance of all selected tips to their own staff's jointly assigned horizontal/vertical segments, as a percent of full cross width. Shaft angle is not scored. |
 | Cube vertex error | RMS distance of tips to the nearest projected cube vertex, as a percent of front-square width. Use for alignment snapshots. |
 | Angle error | Mean undirected staff-axis angle to the nearest guide-line orientation, in degrees. |
 | Mirror symmetry | RMS mismatch after reflecting one staff across the guide's rotated center axis, with endpoint order minimized. Only meaningful for mirror-symmetry drills. |

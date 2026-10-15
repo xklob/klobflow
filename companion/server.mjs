@@ -126,7 +126,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           paired: !!pairing,
           address: pairing?.address,
           transport: pairing?.transport,
-          version: "0.11.0",
+          version: "0.12.0",
         });
       if (url.pathname === "/api/pair" && req.method === "POST") {
         const input = await readJson(req);

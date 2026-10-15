@@ -29,9 +29,9 @@ class AntispinTest {
         val g=guide();for(s in listOf<Segment?>(null,pose(g,.5).copy(blurred=true),pose(g,.5).copy(occluded=true),pose(g,.5).copy(confidence=.4))){
             assertTrue(g.cues(listOf(s,null)).isEmpty());assertNull(Scorer().score(1000,listOf(s,null),g).deviation)
         }
-        val c=Config().patch(JSONObject().put("mode","antispin"));assertEquals(1,c.staffCount)
-        assertEquals(1,c.patch(JSONObject().put("staffCount",2)).staffCount)
-        assertEquals(1,Config().patch(c.json(),restore=true).staffCount)
+        val c=Config().patch(JSONObject().put("mode","antispin"));assertEquals(2,c.staffCount)
+        assertEquals(1,c.patch(JSONObject().put("staffCount",1)).staffCount)
+        assertEquals(2,Config().patch(c.json(),restore=true).staffCount)
     }
     @Test fun fourTurnaroundsHaveIndependentTimingAndPositionInBothDirections(){
         val g=guide(21.0,true)

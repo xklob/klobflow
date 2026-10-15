@@ -37,3 +37,27 @@ test('real camera worker keeps moving targets separate from measured tips and ho
  expect(result.missing.pacer.state).toBe('running');expect(result.missing.pacer.valid).toBe(false);expect(result.missing.feedback).toEqual([]);expect(result.missing.pacer.targets[0]).toHaveLength(2);
  expect(result.background.pacer.state).toBe('ready');expect(result.background.streak.seconds).toBe(0);expect(result.blocked).toBe(true);
 });
+
+test('two-staff antispin passes through the actual image worker and a missing B cannot score',async({page})=>{
+ await page.route('**/two-staff-worker-check',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><title>Two staff worker</title>'}));await page.goto('/two-staff-worker-check');
+ const result=await page.evaluate(async()=>{
+  const {defaults,Guide}=await import('/core.mjs'),worker=new Worker('/tracker-worker.mjs',{type:'module'}),width=320,height=240;
+  const config={...defaults,mode:'antispin',staffCount:2,scale:.28,circleSeparation:1.8,pacerEnabled:true,pacerCountdown:0,pacerRpm:20};
+  const g=new Guide(config,width,height),canvas=new OffscreenCanvas(width,height),ctx=canvas.getContext('2d');let id=0;
+  const send=(type,data={})=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Worker timeout')),5000);worker.onerror=e=>{clearTimeout(timer);reject(Error(e.message));};worker.onmessage=({data})=>{clearTimeout(timer);data.type==='error'?reject(Error(data.error)):resolve(data);};worker.postMessage({type,id:++id,...data});});
+  const frame=async(time,b=true)=>{
+   ctx.fillStyle='#101410';ctx.fillRect(0,0,width,height);ctx.lineWidth=4;ctx.lineCap='round';ctx.strokeStyle='#ffffff';
+   for(let i=0;i<(b?2:1);i++){const phase=i?-.7:.7,a=g.antispinPoint(Math.cos(phase),0,i),z=g.antispinPoint(0,Math.sin(phase),i);ctx.beginPath();ctx.moveTo(a[0]*height,a[1]*height);ctx.lineTo(z[0]*height,z[1]*height);ctx.stroke();}
+   return (await send('frame',{width,height,time,pixels:ctx.getImageData(0,0,width,height).data.buffer})).frame;
+  };
+  try{
+   await send('config',{config,restore:true});let ready;for(let t=1000;t<=1500;t+=20)ready=await frame(t);
+   await send('pacer',{operation:'start',time:1500});const running=await frame(1520);let missing;
+   for(let t=1540;t<=2540;t+=20)missing=await frame(t,false);
+   return {ready,running,missing};
+  }finally{worker.terminate();}
+ });
+ expect(result.ready.config.staffCount).toBe(2);expect(result.ready.guide.lines).toHaveLength(4);expect(result.ready.metrics.deviation).not.toBeNull();
+ expect(result.running.pacer.valid).toBe(true);expect(result.running.pacer.targets).toHaveLength(2);expect(result.running.feedback).toHaveLength(4);
+ expect(result.missing.pacer.valid).toBe(false);expect(result.missing.pacer.targets).toHaveLength(2);expect(result.missing.feedback).toEqual([]);expect(result.missing.metrics.deviation).toBeNull();
+});

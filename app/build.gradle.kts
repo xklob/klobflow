@@ -14,8 +14,8 @@ android {
         applicationId = "com.caleb.klobflow"
         minSdk = 29
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.11.0"
+        versionCode = 15
+        versionName = "0.12.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true; buildConfig = true }

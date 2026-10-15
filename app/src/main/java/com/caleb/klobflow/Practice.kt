@@ -24,7 +24,7 @@ class TimingCoach {
         else if(geometry(before)!=geometry(after)){previous=null;hits=mutableListOf(null,null)}
     }
     fun targets(g:Guide,index:Int):List<P> {
-        val c=g.config;val center=if(c.mode=="circles")g.circles[index]else g.center
+        val c=g.config;val center=if(c.mode in listOf("circles","antispin"))g.circles[index]else g.center
         if(c.mode=="cube")return if(c.beatPoints==8)g.vertices else if(c.beatPoints==4)g.vertices.take(4)else listOf(g.vertices[0],g.vertices[2])
         val points=if(c.mode=="antispin")4 else c.beatPoints
         return (0 until points).map {i->
@@ -45,19 +45,19 @@ class TimingCoach {
         measured.forEachIndexed {i,s->
             val old=prev?.second?.getOrNull(i)
             if(s==null || old==null || dt !in 1..150){hits[i]=null;return@forEachIndexed}
-            val center=if(g.config.mode=="circles")g.circles[i]else g.center
+            val center=if(g.config.mode in listOf("circles","antispin"))g.circles[i]else g.center
             val antispin=g.config.mode=="antispin"
-            val oldTips=if(antispin)g.antispinTips(old)else listOf(old.a)
-            val tips=if(antispin)g.antispinTips(s)else listOf(s.a)
+            val oldTips=if(antispin)g.antispinTips(old,i)else listOf(old.a)
+            val tips=if(antispin)g.antispinTips(s,i)else listOf(s.a)
             // A linear tip cannot cross angular rays. Together the horizontal x and vertical y
             // coordinates describe cycle phase; each cardinal phase is an outer turnaround.
-            fun cycle(points:List<P>)=P(g.local(points[0]).x,g.local(points[1]).y)
+            fun cycle(points:List<P>)=P(g.antispinLocal(points[0],i).x,g.antispinLocal(points[1],i).y)
             val a=if(antispin)cycle(oldTips)else old.a-center;val b=if(antispin)cycle(tips)else s.a-center
             val before=atan2(a.y,a.x);val delta=atan2(sin(atan2(b.y,b.x)-before),cos(atan2(b.y,b.x)-before))
             // Ignore stationary props, center crossings, and implausibly large endpoint jumps.
             if(a.distance(P(0.0,0.0))>g.radius*.2 && b.distance(P(0.0,0.0))>g.radius*.2 && abs(delta) in .001..1.2){
                 targets[i].forEachIndexed {j,target->
-                    val d=if(antispin)g.local(target)else target-center;val to=atan2(sin(atan2(d.y,d.x)-before),cos(atan2(d.y,d.x)-before));val raw=to/delta;val epsilon=if(antispin)1e-9 else 0.0;val fraction=raw.coerceIn(0.0,1.0)
+                    val d=if(antispin)g.antispinLocal(target,i)else target-center;val to=atan2(sin(atan2(d.y,d.x)-before),cos(atan2(d.y,d.x)-before));val raw=to/delta;val epsilon=if(antispin)1e-9 else 0.0;val fraction=raw.coerceIn(0.0,1.0)
                     if(raw>epsilon && raw<=1+epsilon && (!antispin || hits[i]?.point!=j+1 || t-hits[i]!!.time>period*2)){
                         val at=prev!!.first+dt*fraction;val nearest=epoch!!+floor((at-epoch!!)/period+.5)*period
                         val tip=if(antispin && j%2==0)1 else 0
@@ -96,8 +96,11 @@ class FitHelper {
         status="Fitting ${(elapsed/20).coerceAtMost(100)}% · keep the full movement in view"
         if(elapsed<2000 || samples.size<12)return null
         val all=samples.flatten();val lengths=all.map {it.length}.sorted();val radius=lengths[lengths.size/2]/2
-        val endpoints=all.flatMap {listOf(it.a,it.b)}.map(g::local)
-        val center=if(g.config.mode=="antispin")g.point((endpoints.minOf {it.x}+endpoints.maxOf {it.x})/(2*g.radius),(endpoints.minOf {it.y}+endpoints.maxOf {it.y})/(2*g.radius))else P(all.map {it.center.x}.average(),all.map {it.center.y}.average())
+        val crossCenters=if(g.config.mode=="antispin")(0 until g.config.staffCount).map {i->
+            val endpoints=samples.flatMap {listOf(it[i].a,it[i].b)}.map(g::local)
+            g.point((endpoints.minOf {it.x}+endpoints.maxOf {it.x})/(2*g.radius),(endpoints.minOf {it.y}+endpoints.maxOf {it.y})/(2*g.radius))
+        }else emptyList()
+        val center=if(crossCenters.isNotEmpty())P(crossCenters.map {it.x}.average(),crossCenters.map {it.y}.average())else P(all.map {it.center.x}.average(),all.map {it.center.y}.average())
         val x=if(g.calibrated)max(1.0,g.config.planeAspect)else g.aspectX;val y=if(g.calibrated)max(1.0,1/g.config.planeAspect)else g.aspectY
         val spanX=all.maxOf {it.center.x+it.length/2}-all.minOf {it.center.x-it.length/2}
         val spanY=all.maxOf {it.center.y+it.length/2}-all.minOf {it.center.y-it.length/2}
@@ -114,6 +117,7 @@ class FitHelper {
             val a=P(samples.map {it[0].center.x}.average(),samples.map {it[0].center.y}.average());val b=P(samples.map {it[1].center.x}.average(),samples.map {it[1].center.y}.average())
             patch.put("circleSeparation",(a.distance(b)/radius).coerceIn(0.0,1.8))
         }
+        if(!sizeOnly && crossCenters.size==2)patch.put("circleSeparation",(abs(g.local(crossCenters[1]).x-g.local(crossCenters[0]).x)/patch.getDouble("scale")).coerceIn(0.0,1.8))
         active=false;samples.clear();status=if(scale>.48)"Guide reached its size limit. Step back or widen the camera, then fit again."else if(g.config.mode=="antispin")"Cross center to each outer end matches one staff length. Check the center after a full cycle."else if(sizeOnly)"Guide diameter / width matches the visible staff length."else "Center and size fitted. Adjust Size for your intended pattern."
         return patch
     }
