@@ -39,7 +39,7 @@ class OfflineBackbone(torch.nn.Module):
 class SegmentationTracker:
     name = "EdgeTAM"
 
-    def __init__(self, checkpoint, source=None, resolution=512, device=None):
+    def __init__(self, checkpoint, source=None, resolution=512, device=None, tip_checkpoint=None):
         source = Path(source or os.environ.get("KLOBFLOW_EDGETAM_SOURCE", Path.home()/".cache/klobflow/edgetam"))
         if not (source/"sam2/configs/edgetam.yaml").is_file():
             raise RuntimeError("Run motion/setup.sh to install the local EdgeTAM framework")
@@ -56,6 +56,11 @@ class SegmentationTracker:
                 f"model.memory_attention.layer.cross_attention.q_sizes=[{resolution//16},{resolution//16}]"],
         )
         self.window=max(self.model.num_maskmem*self.model.memory_temporal_stride_for_eval,self.model.max_obj_ptrs_in_encoder)+2
+        self.tip_model = None
+        if tip_checkpoint:
+            from .training.model import TipClassifier
+            self.tip_model, self.tip_metadata = TipClassifier.load(tip_checkpoint, self.device)
+            self.name = "EdgeTAM + staff tip model"
         self.reset()
 
     def reset(self):
@@ -99,7 +104,8 @@ class SegmentationTracker:
         probabilities=logits[0,0].sigmoid().float().cpu().numpy()
         mask=probabilities>.5
         presence=float(probabilities[mask].mean()) if mask.any() else 0.
-        output=self.shape.update(mask,timestamp,presence)
+        tip_scorer = None if self.tip_model is None else lambda boundaries, length: self.tip_model.score(image, boundaries, length)
+        output=self.shape.update(mask,timestamp,presence,tip_scorer=tip_scorer)
         output.update({"time":timestamp,"model":self.name,"inferenceMs":(time.perf_counter()-started)*1000,
                        "maskConfidence":presence,"maskPixels":int(mask.sum())})
         self.last_time=timestamp

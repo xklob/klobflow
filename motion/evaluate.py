@@ -5,6 +5,7 @@ python -m motion.evaluate --video sample.mp4 --seed 0.4,0.2,0.7,0.8 \
 """
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -69,6 +70,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", required=True)
     parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--tip-checkpoint", help="Optional local staff-specific boundary-ranking checkpoint")
     parser.add_argument("--seed", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--start", type=int, default=0)
@@ -80,9 +82,11 @@ def main():
     parser.add_argument("--raw-cache", help="Existing complete 384x216 BGRA reference frames, for --decoder cached")
     parser.add_argument("--include-labels", help="Optional local annotation JSON; retain its matching clip frames when subsampling")
     args = parser.parse_args()
+    if args.tip_checkpoint and args.model != "edgetam":
+        parser.error("--tip-checkpoint requires --model edgetam")
     if args.model == "edgetam":
         from .segmentation import SegmentationTracker
-        tracker = SegmentationTracker(args.checkpoint, resolution=args.resolution)
+        tracker = SegmentationTracker(args.checkpoint, resolution=args.resolution, tip_checkpoint=args.tip_checkpoint)
     else:
         tracker = (PointTracker if args.model == "tapnext" else TapirTracker)(args.checkpoint)
     points = np.array([float(v) for v in args.seed.split(",")]).reshape(2, 2)
@@ -139,6 +143,9 @@ def main():
                "processed": len(results), "stride": args.stride, "retainedLabelFrames": len(retained),
                "device": str(tracker.device), "meanInferenceMs": float(np.mean(times)),
                "p95InferenceMs": float(np.percentile(times, 95))}
+    if args.tip_checkpoint:
+        summary["tipModel"] = {"sha256": hashlib.sha256(Path(args.tip_checkpoint).read_bytes()).hexdigest(),
+                               "metadata": tracker.tip_metadata}
     Path(args.output).write_text(json.dumps({"summary": summary, "frames": results}))
     print(json.dumps(summary), flush=True)
 

@@ -26,6 +26,8 @@ Open **http://localhost:8789** on this PC. The previous companion uses port 8788
 
 The model is [Meta's EdgeTAM](https://github.com/facebookresearch/EdgeTAM), with OpenCV geometry and motion filtering. There are no LED color, brightness, minimum-staff-length, or target-alignment sliders. A short visible fragment does not automatically redefine the staff as a shorter object. Full occlusion remains an estimate; a camera cannot measure an invisible end.
 
+An optional **staff-specific tip model** helps choose the real visible end when the other mask boundary is where the staff disappears behind the body. It uses a pretrained MobileNet vision backbone with a locally trained ranking head. It does not turn an invisible end into a measurement. Training, recording-level holdouts, results, and local activation are described in [the training notes](docs/staff-tip-training.md). Private training examples and trained weights are not included in public downloads.
+
 ## Phone camera
 
 Build `:motion-phone:assembleDebug`, or install the signed **Motion Lab prerelease APK** from [Releases](https://github.com/xklob/klobflow/releases). The release keeps package `com.caleb.klobflow` and the existing signing identity, so installing it replaces the stable Android app. It is an opt-in prerelease, not the latest stable Klobstore update. Returning to an older APK is subject to Android's version downgrade restrictions.

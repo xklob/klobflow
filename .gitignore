@@ -5,6 +5,9 @@ local.properties
 signing.properties
 *.jks
 *.keystore
+*.pt
+*.pth
+*.safetensors
 node_modules/
 artifacts/
 review/

@@ -28,7 +28,7 @@ class StaffShape:
         self.accelerations = deque(maxlen=120)
         self.previous_velocity = np.zeros(3)
 
-    def update(self, mask, timestamp, presence=1.):
+    def update(self, mask, timestamp, presence=1., tip_scorer=None):
         dt = 0. if self.last_time is None else timestamp - self.last_time
         if dt < 0 or not math.isfinite(timestamp):
             raise ValueError("Frames must arrive in timestamp order")
@@ -50,6 +50,7 @@ class StaffShape:
         positions = np.array([center-axis*length/2, center+axis*length/2])
         visible = [False, False]
         observed = None
+        tip_scores = None
         points = cv2.findNonZero(mask.astype(np.uint8))
         if points is not None and len(points) >= 2:
             points = points.reshape(-1, 2).astype(np.float64)
@@ -78,10 +79,17 @@ class StaffShape:
                     target_center = observed.mean(0)
                     positions = observed
                 else:
-                    # The nearer of the two outer boundaries anchors a partial
-                    # shape. Its opposite end is a rigid-length hypothesis.
-                    distances = np.linalg.norm(observed-positions, axis=1)
-                    anchor = int(np.argmin(distances))
+                    if tip_scorer is not None:
+                        # A staff-specific learned ranking distinguishes the
+                        # physical cap from a body/occlusion boundary. Absolute
+                        # scores are not calibrated visibility probabilities.
+                        tip_scores = np.asarray(tip_scorer(observed, length), float)
+                        if tip_scores.shape != (2,) or not np.isfinite(tip_scores).all():
+                            raise ValueError("Invalid learned tip scores")
+                        anchor = int(np.argmax(tip_scores)) if tip_scores[0] != tip_scores[1] else int(np.argmin(np.linalg.norm(observed-positions, axis=1)))
+                    else:
+                        distances = np.linalg.norm(observed-positions, axis=1)
+                        anchor = int(np.argmin(distances))
                     visible[anchor] = True
                     sign = -1 if anchor == 0 else 1
                     target_center = observed[anchor] - sign*measured_axis*length/2
@@ -109,4 +117,5 @@ class StaffShape:
         midpoint = positions.mean(0) / [self.width,self.height]
         return {"ends":ends,"midpoint":{"x":float(midpoint[0]),"y":float(midpoint[1]),
                     "state":"visible" if all(e["state"]=="visible" for e in ends) else "inferred"},
+                "tipScores":None if tip_scores is None else tip_scores.tolist(),
                 "gapSeconds":gap,"visibleExtent":None if observed is None else (observed/[self.width,self.height]).tolist()}

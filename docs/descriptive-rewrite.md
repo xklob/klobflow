@@ -38,11 +38,11 @@ These are measurements on a **GTX 1650 with 4 GB**, not a Pixel benchmark. The [
 
 OpenCV fits an axis to the learned mask. Its outer extent supplies probable endpoints; their average supplies the midpoint. A Kalman motion prior and the recent apparent length maintain an explicit hypothesis through missing or partial shape observations. A longer visible span is allowed to update length, rather than being truncated to the first selection. No target center attracts the estimate.
 
-This is **not a staff-specific keypoint model**. A segmentation boundary at a sleeve or shoulder can resemble a physical endpoint. The shape filter sometimes chooses the wrong end to anchor a partial observation, especially across large frame gaps. It can also confuse foreshortening with occlusion. Identical physical ends do not retain guaranteed identity through complete occlusion.
+The base model is **not a staff-specific keypoint model**. A segmentation boundary at a sleeve or shoulder can resemble a physical endpoint. An optional locally trained MobileNet tip ranker now chooses between the two partial-shape boundaries using image appearance. It replaces the nearest-motion-anchor choice when loaded. It can still confuse foreshortening with occlusion, and it does not recover a hidden physical tip. Identical physical ends do not retain guaranteed identity through complete occlusion.
 
 Solid rings mean an image-supported estimate. Dashed rings mean motion/length inference. Neither is a calibrated accuracy guarantee. The network's mean foreground probability is retained as diagnostic metadata, not displayed as a precision percentage. There are no scores to invalidate or repeated “hidden tip” warnings. Full occlusion produces estimates, not measurements; it cannot establish the invisible position as ground truth.
 
-A staff-specific model trained to predict endpoints and their visibility is the next substantial experiment if live tests justify it. Adding increasingly elaborate rules around generic segmentation would risk recreating the old detector. A generic person mask alone does not tell us whether the staff is in front of or behind the person.
+The [staff-specific training experiment](staff-tip-training.md) uses recording-level holdouts and fixes the documented wrong-anchor case. Absolute classifier scores were not reliable enough to control visibility, so the deployed helper uses relative ranking only for a partial shape. Complete masks and empty masks retain their established behavior. A richer keypoint/visibility model needs more diverse labels and independent footage. A generic person mask alone does not tell us whether the staff is in front of or behind the person.
 
 ## Calibration
 
@@ -56,7 +56,7 @@ The proposed four staff poses need a specified common plane and known positional
 
 Private Pixel recordings and their existing annotations are diagnostic data, not an independent benchmark. Annotation uncertainty is several pixels. Errors are measured at the annotation resolution of 384 × 216, with unordered endpoint assignment. Only visibly annotated ends have positional ground truth; no accuracy percentage is assigned to invisible ends.
 
-Final results on 15 October 2026:
+Base-model results from the alpha.1 release on 15 October 2026 (the training notes report the subsequent paired experiment):
 
 | Recording | Analysis schedule | Visible ends annotated | Median / 90th percentile error | Ends within 10 px |
 | --- | --- | ---: | --- | ---: |
@@ -64,11 +64,11 @@ Final results on 15 October 2026:
 | 45-second Pixel practice | From frame 178 through the end, every frame (2,483 inferences) | 33 | 2.86 / 6.78 px | 33 / 33 |
 | 2:19 narrated sample | From 10 seconds through the final frame, every eighth frame plus annotated frames (983 inferences) | 36 | 3.39 / 4.67 px | 36 / 36 |
 
-The sparse schedule approximates this PC's live analysis cadence; retaining annotated frames makes positional comparison exact. The visible-end outlier in the original clip was an incorrect partial-occlusion anchor, about 83 px from the visible end. This is a known limitation, not averaged away into a success claim. Hidden-end positions and physical endpoint identity were not scored.
+The sparse schedule approximates this PC's live analysis cadence; retaining annotated frames makes positional comparison exact. The visible-end outlier in this base-model run was an incorrect partial-occlusion anchor, about 83 px from the visible end. The later learned ranker addresses that case; it does not establish hidden-end accuracy or physical endpoint identity.
 
 The narrated file stopped early in the OpenCV HEVC decoder. That incomplete run was discarded. The final full-duration replay used the existing complete 384 × 216 BGRA reference decode, checked against the source's 8,308 presentation timestamps. The other two runs decoded directly to 768 × 432. This difference limits comparisons between recordings. All runs used 512-pixel model input. A repeatable evaluator now rejects early decoder termination instead of treating it as a complete video.
 
-Validation also passed 24 Python geometry/protocol/continuity tests, 11 synthetic browser interaction tests, 139 JVM tests across both Android modules, the required Android lint/build checks, and 118 existing companion tests. Browser tests cover matching-frame overlays, source cancellation, selection and mirrored coordinates, camera/zoom invalidation, automatic phone reconnection, profile transforms, small screens/fullscreen, and single model ownership. Their fake model proves interface behavior only.
+Validation also passed 33 Python geometry/protocol/continuity/training tests, 11 synthetic browser interaction tests, 139 JVM tests across both Android modules, the required Android lint/build checks, and 118 existing companion tests. Browser tests cover matching-frame overlays, source cancellation, selection and mirrored coordinates, camera/zoom invalidation, automatic phone reconnection, profile transforms, small screens/fullscreen, and single model ownership. Their fake model proves interface behavior only.
 
 The release APK was checked for package/version/signature and 16 KiB alignment, and tested on an Android API 36 emulator. Camera capture, stream metadata, foreground reacquisition, portrait/landscape layout, and ADB forwarding were exercised. A separate browser smoke check ran generated camera frames through the real local EdgeTAM service and verified matching results, rather than substituting a fake model. Physical Pixel camera latency, ultrawide lens calibration, and a real USB cable remain live-test work. All private videos, labels, narrated audio/transcripts, and derived frames remain in ignored local review directories. Public screenshots use synthetic frames or the Android emulator.
 

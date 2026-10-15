@@ -70,14 +70,14 @@ class Runtime:
             cls, filename = SegmentationTracker, "edgetam.pt"
             if not (CACHE / filename).is_file():
                 raise RuntimeError("Run motion/setup.sh to install the local model")
-            self.tracker = cls(CACHE / filename)
+            self.tracker = cls(CACHE / filename, tip_checkpoint=os.environ.get("KLOBFLOW_TIP_CHECKPOINT"))
         except Exception as error:
             self.error = str(error)
         finally:
             self.loading = False
 
     def status(self):
-        return {"version": "0.14.0-alpha.1", "ready": self.tracker is not None,
+        return {"version": "0.14.0-alpha.2", "ready": self.tracker is not None,
                 "loading": self.loading, "error": self.error,
                 "model": self.tracker.name if self.tracker else self.kind,
                 "device": str(self.tracker.device) if self.tracker else None,
