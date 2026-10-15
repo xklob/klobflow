@@ -176,9 +176,9 @@ def create_app(runtime=None, preload=True):
         runtime.owner = ws
         geometry = Geometry()
         calibration_frames = []
-        await runtime.run(runtime.tracker.reset)
-        await ws.send_json({"type": "ready", **runtime.status()})
         try:
+            await runtime.run(runtime.tracker.reset)
+            await ws.send_json({"type": "ready", **runtime.status()})
             while True:
                 message = await ws.receive()
                 if message["type"] == "websocket.disconnect":
@@ -244,8 +244,13 @@ def create_app(runtime=None, preload=True):
         except WebSocketDisconnect:
             pass
         finally:
-            await runtime.run(runtime.tracker.reset)
-            runtime.owner = None
+            # ASGI cancellation can interrupt even this cleanup await. Always
+            # release the session; a new owner resets the model on the same
+            # serialized executor before submitting any of its frames.
+            try:
+                await runtime.run(runtime.tracker.reset)
+            finally:
+                runtime.owner = None
 
     assets = {"/": "index.html", "/app.mjs": "app.mjs", "/style.css": "style.css", "/view.mjs": "view.mjs", "/checkerboard.svg": "checkerboard.svg"}
     primitives = {"/camera.mjs": "camera.mjs", "/stream.mjs": "stream.mjs"}

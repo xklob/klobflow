@@ -1,5 +1,6 @@
 import json
 import struct
+import threading
 
 import cv2
 import numpy as np
@@ -118,6 +119,31 @@ def test_local_origin_guard_and_single_tracker_ownership():
             assert first.receive_json()["type"] == "error"
             first.send_bytes(sample_packet(previewOnly=True))
             assert decode(first.receive_bytes())[0]["id"] == 1
+
+
+def test_cancelled_connection_releases_owner_even_during_model_cleanup():
+    runtime = fake_runtime()
+    reset = runtime.tracker.reset
+    release = threading.Event()
+    resets = 0
+    def slow_cleanup():
+        nonlocal resets
+        resets += 1
+        if resets == 2:
+            release.wait(2)
+        reset()
+    runtime.tracker.reset = slow_cleanup
+    with TestClient(create_app(runtime, preload=False), base_url="http://localhost") as client:
+        try:
+            with client.websocket_connect("ws://localhost/ws/track") as ws:
+                assert ws.receive_json()["type"] == "ready"
+            # TestClient cancels its ASGI scope on close. The cleanup future can
+            # still be running in the executor, but the session must be freed.
+            assert runtime.owner is None
+        finally:
+            release.set()
+        with client.websocket_connect("ws://localhost/ws/track") as ws:
+            assert ws.receive_json()["type"] == "ready"
 
 
 def test_calibration_recovers_known_lens_and_rejects_duplicate_views(monkeypatch):
