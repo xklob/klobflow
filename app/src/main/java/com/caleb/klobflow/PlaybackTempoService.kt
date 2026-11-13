@@ -35,7 +35,7 @@ class PlaybackTempoService:Service() {
         if(consent==null){shutdown();return START_NOT_STICKY}
         val open=PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val stop=PendingIntent.getService(this,1,Intent(this,javaClass).setAction("STOP"),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val notification=Notification.Builder(this,"tempo").setSmallIcon(R.mipmap.ic_launcher).setContentTitle("Klobflow is detecting system-audio tempo").setContentText("Analyzed locally. Tap Stop to end audio capture.").setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null,"Stop",stop).build()).build()
+        val notification=Notification.Builder(this,"tempo").setSmallIcon(R.mipmap.ic_launcher).setContentTitle("klobflow is detecting system-audio tempo").setContentText("Analyzed locally. Tap Stop to end audio capture.").setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null,"Stop",stop).build()).build()
         try {
             startForeground(51,notification,ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
             val capture=requireNotNull(getSystemService(MediaProjectionManager::class.java).getMediaProjection(Activity.RESULT_OK,consent));projection=capture
@@ -48,7 +48,7 @@ class PlaybackTempoService:Service() {
             recorder=input;check(input.state==AudioRecord.STATE_INITIALIZED){"Playback audio could not initialize"}
             input.startRecording();PhoneAudio.publish(AudioTempo(running=true,status="Listening for system audio…"))
             workerStarted=true
-            thread(name="Klobflow tempo",isDaemon=true){
+            thread(name="klobflow tempo",isDaemon=true){
                 val channels=input.channelCount;val samples=ShortArray(960*channels);val envelope=AudioEnvelope();val analyzer=TempoAnalyzer();val stamp=AudioTimestamp();val sampleClock=AudioSampleClock()
                 var readFrames=0L;var offset=0
                 try {

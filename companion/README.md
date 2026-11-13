@@ -1,4 +1,4 @@
-# Klobflow local practice space
+# klobflow local practice space
 
 The practice toolbar puts **Auto-fit**, **Background · 5s**, **LED colors & lights**, and **Audio & beat** beside the preview. **Full screen** keeps large feedback, recording, and an explicit exit button visible. Changing text size preserves the settings section being viewed. Tutorials start with one step; expand them for the full setup instructions. The line/ring legend opens below the preview when needed.
 
@@ -6,7 +6,7 @@ Requires Node 22 or newer. Extract this ZIP, run `node server.mjs` in this folde
 
 Choose **Use PC camera** for fully local browser practice without a phone. The app measures capture modes and prioritizes actual frame rate. Recordings and analysis save in browser storage; export them from the practice log. Chrome/Edge are tested.
 
-For Android mode, enable PC sharing in Klobflow on your phone. Choose **USB cable** or **Wi-Fi / LAN** in the connection dialog. There is no pairing code. Anyone on the same LAN can access an enabled phone share.
+For Android mode, enable PC sharing in klobflow on your phone. Choose **USB cable** or **Wi-Fi / LAN** in the connection dialog. There is no pairing code. Anyone on the same LAN can access an enabled phone share.
 
 USB requires Android platform-tools (`adb`), a data-capable cable, USB debugging enabled in Android Developer options, and approval of this PC in Android's native prompt. Connect one USB Android device. `KLOBFLOW_ADB` can select an adb executable outside PATH. On WSL, the companion automatically uses Windows adb and a local binary pipe through Windows curl; it does not open a Windows network relay or change the firewall.
 

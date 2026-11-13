@@ -1,5 +1,11 @@
 # v0.13.0 validation
 
+## v0.13.1: lowercase branding
+
+Launcher labels, in-app copy, companion branding and current documentation use lowercase app names. Existing package IDs, recording directories and saved preferences remain unchanged. The stable build stays on the existing practice engine.
+
+Android unit tests passed (137 tests, one optional private-video replay skipped), debug/release lint and builds passed, and all 118 companion tests passed. The signed APK has versionCode 19, the lowercase launcher label, the same certificate as the downloaded v0.13.0 APK, and valid 16 KiB alignment. This naming-only update does not change camera, inference, recording or storage behavior; no new physical-camera validation is claimed.
+
 Validated locally on 2026-10-15. This update adds a deliberate two-staff X gesture for hands-free center/size/zoom fitting in every mode, plus four-beat-per-cycle audio pacing in Circles and Antispin.
 
 - 136 regular JVM tests and 118 Node tests pass; the optional private-video diagnostic remains skipped in the regular JVM suite. Shared native/browser fixtures cover the gesture in all five modes with one or two selected staves, plus 244 audio-pacer steps. Behavioral checks cover the five-second X hold, separate five-second countdown, clear two-second still pose, broken/moving/hidden poses, release gating, camera gaps, cancellation, tap-selection suspension, seed identity, zoom acknowledgement and settling, fixed zoom, perspective preservation, rotated two-staff spacing and strict configuration validation. Audio checks cover four beats per cycle, Half/Double rates, changing beat origins, bounded phase corrections, qualified 15-second holds, expiry, stale input, pause/resume and camera gaps. Android lint, debug/test builds and signed release build pass.

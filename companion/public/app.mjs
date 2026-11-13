@@ -1275,7 +1275,7 @@ async function loadAnalysis(text) {
     .split("\n")
     .map((line) => JSON.parse(line));
   if (rows[0]?.type !== "header" || rows[0]?.schema !== 1)
-    throw new Error("Choose a Klobflow analysis export.");
+    throw new Error("Choose a klobflow analysis export.");
   const frames = rows.slice(1);
   if (!frames.length)
     throw new Error("This session contains no measured frames.");
@@ -1390,7 +1390,7 @@ async function receiveStream() {
     const reader = response.body.getReader();
     while (!controller.signal.aborted) {
       const { value, done } = await reader.read();
-      if (done) throw new Error("Camera paused. Reopen Klobflow to resume.");
+      if (done) throw new Error("Camera paused. Reopen klobflow to resume.");
       const packets = decoder.push(value);
       if (packets.length) {
         pending = packets.at(-1); lastArrival = Date.now(); drawLatest();
@@ -1399,7 +1399,7 @@ async function receiveStream() {
   } catch (e) {
     if (!controller.signal.aborted) {
       pauseLiveFeedback();
-      $("tracking-label").textContent = "Reconnecting · reopen Klobflow on your phone";
+      $("tracking-label").textContent = "Reconnecting · reopen klobflow on your phone";
       $("source-label").textContent = "CAMERA PAUSED";
       enableControls(); message(e.message);
     }

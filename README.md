@@ -1,4 +1,4 @@
-# Klobflow
+# klobflow
 
 A practice tool for double staves: use the native Android app with its local PC companion, or practice entirely in your browser with a PC webcam. Track unmarked LED staves, lay out a front-facing grid, overlapping circles, a projected cube, or one/two-staff antispin crosses, and inspect your practice in real time.
 
@@ -24,7 +24,7 @@ Generated LED demo through the native tracker and companion demo. These illustra
 
 Get the signed universal APK from [GitHub Releases](https://github.com/xklob/klobflow/releases/latest). Android 10 or newer is required. Package: `com.caleb.klobflow`.
 
-Klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/releases/latest). Update klobstore to add it to an existing catalog, then install/update it there. You can also add `xklob/klobflow` manually. Updates preserve the app's package and signing identity and increase Android `versionCode`.
+klobflow is bundled in [klobstore v0.1.2+](https://github.com/xklob/klobstore/releases/latest). Update klobstore to add it to an existing catalog, then install/update it there. You can also add `xklob/klobflow` manually. Updates preserve the app's package and signing identity and increase Android `versionCode`.
 
 ## First practice
 
@@ -102,7 +102,7 @@ cd companion
 npm start
 ```
 
-Open **http://localhost:8788**. On the phone, enable **PC sharing** and keep Klobflow in the foreground. Choose **USB cable** for a wired connection, or **Wi-Fi / LAN** and enter its displayed IPv4 address. No pairing code is required. Wi-Fi needs LAN connectivity; guest network client isolation can block this. The phone listens on TCP 8787. The PC server listens only on loopback.
+Open **http://localhost:8788**. On the phone, enable **PC sharing** and keep klobflow in the foreground. Choose **USB cable** for a wired connection, or **Wi-Fi / LAN** and enter its displayed IPv4 address. No pairing code is required. Wi-Fi needs LAN connectivity; guest network client isolation can block this. The phone listens on TCP 8787. The PC server listens only on loopback.
 
 On Caleb's WSL machine, `./scripts/start-companion.sh` starts the local service if necessary. Windows can access the same localhost URL. The initial setup runs it as a user service without enabling startup at boot.
 
@@ -110,7 +110,7 @@ When connected to Android, the phone performs camera processing, detection, trac
 
 ### USB cable
 
-Install Android platform-tools if needed. Connect a data cable, enable **USB debugging** in Android Developer options, and allow this PC in Android's prompt. Keep Klobflow open with sharing enabled, then choose **USB cable** on the PC. The companion automatically creates a local ADB tunnel for video, analysis, and controls. It reconnects after the app is reopened or the cable is reattached. Only one USB Android phone should be attached. Set `KLOBFLOW_ADB` if adb is outside PATH.
+Install Android platform-tools if needed. Connect a data cable, enable **USB debugging** in Android Developer options, and allow this PC in Android's prompt. Keep klobflow open with sharing enabled, then choose **USB cable** on the PC. The companion automatically creates a local ADB tunnel for video, analysis, and controls. It reconnects after the app is reopened or the cable is reattached. Only one USB Android phone should be attached. Set `KLOBFLOW_ADB` if adb is outside PATH.
 
 On WSL, Windows owns the USB device. The companion finds Windows adb and uses Windows curl over a local process pipe, keeping the forwarded camera port on Windows loopback. No firewall or network-mode changes are needed. USB removes the Wi-Fi hop; capture, analysis, encoding, and display still contribute latency.
 
@@ -193,7 +193,7 @@ During either hold, **STREAK HELD** freezes earned seconds and glow. Tracking un
 
 ## Automatic tempo from system audio
 
-On Android, open **Adjust → Beat timing → Connect system audio**, then approve Android's audio permission and sharing dialog. Play music in an app that permits playback capture. Klobflow analyzes playback audio locally with a foreground notification and Stop action. It does not use the microphone, acquire screen images, save audio, or add audio to practice videos. A source app can prevent capture; silence produces an explanation instead of a fabricated BPM. See [Android playback-capture requirements](https://developer.android.com/media/platform/av-capture).
+On Android, open **Adjust → Beat timing → Connect system audio**, then approve Android's audio permission and sharing dialog. Play music in an app that permits playback capture. klobflow analyzes playback audio locally with a foreground notification and Stop action. It does not use the microphone, acquire screen images, save audio, or add audio to practice videos. A source app can prevent capture; silence produces an explanation instead of a fabricated BPM. See [Android playback-capture requirements](https://developer.android.com/media/platform/av-capture).
 
 In the web UI, choose **Use PC system audio**. Select a music tab or screen and enable **Share audio** in the browser picker. This works with either the PC camera or Android's camera stream. With Android capture, only tempo, beat phase, confidence, and signal diagnostics are relayed to the phone, using a measured phone/PC clock offset. **Use phone audio** opens Android's approval flow on the phone instead. Browser and OS support varies, and some sharing choices contain no audio track; [browser capture options](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia) describe these limits. Chrome/Edge on Windows are the intended PC targets.
 
@@ -228,7 +228,7 @@ A single RGB camera does not recover dependable depth. The cube is a projected r
 - [VTG reference poster hosted by Flow Arts Institute](https://flowartsinstitute.com/wp-content/uploads/2015/02/VTGpostersmall.jpg) is linked in both interfaces. The poster is not redistributed in the app.
 - [DrexFactor: VTG explained, hosted by Noel Yee](https://noelyee.com/drexfactor-vulcan-tech-gospel-explained/) provides further instruction.
 
-Klobflow is independent and not endorsed by those creators. Original diagrams, illustrations, and lesson content remain with their creators.
+klobflow is independent and not endorsed by those creators. Original diagrams, illustrations, and lesson content remain with their creators.
 
 ## Development and releases
 

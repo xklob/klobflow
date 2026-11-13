@@ -1,4 +1,4 @@
-# Klobflow
+# klobflow
 
 Native Kotlin/Compose Android double-staff practice app with a localhost Node companion. The phone owns camera capture, detection, metrics, and recording. Keep video and practice data local.
 

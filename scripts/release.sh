@@ -26,6 +26,6 @@ with zipfile.ZipFile(f'artifacts/klobflow-companion-{version}.zip','w',zipfile.Z
         if f.is_file(): z.write(f,'public/'+f.name)
 PY
 (cd artifacts && sha256sum "klobflow-$version.apk" "klobflow-companion-$version.zip" > SHA256SUMS)
-git tag -a "v$version" -m "Klobflow $version"
+git tag -a "v$version" -m "klobflow $version"
 git push origin HEAD:main "v$version"
-gh release create "v$version" "artifacts/klobflow-$version.apk" "artifacts/klobflow-companion-$version.zip" artifacts/SHA256SUMS --repo xklob/klobflow --title "Klobflow $version" --notes-file "$notes" --verify-tag
+gh release create "v$version" "artifacts/klobflow-$version.apk" "artifacts/klobflow-companion-$version.zip" artifacts/SHA256SUMS --repo xklob/klobflow --title "klobflow $version" --notes-file "$notes" --verify-tag

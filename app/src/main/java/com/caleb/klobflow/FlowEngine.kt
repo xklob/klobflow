@@ -357,7 +357,7 @@ class FlowEngine(val context:Context,private val owner:LifecycleOwner) : AutoClo
                     .put("calibrationImageAspect",f.width.toDouble()/f.height)
                     .put("calibrationRotation",context.getSystemService(android.view.WindowManager::class.java).defaultDisplay.rotation))
             }
-            "audioStart"->(context as? MainActivity)?.requestSystemAudio() ?: error("Open Klobflow on the phone to authorize audio")
+            "audioStart"->(context as? MainActivity)?.requestSystemAudio() ?: error("Open klobflow on the phone to authorize audio")
             "audioStop"->{context.stopService(android.content.Intent(context,PlaybackTempoService::class.java));pcAudio=AudioTempo();updateConfig(JSONObject().put("tempoSource","manual"))}
             "audioTempo"->{
                 require(config.tempoSource=="pc"){"Select PC system audio first"}

@@ -139,7 +139,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
           const response = await upstream("/api/live", "GET", undefined, candidate);
           const state = await response.json();
           if (state.protocol !== 2 || typeof state.version !== "string")
-            throw new Error("Update the phone to Klobflow 0.5.0 or newer.");
+            throw new Error("Update the phone to klobflow 0.5.0 or newer.");
           if (generation !== pairGeneration) throw new Error("Connection was canceled.");
           stopStreams();
           await pairing?.close?.();
@@ -180,7 +180,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         await pair?.refresh?.();
         const response = await upstream("/api/stream", "GET", undefined, pair, controller.signal);
         if (!response.headers.get("content-type")?.startsWith("application/x-klobflow-stream")) {
-          controller.abort(); throw new Error("Update Klobflow on the phone to enable streaming.");
+          controller.abort(); throw new Error("Update klobflow on the phone to enable streaming.");
         }
         req.socket.setNoDelay(true);
         res.writeHead(200, { "Content-Type": "application/x-klobflow-stream", "X-Accel-Buffering": "no" });
@@ -244,7 +244,7 @@ export function createCompanion({ usbConnect = connectUsb } = {}) {
         e.name === "TimeoutError" || e.message === "fetch failed";
       return json(e.status ?? (connectionError ? 502 : 400), {
         error: connectionError
-          ? "Cannot reach the phone. Check the USB cable or Wi-Fi, enable PC sharing, and reopen Klobflow."
+          ? "Cannot reach the phone. Check the USB cable or Wi-Fi, enable PC sharing, and reopen klobflow."
           : e.message,
       });
     }
@@ -259,7 +259,7 @@ if (
   const port = Number(process.env.KLOBFLOW_PORT || 8788);
   const server = createCompanion();
   server.listen(port, "127.0.0.1", () =>
-    process.stdout.write(`Klobflow companion: http://localhost:${port}\n`),
+    process.stdout.write(`klobflow companion: http://localhost:${port}\n`),
   );
   server.on("error", (e) => {
     process.stderr.write(`Cannot start companion: ${e.message}\n`);
