@@ -1,4 +1,4 @@
-# Klobflow
+# klobflow
 
 This experimental branch is a fresh descriptive-motion rewrite. `motion/` runs a local learned vision model and browser UI; `motion-phone/` is a new Android camera source. The current prototype processes frames on the PC. On-phone inference is a follow-up and must not be claimed complete. The previous Android app and Node companion remain in `app/` and `companion/`; only their camera and transport primitives are reused. Keep video and practice data local.
 

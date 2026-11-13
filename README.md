@@ -1,4 +1,4 @@
-# Klobflow · Motion Lab
+# klobflow · motion lab
 
 A fresh, experimental rewrite that **describes the staff you are moving**. It shows two probable ends, their midpoint, and their recent paths. There is no fixed grid to fit yourself into and no technique score.
 

@@ -211,3 +211,13 @@ Caleb chose to finish the release before a live test with his LED staves. Real P
 Suggested first check: fixed phone, two fully visible staves, slow parallel rotations, then mirrored rotations, crossing, and deliberate brief occlusion. Check that the outlines follow both staves, confidence drops when a staff disappears, and the overlay matches the image. Adjust the brightness threshold and minimum length before judging the guide measurements. Try the rear camera and PC pairing after the standalone phone view is working.
 
 The native integration test runs only on a disposable emulator. It does not exercise or remove user apps on the physical phone. The physical installation uses the signed release and Android's normal in-place update behavior.
+
+## v0.14.0-alpha.3: lowercase Motion Lab branding
+
+klobflow motion lab now uses lowercase branding in its Android launcher, phone header, browser title and help text. This is a naming-only patch of the existing descriptive-motion preview. PC inference is still required; tracking and camera behavior are unchanged.
+
+The APK retains package com.caleb.klobflow and its release certificate, with versionCode 20. Saved settings and pairing behavior are unchanged. Stable klobflow 0.13.1 remains the normal update channel.
+
+Validation: 2 camera-source JVM tests, all 34 Python tests and all 11 browser interaction tests passed, plus camera-source debug/release lint and builds. The signed APK matches the alpha.2 certificate and passes version/launcher checks and 16 KiB alignment. No new inference-accuracy or physical-camera claims are made for this branding patch.
+
+The source archive contains code, not private recordings, trained private weights or signing material.

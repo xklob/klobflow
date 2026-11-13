@@ -118,7 +118,7 @@ class MainActivity:ComponentActivity() {
     Row(Modifier.fillMaxWidth().padding(vertical=10.dp),horizontalArrangement=Arrangement.spacedBy(16.dp),verticalAlignment=Alignment.CenterVertically) {
         Column(Modifier.semantics(mergeDescendants=true){heading()}) {
             Text(buildAnnotatedString{append("klob");withStyle(SpanStyle(color=Mint)){append("flow")}},color=Color.White,fontSize=28.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1).sp,lineHeight=30.sp)
-            Text("MOTION LAB",color=Muted,fontSize=11.sp,letterSpacing=3.sp,fontWeight=FontWeight.SemiBold)
+            Text("motion lab",color=Muted,fontSize=11.sp,letterSpacing=3.sp,fontWeight=FontWeight.SemiBold)
         }
         if(wide)PcNote(Modifier.weight(1f)) else Spacer(Modifier.weight(1f))
         val live=state.sharing
@@ -129,7 +129,7 @@ class MainActivity:ComponentActivity() {
     if(!wide)PcNote(Modifier.fillMaxWidth().padding(bottom=12.dp))
 }
 
-@Composable private fun PcNote(modifier:Modifier)=Text("Tracking runs in Motion Lab on your PC in this prototype.",
+@Composable private fun PcNote(modifier:Modifier)=Text("Tracking runs in motion lab on your PC in this prototype.",
     modifier.border(1.dp,Mint.copy(alpha=.4f),RoundedCornerShape(12.dp)).background(Color(0xff092720),RoundedCornerShape(12.dp)).padding(horizontal=14.dp,vertical=8.dp),
     color=Color(0xffd8fff2),fontSize=17.sp,lineHeight=22.sp)
 
@@ -172,7 +172,7 @@ class MainActivity:ComponentActivity() {
         }
         state.error!=null->Section("CAMERA STATUS","Camera needs attention",CalmLine,CalmBg) {
             Body(state.error.orEmpty(),Calm)
-            Body("Try again below. If it keeps failing, close other camera apps or reopen Klobflow. Sharing restarts by itself if it was on.")
+            Body("Try again below. If it keeps failing, close other camera apps or reopen klobflow. Sharing restarts by itself if it was on.")
             Action("Try again","retry",true){host.retry()}
         }
         state.ready->Section("CAMERA STATUS","Camera ready"){Body(state.message)}

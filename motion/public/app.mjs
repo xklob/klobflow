@@ -279,7 +279,7 @@ async function listCameras(selected = $('cameraChoice').value) {
 async function usePhone(transport) {
   const address = $('address').value.trim();
   if (transport === 'lan') {
-    if (!address) { message('Enter the phone address shown in the Klobflow Android app.'); $('address').focus(); return; }
+    if (!address) { message('Enter the phone address shown in the klobflow Android app.'); $('address').focus(); return; }
     try { localStorage.setItem('klobflow.motion.phone', address); } catch {}
   }
   const own = beginSource('phone', `Connecting to the phone over ${transport === 'usb' ? 'USB' : 'Wi-Fi'}…`), signal = abort.signal;
